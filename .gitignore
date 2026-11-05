@@ -1,0 +1,21 @@
+# Local secrets
+maptiler.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.bak
+*.bak.*
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.iml
+.idea/
+
+# Build artifacts / OS
+*.apk
+.DS_Store
+Thumbs.db

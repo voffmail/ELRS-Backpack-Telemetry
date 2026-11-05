@@ -1,0 +1,1929 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ELRS Backpack telemetry</title>
+<link rel="stylesheet" href="https://cdn.maptiler.com/maptiler-sdk-js/v4.2.0/maptiler-sdk.css">
+<script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: #0b0f14; color: #e6edf3; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+           padding: 7px 16px; border-bottom: 1px solid #1f2630; position: sticky; top: 0;
+           background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 2; }
+  .brand { display: flex; flex-direction: column; gap: 1px; font-size: 15px;
+           letter-spacing: .2px; line-height: 1.1; }
+  .brand b { color: #3fb950; }
+  .brandSub { color: #7d8590; font-size: 9px; letter-spacing: .03em; }
+  .pill { font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid #30363d;
+          color: #7d8590; white-space: nowrap; }
+  .pill.on { color: #3fb950; border-color: #238636; background: rgba(63,185,80,.1); }
+  .pill.off { color: #f85149; border-color: #6e2c2c; background: rgba(248,81,73,.08); }
+  .headRight { display: flex; align-items: center; gap: 8px; }
+  .lang { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px;
+          padding: 3px 6px; font-size: 11px; outline: none; }
+  .lang:focus { border-color: #3fb950; }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+         gap: 14px; padding: 16px 20px 40px; max-width: 1200px; margin: 0 auto; }
+  .card { background: #11161d; border: 1px solid #1f2630; border-radius: 14px; padding: 16px;
+          min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
+  h2 { margin: 0 0 14px; font-size: 12px; font-weight: 600; text-transform: uppercase;
+       letter-spacing: .12em; color: #7d8590; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+         margin-top: 10px; font-size: 13px; }
+  .row:first-of-type { margin-top: 0; }
+  .lq { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .track { height: 7px; border-radius: 4px; background: #1f2630; overflow: hidden; margin-top: 6px; }
+  .fill { height: 100%; width: 0; border-radius: 4px; background: #3fb950; transition: width .2s linear; }
+  .fill.mid { background: #d29922; }
+  .fill.low { background: #f85149; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+  small { display: block; color: #7d8590; font-size: 11px; text-transform: uppercase;
+          letter-spacing: .06em; }
+  .val { font-size: 17px; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .big { font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .big small { display: inline; font-size: 14px; color: #7d8590; text-transform: none; letter-spacing: 0; }
+  .muted { color: #7d8590; }
+  .modeRow { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .modeNote { font-size: 12px; color: #7d8590; }
+  .horizon { position: relative; height: 150px; border-radius: 12px; overflow: hidden;
+             background: #0b0f14; border: 1px solid #1f2630; }
+  .horizon .inner { position: absolute; left: -60%; right: -60%; top: -60%; bottom: -60%;
+                    background: linear-gradient(to bottom, #1f4e79 0 50%, #6b4a1f 50% 100%);
+                    transition: transform .12s linear; }
+  .horizon .cross { position: absolute; inset: 0; }
+  .horizon .cross:before, .horizon .cross:after { content: ""; position: absolute; background: #e6edf3;
+                    opacity: .8; }
+  .horizon .cross:before { left: 50%; top: 50%; width: 46px; height: 2px; transform: translate(-50%,-50%); }
+  .horizon .cross:after { left: 50%; top: 50%; width: 2px; height: 46px; transform: translate(-50%,-50%); }
+  a { color: #58a6ff; font-size: 13px; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; color: #7d8590; font-size: 12px; }
+  pre { margin: 10px 0 0; padding: 10px; background: #0b0f14; border: 1px solid #1f2630;
+        border-radius: 8px; overflow: auto; font-size: 12px; color: #9da7b3; }
+  table.frames { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  table.frames th { text-align: left; color: #7d8590; font-weight: 600; padding: 6px 8px;
+                    border-bottom: 1px solid #1f2630; white-space: nowrap; }
+  table.frames td { padding: 6px 8px; border-bottom: 1px solid #171d26; vertical-align: top; }
+  table.frames tr:last-child td { border-bottom: none; }
+  table.frames td:first-child, table.frames td:nth-child(3) {
+                    font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.frames td:last-child { color: #9da7b3; }
+  table.frames tr.unknown td:last-child { color: #d29922; }
+  [hidden] { display: none !important; }
+  .tabs { display: flex; flex: 1; justify-content: center; gap: 6px; padding: 0; margin: 0; }
+  .tab { background: transparent; color: #7d8590; border: 1px solid transparent; border-radius: 12px;
+         padding: 6px 15px; font-size: 18px; line-height: 1.2; font-family: inherit; cursor: pointer; }
+  .tab:hover { color: #e6edf3; }
+  .tab.active { color: #e6edf3; background: #11161d; border-color: #30363d; }
+  #mapPage { padding: 16px 20px 40px; max-width: 1200px; margin: 0 auto; }
+  .mapWrap { position: relative; height: calc(100vh - 110px); min-height: 360px;
+             border: 1px solid #1f2630; border-radius: 14px; overflow: hidden; background: #0b0f14; }
+  #map { position: absolute; inset: 0; }
+  .droneMarker { width: 48px; height: 48px; pointer-events: none; }
+  .droneMarker svg { display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+  .gpsHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .gpsSats { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .gpsSats #sats { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .qrBox { margin: 0; flex: 0 0 auto; cursor: pointer; outline: none; }
+  .qrBox:focus-visible .qrCode { outline: 2px solid #3fb950; outline-offset: 2px; }
+  .qrCode { width: 96px; height: 96px; padding: 4px; border-radius: 8px; background: #fff;
+            color: #0b0f14; font-size: 9px; line-height: 1.15; word-break: break-all;
+            display: flex; align-items: center; justify-content: center; }
+  .qrCode svg { display: block; width: 100%; height: 100%; }
+  .gpsGrid, .gpsGrid3 { margin-top: 8px; }
+  .trackPanel { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 7;
+                padding: 0; border: 1px solid #30363d; border-radius: 12px;
+                background: rgba(11,15,20,.88); backdrop-filter: blur(6px); }
+  .trackHead { display: flex; align-items: center; gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
+  .trackHeader { display: flex; align-items: center; gap: 6px; padding: 0;
+                 background: transparent; border: 0; color: #e6edf3; font: inherit; font-size: 12px;
+                 text-align: left; cursor: pointer; white-space: nowrap; }
+  .trackChevron { width: 14px; color: #7d8590; }
+  .trackBody { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 8px; }
+  .trackPanel.collapsed .trackBody { display: none; }
+  .trackPanel:not(.collapsed) .trackHead { border-bottom: 1px solid #1f2630; border-radius: 12px 12px 0 0; }
+  .trackRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #playRow { flex-wrap: nowrap; }
+  .trackActions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .trackSelect { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px;
+                 padding: 5px 8px; font-size: 12px; max-width: 220px; }
+  #trackSelect { min-width: 0; flex: 1 1 auto; }
+  .trackRange { flex: 1; min-width: 60px; accent-color: #3fb950; }
+  .trackStatus { color: #9da7b3; font-size: 12px; font-variant-numeric: tabular-nums; margin-left: auto; }
+  .trackTime { color: #9da7b3; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #recordBtn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .recIcon { width: 12px; height: 12px; fill: currentColor; flex: 0 0 auto; }
+  #recordBtn.recording { border-color: #f85149; color: #f85149; animation: recBlink 1.2s ease-in-out infinite; }
+  @keyframes recBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  .playbackMarker { width: 22px; height: 22px; pointer-events: none; }
+  .playbackMarker svg { display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+
+  #settingsCard, .guideCard { grid-column: 1 / -1; }
+  .settingsGroup { margin-bottom: 12px; }
+  .settingsGroup:last-child { margin-bottom: 0; }
+  .settingsLabel { font-size: 12px; color: #9da7b3; margin-bottom: 4px; }
+  .settingsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .settingsRow input[type=number] { width: 110px; padding: 6px 8px; border-radius: 8px;
+      border: 1px solid #30363d; background: #0b0f14; color: #e6edf3; font: inherit; font-size: 13px; }
+  .settingsValue { color: #e6edf3; font-size: 13px; word-break: break-all; margin-bottom: 6px; }
+  .settingsMsg { font-size: 12px; color: #3fb950; }
+  .settingsMsg.err { color: #f85149; }
+  .permList { list-style: none; margin: 6px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .permList li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+  .permList .permName { flex: 1 1 160px; }
+  .permState { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid #30363d; white-space: nowrap; }
+  .permState.ok { color: #3fb950; border-color: #238636; background: rgba(63,185,80,.1); }
+  .permState.bad { color: #f85149; border-color: #6e2c2c; background: rgba(248,81,73,.08); }
+  .permBtn { padding: 3px 8px !important; font-size: 11px !important; }
+  .guideCard summary { cursor: pointer; font-size: 15px; font-weight: 600; color: #e6edf3; }
+  .guideBody { margin-top: 10px; }
+  .guideBody b { display: block; margin: 10px 0 4px; font-size: 13px; color: #e6edf3; }
+  .guideList { margin: 0 0 0 18px; padding: 0; color: #c9d1d9; font-size: 13px; line-height: 1.5; }
+  .guideList li { margin-bottom: 5px; }
+  .guideNote { color: #9da7b3; font-size: 12px; line-height: 1.45; margin-top: 6px; }
+  #mapInfo { bottom: 56px; }
+  .mapBar { position: absolute; left: 12px; top: 12px; z-index: 5; display: flex; flex-wrap: wrap;
+            align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #30363d;
+            border-radius: 10px; background: rgba(11,15,20,.82); backdrop-filter: blur(6px); }
+  .mapToggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c9d1d9; }
+  .mapBtn { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px;
+            padding: 5px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
+  .mapBtn:hover { border-color: #3fb950; }
+  #mapStatus { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); z-index: 6;
+               padding: 6px 12px; border-radius: 999px; border: 1px solid #6e2c2c;
+               background: rgba(11,15,20,.9); color: #f85149; font-size: 12px; white-space: nowrap; }
+  #mapInfo { position: absolute; left: 12px; bottom: 12px; z-index: 5; padding: 6px 10px;
+             border: 1px solid #30363d; border-radius: 10px; background: rgba(11,15,20,.82);
+             color: #9da7b3; font-size: 12px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 520px) { header { padding: 5px 8px; gap: 3px; } .brand { font-size: 13px; } .brandSub { font-size: 8px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 4px; border-radius: 5px; } .headRight { gap: 4px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 4px; padding: 0; } .tab { padding: 4.5px 9px; font-size: 15px; border-radius: 9px; } #mapPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
+  @media (max-width: 330px) { .tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-top: 2px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div><b>ELRS</b> Backpack</div><span class="brandSub" data-i18n="brand_sub">Wi-Fi telemetry</span></div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="telemetry" data-i18n="tab_telemetry">Telemetry</button>
+    <button class="tab" data-tab="map" data-i18n="tab_map">Map</button>
+  </nav>
+  <div class="headRight">
+    <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
+    <select id="lang" class="lang" aria-label="Language">
+      <option value="en">EN</option>
+      <option value="ru">RU</option>
+      <option value="zh">中文</option>
+    </select>
+  </div>
+</header>
+<main id="telemetryPage">
+  <section class="card">
+    <h2 data-i18n="card_link">Link</h2>
+    <div class="row"><span data-i18n="lq_uplink">Uplink LQ</span><span class="lq" id="lqUp">—</span></div>
+    <div class="track"><div class="fill" id="barUp"></div></div>
+    <div class="grid2">
+      <div><small data-i18n="rssi">RSSI</small><div class="val" id="rssiUp">—</div></div>
+      <div><small data-i18n="snr">SNR</small><div class="val" id="snrUp">—</div></div>
+    </div>
+    <div class="row"><span data-i18n="lq_downlink">Downlink LQ</span><span class="lq" id="lqDn">—</span></div>
+    <div class="track"><div class="fill" id="barDn"></div></div>
+    <div class="grid2">
+      <div><small data-i18n="rssi">RSSI</small><div class="val" id="rssiDn">—</div></div>
+      <div><small data-i18n="snr">SNR</small><div class="val" id="snrDn">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="tx_power">TX power</small><div class="val" id="txp">—</div></div>
+      <div><small data-i18n="antenna">Antenna</small><div class="val" id="ant">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="band">Band</small><div class="val" id="band">—</div></div>
+      <div><small data-i18n="packet_rate">Packet rate</small><div class="val" id="pktRate">—</div></div>
+    </div>
+    <div class="row"><span data-i18n="range">Range</span><span class="lq" id="rangePct">—</span></div>
+    <div class="track"><div class="fill" id="barRange"></div></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_battery">Battery</h2>
+    <div class="big"><span id="volt">—</span> <small data-i18n="u_v">V</small></div>
+    <div class="grid2">
+      <div><small data-i18n="current">Current</small><div class="val" id="curr">—</div></div>
+      <div><small data-i18n="capacity">Capacity</small><div class="val" id="cap">—</div></div>
+    </div>
+    <div class="row"><span data-i18n="remaining">Remaining</span><span class="lq" id="remTxt">—</span></div>
+    <div class="track"><div class="fill" id="barRem"></div></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_gps">GPS</h2>
+    <div class="gpsHead">
+      <div class="gpsSats"><span id="sats">—</span><small data-i18n="satellites">satellites</small></div>
+      <div id="gpsQrWrap" class="qrBox" hidden role="button" tabindex="0"><div id="gpsQr" class="qrCode"></div></div>
+    </div>
+    <div class="grid2 gpsGrid">
+      <div><small data-i18n="latitude">Latitude</small><div class="val" id="lat">—</div></div>
+      <div><small data-i18n="longitude">Longitude</small><div class="val" id="lon">—</div></div>
+      <div><small data-i18n="altitude">Altitude</small><div class="val" id="alt">—</div></div>
+      <div><small data-i18n="speed">Speed</small><div class="val" id="spd">—</div></div>
+    </div>
+    <div class="grid3 gpsGrid3">
+      <div><small data-i18n="heading">Heading</small><div class="val" id="hdg">—</div></div>
+      <div><small data-i18n="fix">Fix</small><div class="val" id="fixType">—</div></div>
+      <div><small data-i18n="hdop">HDOP</small><div class="val" id="hdop">—</div></div>
+    </div>
+    <div class="row"><button id="showMap" class="mapBtn" style="display:none" data-i18n="show_on_map">Show on map</button></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_flight">Flight</h2>
+    <div class="modeRow">
+      <div class="big" id="flightMode">—</div>
+      <div class="modeNote" id="flightNote"></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="baro_alt">Baro altitude</small><div class="val" id="baroAlt">—</div></div>
+      <div><small data-i18n="vario">Vario</small><div class="val" id="vario">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="gps_time">GPS time</small><div class="val" id="gpsTime">—</div></div>
+      <div><small data-i18n="device">Device</small><div class="val" id="device">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_attitude">Attitude</h2>
+    <div class="horizon"><div class="inner" id="horizon"></div><div class="cross"></div></div>
+    <div class="grid3">
+      <div><small data-i18n="pitch">Pitch</small><div class="val" id="pitch">—</div></div>
+      <div><small data-i18n="roll">Roll</small><div class="val" id="roll">—</div></div>
+      <div><small data-i18n="yaw">Yaw</small><div class="val" id="yaw">—</div></div>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2 data-i18n="card_rx">Reception</h2>
+    <div class="grid4">
+      <div><small data-i18n="packets_per_sec">Packets/s</small><div class="val" id="pps">—</div></div>
+      <div><small data-i18n="packets_total">Total packets</small><div class="val" id="total">—</div></div>
+      <div><small data-i18n="data_age">Data age</small><div class="val" id="age">—</div></div>
+      <div><small data-i18n="frame_types">Frame types</small><div class="val" id="typesCount">—</div></div>
+    </div>
+    <details><summary data-i18n="crsf_frame_types">CRSF frame types</summary>
+      <table class="frames">
+        <thead><tr><th data-i18n="th_type">Type</th><th data-i18n="th_frame">Frame</th><th data-i18n="th_packets">Packets</th><th data-i18n="th_contains">Contains</th></tr></thead>
+        <tbody id="framesBody"><tr><td colspan="4" class="muted" data-i18n="no_frames">no frames yet</td></tr></tbody>
+      </table>
+    </details>
+  </section>
+
+  <section class="card" id="settingsCard" hidden>
+    <h2 data-i18n="settings">Settings</h2>
+    <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="udp_port">UDP listen port</div>
+      <div class="settingsRow">
+        <input id="udpPortInput" type="number" min="1" max="65535" inputmode="numeric">
+        <button id="udpPortSave" class="mapBtn" data-i18n="apply">Apply</button>
+        <span id="udpPortMsg" class="settingsMsg"></span>
+      </div>
+      <div class="guideNote" data-i18n="udp_port_note">The backpack must send telemetry to this port.</div>
+    </div>
+    <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="tracks_location">Track storage</div>
+      <div id="tracksLocation" class="settingsValue">—</div>
+      <div class="settingsRow">
+        <button id="chooseTracksFolder" class="mapBtn" data-i18n="choose_folder">Choose folder</button>
+        <button id="resetTracksFolder" class="mapBtn" data-i18n="reset_folder">Reset</button>
+        <span id="tracksMsg" class="settingsMsg"></span>
+      </div>
+      <div class="guideNote" data-i18n="tracks_note">Existing tracks are copied to the new folder.</div>
+    </div>
+    <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="permissions">Permissions</div>
+      <ul id="permissionList" class="permList"></ul>
+      <div class="settingsRow">
+        <button id="refreshPermissions" class="mapBtn" data-i18n="check_again">Check again</button>
+        <button id="openAppSettings" class="mapBtn" data-i18n="app_settings">App settings</button>
+      </div>
+      <div class="guideNote" data-i18n="permissions_note">Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.</div>
+    </div>
+  </section>
+
+  <details class="card guideCard">
+    <summary data-i18n="guide_title">Quick setup guide</summary>
+    <div class="guideBody">
+      <b data-i18n="guide_backpack">ELRS backpack</b>
+      <ol class="guideList">
+        <li data-i18n="guide_backpack_1">On the radio open ELRS Lua → Backpack → Telemetry → WiFi (not “WiFi Connectivity”).</li>
+        <li data-i18n="guide_backpack_2">Connect the phone to the same network as the backpack: home Wi-Fi/hotspot or the “ExpressLRS TX Backpack” access point (password expresslrs).</li>
+        <li data-i18n="guide_backpack_3">The backpack must send telemetry to the UDP port shown in Settings (14550 by default).</li>
+      </ol>
+      <b data-i18n="guide_app">App</b>
+      <ol class="guideList">
+        <li data-i18n="guide_app_1">Allow notifications and battery exemption — otherwise Android may suspend reception in the background.</li>
+        <li data-i18n="guide_app_2">Keep the app running; reception works in a foreground service even with the screen locked.</li>
+        <li data-i18n="guide_app_3">Change the UDP port in Settings if needed; the listener restarts automatically.</li>
+        <li data-i18n="guide_app_4">Choose a folder for tracks; existing tracks are copied to it.</li>
+        <li data-i18n="guide_app_5">No data? Check the network, UDP port, firewall and that the backpack is in Telemetry WiFi mode.</li>
+      </ol>
+    </div>
+  </details>
+</main>
+<section id="mapPage" hidden>
+  <div class="mapWrap">
+    <div id="map"></div>
+    <div class="mapBar">
+      <label class="mapToggle"><input type="checkbox" id="followDrone" checked> <span data-i18n="follow">Follow</span></label>
+      <button id="centerMap" class="mapBtn" data-i18n="center">Center</button>
+    </div>
+    <div id="mapStatus" hidden data-i18n="no_gps">No GPS fix</div>
+    <div id="mapInfo">—</div>
+    <div id="trackPanel" class="trackPanel collapsed">
+      <div class="trackHead">
+        <button id="trackToggle" class="trackHeader" aria-expanded="false">
+          <span id="trackChevron" class="trackChevron">▸</span>
+          <span data-i18n="track">Track</span>
+        </button>
+        <button id="recordBtn" class="mapBtn">
+          <svg class="recIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>
+          <span id="recordLabel" data-i18n="record">Record</span>
+        </button>
+        <select id="trackSelect" class="trackSelect"></select>
+        <span id="recordStatus" class="trackStatus"></span>
+      </div>
+      <div id="trackBody" class="trackBody">
+        <span id="trackActions" class="trackActions" hidden>
+          <button id="deleteTrack" class="mapBtn" data-i18n="delete">Delete</button>
+          <button id="exportGpx" class="mapBtn" disabled>GPX</button>
+          <button id="exportKml" class="mapBtn" disabled>KML</button>
+        </span>
+        <div class="trackRow" id="playRow" hidden>
+          <button id="playBtn" class="mapBtn"><span id="playLabel" data-i18n="play">Play</span></button>
+          <input id="trackProgress" class="trackRange" type="range" min="0" max="0" value="0" step="0.1">
+          <span id="trackTime" class="trackTime">0:00 / 0:00</span>
+          <select id="playSpeed" class="trackSelect">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="5">5×</option>
+            <option value="10">10×</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+const $ = (id) => document.getElementById(id);
+const val = (v, unit = "", digits = 0) => v === null || v === undefined ? "—" : Number(v).toFixed(digits) + unit;
+const setText = (id, text) => { const e = $(id); if (e) e.textContent = text; };
+const bar = (id, pct) => {
+  const e = $(id); if (!e) return;
+  pct = Math.max(0, Math.min(100, pct || 0));
+  e.style.width = pct + "%";
+  e.classList.toggle("mid", pct < 70 && pct >= 35);
+  e.classList.toggle("low", pct < 35);
+};
+const rangeBar = (id, pct) => {
+  const e = $(id); if (!e) return;
+  pct = Math.max(0, Math.min(100, pct || 0));
+  e.style.width = pct + "%";
+  e.classList.toggle("mid", pct > 40 && pct <= 80);
+  e.classList.toggle("low", pct > 80);
+};
+function rssi(v) { return v === null || v === undefined || v === 0 ? "—" : v + " dBm"; }
+function snr(v) { return v === null || v === undefined ? "—" : v + " dB"; }
+
+
+const ANDROID_SETTINGS = !!(window.AndroidSettings && window.AndroidSettings.getPermissions);
+
+let currentSettings = null;
+
+function applySettingsData(data) {
+  if (!data) return;
+  currentSettings = data;
+  const port = $("udpPortInput");
+  if (port) port.value = data.udp_port ?? "";
+  const location = $("tracksLocation");
+  if (location) {
+    location.textContent = data.tracks_location || "—";
+    location.title = data.tracks_uri || data.tracks_location || "";
+  }
+}
+
+function setSettingsMsg(id, text, isError) {
+  const el = $(id);
+  if (!el) return;
+  el.textContent = text || "";
+  el.classList.toggle("err", !!isError);
+}
+
+async function loadSettings() {
+  const card = $("settingsCard");
+  if (!card) return;
+  if (!ANDROID_SETTINGS) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  try {
+    const res = await fetch("/api/settings", { cache: "no-store" });
+    if (res.ok) applySettingsData(await res.json());
+  } catch (e) {
+  }
+  await loadPermissions();
+}
+
+async function loadPermissions() {
+  if (!ANDROID_SETTINGS) return;
+  let data = {};
+  try {
+    data = JSON.parse(AndroidSettings.getPermissions());
+  } catch (e) {
+    data = {};
+  }
+  const list = $("permissionList");
+  if (!list) return;
+  list.innerHTML = "";
+  const items = [
+    { key: "notifications", label: t("permission_notifications"), action: "notifications" },
+    { key: "battery", label: t("permission_battery"), action: "battery" },
+    { key: "wifi", label: t("permission_wifi"), install: true },
+    { key: "foreground", label: t("permission_foreground"), install: true },
+  ];
+  for (const item of items) {
+    const ok = !!data[item.key];
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.className = "permName";
+    name.textContent = item.label;
+    const state = document.createElement("span");
+    state.className = "permState " + (ok ? "ok" : "bad");
+    state.textContent = ok ? (item.install ? t("perm_install") : t("perm_granted")) : t("perm_denied");
+    li.appendChild(name);
+    li.appendChild(state);
+    if (!ok && !item.install) {
+      const btn = document.createElement("button");
+      btn.className = "mapBtn permBtn";
+      btn.textContent = t("allow");
+      btn.addEventListener("click", () => {
+        if (item.action === "notifications") AndroidSettings.requestNotifications();
+        else AndroidSettings.requestBatteryOptimization();
+      });
+      li.appendChild(btn);
+    }
+    list.appendChild(li);
+  }
+}
+
+window.onNativeSettingsChanged = function () {
+  loadSettings();
+  if (typeof refreshTracks === "function") refreshTracks();
+};
+
+const I18N = {
+  en: {
+    page_title: "ELRS Backpack telemetry",
+    brand_sub: "Wi-Fi telemetry",
+    status_wait: "waiting for data",
+    status_online: "online · {pps} pkt/s",
+    status_online_short: "{pps} pkt/s",
+    status_no_data: "no data",
+    status_no_data_short: "—",
+    status_stale: "no data · {age} s",
+    status_stale_short: "{age} s",
+    status_no_server: "no connection to server",
+    open_in_maps: "Open in the Maps app",
+    card_link: "Link",
+    lq_uplink: "Uplink LQ",
+    lq_downlink: "Downlink LQ",
+    rssi: "RSSI",
+    snr: "SNR",
+    tx_power: "TX power",
+    antenna: "Antenna",
+    band: "Band",
+    packet_rate: "Packet rate",
+    range: "Range",
+    band_dual: "Dual",
+    tab_telemetry: "Telemetry",
+    tab_map: "Map",
+    follow: "Follow",
+    track: "Track",
+    record: "Record",
+    stop: "Stop",
+    recording: "Recording",
+    load: "Load",
+    delete: "Delete",
+    play: "Play",
+    pause: "Pause",
+    points: "pts",
+    no_tracks: "No tracks",
+    delete_confirm: "Delete this track?",
+    center: "Center",
+    no_gps: "No GPS fix",
+    map_load_error: "Failed to load map",
+
+    settings: "Settings",
+    udp_port: "UDP listen port",
+    apply: "Apply",
+    udp_port_note: "The backpack must send telemetry to this port.",
+    tracks_location: "Track storage",
+    choose_folder: "Choose folder",
+    reset_folder: "Reset",
+    tracks_note: "Existing tracks are copied to the new folder.",
+    permissions: "Permissions",
+    check_again: "Check again",
+    app_settings: "App settings",
+    permissions_note: "Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.",
+    permission_notifications: "Notifications",
+    permission_battery: "Unrestricted background (battery)",
+    permission_wifi: "Wi-Fi / multicast / wake lock",
+    permission_foreground: "Foreground service",
+    perm_granted: "granted",
+    perm_denied: "not granted",
+    perm_install: "granted at install",
+    allow: "Allow",
+    permissions_refreshed: "Updated",
+    udp_port_saved: "Port updated",
+    udp_port_error: "Could not change port",
+    guide_title: "Quick setup guide",
+    guide_backpack: "ELRS backpack",
+    guide_backpack_1: "On the radio open ELRS Lua → Backpack → Telemetry → WiFi (not “WiFi Connectivity”).",
+    guide_backpack_2: "Connect the phone to the same network as the backpack: home Wi-Fi/hotspot or the “ExpressLRS TX Backpack” access point (password expresslrs).",
+    guide_backpack_3: "The backpack must send telemetry to the UDP port shown in Settings (14550 by default).",
+    guide_app: "App",
+    guide_app_1: "Allow notifications and battery exemption — otherwise Android may suspend reception in the background.",
+    guide_app_2: "Keep the app running; reception works in a foreground service even with the screen locked.",
+    guide_app_3: "Change the UDP port in Settings if needed; the listener restarts automatically.",
+    guide_app_4: "Choose a folder for tracks; existing tracks are copied to it.",
+    guide_app_5: "No data? Check the network, UDP port, firewall and that the backpack is in Telemetry WiFi mode.",
+    save: "Save",
+    card_battery: "Battery",
+    current: "Current",
+    capacity: "Capacity",
+    remaining: "Remaining",
+    card_gps: "GPS",
+    satellites: "satellites",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    altitude: "Altitude",
+    speed: "Speed",
+    heading: "Heading",
+    fix: "Fix",
+    hdop: "HDOP",
+    show_on_map: "Show on map",
+    fix_none: "none",
+    fix_type: "type {n}",
+    card_flight: "Flight",
+    baro_alt: "Baro altitude",
+    vario: "Vario",
+    gps_time: "GPS time",
+    device: "Device",
+    card_attitude: "Attitude",
+    pitch: "Pitch",
+    roll: "Roll",
+    yaw: "Yaw",
+    card_rx: "Reception",
+    packets_per_sec: "Packets/s",
+    packets_total: "Total packets",
+    data_age: "Data age",
+    frame_types: "Frame types",
+    crsf_frame_types: "CRSF frame types",
+    th_type: "Type",
+    th_frame: "Frame",
+    th_packets: "Packets",
+    th_contains: "Contains",
+    no_frames: "no frames yet",
+    unknown_frame: "Unknown",
+    not_described: "frame not described in the viewer",
+    no_data: "no data",
+    mode_failsafe: "failsafe",
+    mode_blocked: "arming blocked",
+    mode_gps_rescue_off: "arming possible, but GPS Rescue is disabled",
+    mode_ready: "ready to arm",
+    mode_armed: "armed",
+    u_v: "V",
+    u_a: "A",
+    u_mah: "mAh",
+    u_m: "m",
+    u_kmh: "km/h",
+    u_ms: "m/s",
+    u_mw: "mW",
+    u_s: "s",
+    frames: {
+      0x02: ["GPS", "Coordinates, speed, heading, altitude and satellites"],
+      0x03: ["GPS Time", "Date and time from GPS"],
+      0x06: ["GPS Extended", "Fix type, N/E/V speeds, accuracy and DOP"],
+      0x07: ["Vario", "Vertical speed (variometer)"],
+      0x08: ["Battery", "Voltage, current, consumed capacity, remaining %"],
+      0x09: ["Baro Altitude", "Barometric altitude and vario"],
+      0x0B: ["Heartbeat", "Device heartbeat"],
+      0x11: ["Baro", "Raw pressure and temperature"],
+      0x12: ["Mag", "Magnetometer (compass) data"],
+      0x13: ["AccGyro", "Raw accelerometer and gyroscope data"],
+      0x14: ["Link Statistics", "Link quality: LQ, RSSI, SNR, TX power"],
+      0x16: ["RC Channels", "RC channels packet"],
+      0x17: ["Subset RC Channels", "Reduced RC channels packet"],
+      0x1C: ["Link Statistics RX", "Link statistics from the receiver side"],
+      0x1D: ["Link Statistics TX", "Link statistics from the transmitter side"],
+      0x1E: ["Attitude", "Orientation: pitch, roll, yaw"],
+      0x21: ["Flight Mode", "Text flight mode"],
+      0x29: ["Device Info", "Device name, versions and parameters"],
+      0x2B: ["Parameter Settings Entry", "Device parameter description"],
+      0x2C: ["Parameter Read", "Read parameter"],
+      0x2D: ["Parameter Write", "Write parameter"],
+      0x32: ["Command", "Command to device"],
+      0x7A: ["MSP Request", "MSP request"],
+      0x7B: ["MSP Response", "MSP response"],
+      0x7C: ["MSP Write", "MSP write"],
+      0x7D: ["DisplayPort", "OSD/DisplayPort exchange"]
+    }
+  },
+  ru: {
+    page_title: "Телеметрия ELRS Backpack",
+    brand_sub: "телеметрия по Wi-Fi",
+    status_wait: "нет данных",
+    status_online: "онлайн · {pps} пак/с",
+    status_online_short: "{pps} пак/с",
+    status_no_data: "нет данных",
+    status_no_data_short: "—",
+    status_stale: "нет данных · {age} с",
+    status_stale_short: "{age} с",
+    status_no_server: "нет связи с сервером",
+    open_in_maps: "Открыть в приложении навигации",
+    card_link: "Линк",
+    lq_uplink: "LQ вверх",
+    lq_downlink: "LQ вниз",
+    rssi: "RSSI",
+    snr: "SNR",
+    tx_power: "Мощность TX",
+    antenna: "Антенна",
+    band: "Диапазон",
+    packet_rate: "Пакетрейт",
+    range: "Дальность",
+    band_dual: "Dual",
+    tab_telemetry: "Телеметрия",
+    tab_map: "Карта",
+    follow: "Следовать",
+    track: "Трек",
+    record: "Запись",
+    stop: "Стоп",
+    recording: "Запись",
+    load: "Загрузить",
+    delete: "Удалить",
+    play: "Играть",
+    pause: "Пауза",
+    points: "точек",
+    no_tracks: "Нет треков",
+    delete_confirm: "Удалить этот трек?",
+    center: "Центрировать",
+    no_gps: "Нет GPS-фикса",
+    map_load_error: "Не удалось загрузить карту",
+
+    settings: "Настройки",
+    udp_port: "UDP-порт прослушивания",
+    apply: "Применить",
+    udp_port_note: "Бэкпак должен отправлять телеметрию на этот порт.",
+    tracks_location: "Расположение треков",
+    choose_folder: "Выбрать папку",
+    reset_folder: "Сбросить",
+    tracks_note: "Существующие треки копируются в новую папку.",
+    permissions: "Разрешения",
+    check_again: "Проверить снова",
+    app_settings: "Настройки приложения",
+    permissions_note: "Разрешения уровня установки выдаются автоматически; уведомления и исключение из оптимизации батареи запрашиваются при первом запуске.",
+    permission_notifications: "Уведомления",
+    permission_battery: "Работа в фоне без ограничений (батарея)",
+    permission_wifi: "Wi-Fi / multicast / wake lock",
+    permission_foreground: "Foreground-сервис",
+    perm_granted: "разрешено",
+    perm_denied: "не разрешено",
+    perm_install: "разрешено при установке",
+    allow: "Разрешить",
+    permissions_refreshed: "Обновлено",
+    udp_port_saved: "Порт обновлён",
+    udp_port_error: "Не удалось изменить порт",
+    guide_title: "Краткое руководство",
+    guide_backpack: "Бэкпак ELRS",
+    guide_backpack_1: "На аппаратуре откройте ELRS Lua → Backpack → Telemetry → WiFi (не «WiFi Connectivity»).",
+    guide_backpack_2: "Подключите телефон к той же сети, что и бэкпак: домашний Wi-Fi/хот-спот или точка «ExpressLRS TX Backpack» (пароль expresslrs).",
+    guide_backpack_3: "Бэкпак должен отправлять телеметрию на UDP-порт из настроек (по умолчанию 14550).",
+    guide_app: "Приложение",
+    guide_app_1: "Разрешите уведомления и исключение из оптимизации батареи — иначе Android может приостановить приём в фоне.",
+    guide_app_2: "Оставьте приложение запущенным: приём идёт в foreground-сервисе даже при заблокированном экране.",
+    guide_app_3: "При необходимости смените UDP-порт в настройках — приём перезапустится автоматически.",
+    guide_app_4: "Выберите папку для треков; существующие треки будут скопированы.",
+    guide_app_5: "Нет данных? Проверьте сеть, UDP-порт, firewall и режим Telemetry WiFi на бэкпаке.",
+    save: "Сохранить",
+    card_battery: "Батарея",
+    current: "Ток",
+    capacity: "Ёмкость",
+    remaining: "Остаток",
+    card_gps: "GPS",
+    satellites: "спутников",
+    latitude: "Широта",
+    longitude: "Долгота",
+    altitude: "Высота",
+    speed: "Скорость",
+    heading: "Курс",
+    fix: "Фикс",
+    hdop: "HDOP",
+    show_on_map: "Показать на карте",
+    fix_none: "нет",
+    fix_type: "тип {n}",
+    card_flight: "Полёт",
+    baro_alt: "Барo высота",
+    vario: "Варио",
+    gps_time: "GPS время",
+    device: "Устройство",
+    card_attitude: "Ориентация",
+    pitch: "Тангаж",
+    roll: "Крен",
+    yaw: "Рыскание",
+    card_rx: "Приём",
+    packets_per_sec: "Пакетов/с",
+    packets_total: "Всего пакетов",
+    data_age: "Возраст данных",
+    frame_types: "Типы кадров",
+    crsf_frame_types: "Типы CRSF-кадров",
+    th_type: "Тип",
+    th_frame: "Кадр",
+    th_packets: "Пакетов",
+    th_contains: "Что содержит",
+    no_frames: "кадров пока нет",
+    unknown_frame: "Неизвестный",
+    not_described: "кадр не описан в просмотрщике",
+    no_data: "нет данных",
+    mode_failsafe: "failsafe",
+    mode_blocked: "арминг заблокирован",
+    mode_gps_rescue_off: "арминг возможен, но GPS Rescue отключён",
+    mode_ready: "готов к армингу",
+    mode_armed: "взведён",
+    u_v: "В",
+    u_a: "А",
+    u_mah: "мА·ч",
+    u_m: "м",
+    u_kmh: "км/ч",
+    u_ms: "м/с",
+    u_mw: "мВт",
+    u_s: "с",
+    frames: {
+      0x02: ["GPS", "Координаты, скорость, курс, высота и число спутников"],
+      0x03: ["GPS Time", "Дата и время от GPS"],
+      0x06: ["GPS Extended", "Тип фикса, скорости N/E/V, точность и DOP"],
+      0x07: ["Vario", "Вертикальная скорость (вариометр)"],
+      0x08: ["Battery", "Напряжение, ток, израсходованная ёмкость, остаток %"],
+      0x09: ["Baro Altitude", "Барометрическая высота и варио"],
+      0x0B: ["Heartbeat", "Признак жизни устройства"],
+      0x11: ["Baro", "Сырое давление и температура барометра"],
+      0x12: ["Mag", "Данные магнитометра (компас)"],
+      0x13: ["AccGyro", "Сырые данные акселерометра и гироскопа"],
+      0x14: ["Link Statistics", "Качество линка: LQ, RSSI, SNR, мощность TX"],
+      0x16: ["RC Channels", "Пакет каналов управления"],
+      0x17: ["Subset RC Channels", "Сокращённый пакет каналов управления"],
+      0x1C: ["Link Statistics RX", "Статистика линка со стороны приёмника"],
+      0x1D: ["Link Statistics TX", "Статистика линка со стороны передатчика"],
+      0x1E: ["Attitude", "Ориентация: тангаж, крен, рыскание"],
+      0x21: ["Flight Mode", "Текстовый режим полёта"],
+      0x29: ["Device Info", "Имя, версии и параметры устройства"],
+      0x2B: ["Parameter Settings Entry", "Описание параметра устройства"],
+      0x2C: ["Parameter Read", "Чтение параметра"],
+      0x2D: ["Parameter Write", "Запись параметра"],
+      0x32: ["Command", "Команда устройству"],
+      0x7A: ["MSP Request", "MSP-запрос"],
+      0x7B: ["MSP Response", "MSP-ответ"],
+      0x7C: ["MSP Write", "MSP-запись"],
+      0x7D: ["DisplayPort", "Обмен с OSD/DisplayPort"]
+    }
+  },
+  zh: {
+    page_title: "ELRS Backpack 遥测",
+    brand_sub: "Wi-Fi 遥测",
+    status_wait: "等待数据",
+    status_online: "在线 · {pps} 包/秒",
+    status_online_short: "{pps} 包/秒",
+    status_no_data: "无数据",
+    status_no_data_short: "—",
+    status_stale: "无数据 · {age} 秒",
+    status_stale_short: "{age} 秒",
+    status_no_server: "无法连接到服务器",
+    open_in_maps: "在地图应用中打开",
+    card_link: "链路",
+    lq_uplink: "上行 LQ",
+    lq_downlink: "下行 LQ",
+    rssi: "RSSI",
+    snr: "SNR",
+    tx_power: "发射功率",
+    antenna: "天线",
+    band: "频段",
+    packet_rate: "包速率",
+    range: "距离",
+    band_dual: "双频",
+    tab_telemetry: "遥测",
+    tab_map: "地图",
+    follow: "跟随",
+    track: "轨迹",
+    record: "录制",
+    stop: "停止",
+    recording: "录制中",
+    load: "加载",
+    delete: "删除",
+    play: "播放",
+    pause: "暂停",
+    points: "点",
+    no_tracks: "暂无轨迹",
+    delete_confirm: "删除此轨迹？",
+    center: "居中",
+    no_gps: "无 GPS 定位",
+    map_load_error: "地图加载失败",
+
+    settings: "设置",
+    udp_port: "UDP 监听端口",
+    apply: "应用",
+    udp_port_note: "背包必须将遥测发送到此端口。",
+    tracks_location: "轨迹存储",
+    choose_folder: "选择文件夹",
+    reset_folder: "重置",
+    tracks_note: "现有轨迹会复制到新文件夹。",
+    permissions: "权限",
+    check_again: "重新检查",
+    app_settings: "应用设置",
+    permissions_note: "安装时权限会自动授予；通知和电池优化豁免会在首次启动时请求。",
+    permission_notifications: "通知",
+    permission_battery: "后台无限制（电池）",
+    permission_wifi: "Wi-Fi / 多播 / 唤醒锁",
+    permission_foreground: "前台服务",
+    perm_granted: "已授予",
+    perm_denied: "未授予",
+    perm_install: "安装时已授予",
+    allow: "允许",
+    permissions_refreshed: "已更新",
+    udp_port_saved: "端口已更新",
+    udp_port_error: "无法更改端口",
+    guide_title: "快速设置指南",
+    guide_backpack: "ELRS 背包",
+    guide_backpack_1: "在遥控器上打开 ELRS Lua → Backpack → Telemetry → WiFi（不要选“WiFi Connectivity”）。",
+    guide_backpack_2: "将手机连接到与背包相同的网络：家庭 Wi-Fi/热点或“ExpressLRS TX Backpack”接入点（密码 expresslrs）。",
+    guide_backpack_3: "背包必须将遥测发送到设置中的 UDP 端口（默认 14550）。",
+    guide_app: "应用",
+    guide_app_1: "允许通知和电池优化豁免，否则 Android 可能会在后台暂停接收。",
+    guide_app_2: "保持应用运行；即使锁屏，前台服务也会继续接收。",
+    guide_app_3: "如有需要，在设置中更改 UDP 端口；监听会自动重启。",
+    guide_app_4: "选择轨迹文件夹；现有轨迹会被复制。",
+    guide_app_5: "没有数据？检查网络、UDP 端口、防火墙以及背包是否处于 Telemetry WiFi 模式。",
+    save: "保存",
+    card_battery: "电池",
+    current: "电流",
+    capacity: "容量",
+    remaining: "剩余",
+    card_gps: "GPS",
+    satellites: "卫星",
+    latitude: "纬度",
+    longitude: "经度",
+    altitude: "高度",
+    speed: "速度",
+    heading: "航向",
+    fix: "定位",
+    hdop: "HDOP",
+    show_on_map: "在地图上显示",
+    fix_none: "无",
+    fix_type: "类型 {n}",
+    card_flight: "飞行",
+    baro_alt: "气压高度",
+    vario: "升降速度",
+    gps_time: "GPS 时间",
+    device: "设备",
+    card_attitude: "姿态",
+    pitch: "俯仰",
+    roll: "横滚",
+    yaw: "偏航",
+    card_rx: "接收",
+    packets_per_sec: "包/秒",
+    packets_total: "总包数",
+    data_age: "数据延迟",
+    frame_types: "帧类型",
+    crsf_frame_types: "CRSF 帧类型",
+    th_type: "类型",
+    th_frame: "帧",
+    th_packets: "包数",
+    th_contains: "内容",
+    no_frames: "暂无帧",
+    unknown_frame: "未知",
+    not_described: "查看器未描述该帧",
+    no_data: "无数据",
+    mode_failsafe: "失控保护",
+    mode_blocked: "解锁被阻止",
+    mode_gps_rescue_off: "可以解锁，但 GPS 救援已禁用",
+    mode_ready: "可以解锁",
+    mode_armed: "已解锁",
+    u_v: "伏",
+    u_a: "安",
+    u_mah: "毫安时",
+    u_m: "米",
+    u_kmh: "公里/小时",
+    u_ms: "米/秒",
+    u_mw: "毫瓦",
+    u_s: "秒",
+    frames: {
+      0x02: ["GPS", "坐标、速度、航向、高度和卫星数量"],
+      0x03: ["GPS Time", "GPS 日期和时间"],
+      0x06: ["GPS Extended", "定位类型、N/E/V 速度、精度和 DOP"],
+      0x07: ["Vario", "垂直速度（升降计）"],
+      0x08: ["Battery", "电压、电流、已用电量和剩余 %"],
+      0x09: ["Baro Altitude", "气压高度和升降速度"],
+      0x0B: ["Heartbeat", "设备心跳"],
+      0x11: ["Baro", "原始气压和温度"],
+      0x12: ["Mag", "磁力计（指南针）数据"],
+      0x13: ["AccGyro", "原始加速度计和陀螺仪数据"],
+      0x14: ["Link Statistics", "链路质量：LQ、RSSI、SNR、发射功率"],
+      0x16: ["RC Channels", "遥控通道数据包"],
+      0x17: ["Subset RC Channels", "精简遥控通道数据包"],
+      0x1C: ["Link Statistics RX", "接收端链路统计"],
+      0x1D: ["Link Statistics TX", "发射端链路统计"],
+      0x1E: ["Attitude", "姿态：俯仰、横滚、偏航"],
+      0x21: ["Flight Mode", "文本飞行模式"],
+      0x29: ["Device Info", "设备名称、版本和参数"],
+      0x2B: ["Parameter Settings Entry", "设备参数说明"],
+      0x2C: ["Parameter Read", "读取参数"],
+      0x2D: ["Parameter Write", "写入参数"],
+      0x32: ["Command", "设备命令"],
+      0x7A: ["MSP Request", "MSP 请求"],
+      0x7B: ["MSP Response", "MSP 响应"],
+      0x7C: ["MSP Write", "MSP 写入"],
+      0x7D: ["DisplayPort", "OSD/DisplayPort 交换"]
+    }
+  }
+};
+
+let LANG = "en";
+
+function t(key, vars) {
+  const table = I18N[LANG] || I18N.en;
+  let text = table[key];
+  if (text === undefined) text = I18N.en[key];
+  if (text === undefined) text = key;
+  if (vars) {
+    for (const name in vars) text = text.split("{" + name + "}").join(vars[name]);
+  }
+  return text;
+}
+
+function frameInfo(type) {
+  const table = (I18N[LANG] && I18N[LANG].frames) || {};
+  return table[type] || I18N.en.frames[type];
+}
+
+const TX_POWER_MW = {0: 0, 1: 10, 2: 25, 3: 100, 4: 500, 5: 1000, 6: 2000, 7: 250, 8: 50};
+
+const RF_MODES = {
+  0: ["900", "25 Hz", -123],
+  1: ["900", "50 Hz", -120],
+  2: ["900", "100 Hz", -117],
+  3: ["900", "100 Hz/8ch", -112],
+  4: ["900", "150 Hz", null],
+  5: ["900", "200 Hz", -112],
+  6: ["900", "200 Hz/8ch", -111],
+  7: ["900", "250 Hz", -111],
+  8: ["900", "333 Hz/8ch", null],
+  9: ["900", "500 Hz", null],
+  10: ["900", "50 Hz DVDA", -112],
+  11: ["900", "FSK 1000 Hz/8ch", -101],
+  20: ["24", "25 Hz", null],
+  21: ["24", "50 Hz", -115],
+  22: ["24", "100 Hz", null],
+  23: ["24", "100 Hz/8ch", -112],
+  24: ["24", "150 Hz", -112],
+  25: ["24", "200 Hz", null],
+  26: ["24", "200 Hz/8ch", null],
+  27: ["24", "250 Hz", -108],
+  28: ["24", "333 Hz/8ch", -105],
+  29: ["24", "500 Hz", -105],
+  30: ["24", "FLRC 250 DVDA", -104],
+  31: ["24", "FLRC 500 DVDA", -104],
+  32: ["24", "FLRC 500", -104],
+  33: ["24", "FLRC 1000", -104],
+  34: ["24", "FSK 250 DVDA", -103],
+  35: ["24", "FSK 500 DVDA", -103],
+  36: ["24", "FSK 1000", -103],
+  100: ["dual", "100 Hz/8ch", -112],
+  101: ["dual", "150 Hz", -112]
+};
+
+let rangeSmooth = null;
+let rangeMode = null;
+
+function bandText(band) {
+  if (band === "dual") return t("band_dual");
+  return band === "900" ? "900 MHz" : "2.4 GHz";
+}
+
+function pickLang() {
+  const query = new URLSearchParams(location.search).get("lang");
+  if (query && I18N[query]) return query;
+  const saved = localStorage.getItem("tlm_lang");
+  if (saved && I18N[saved]) return saved;
+  const nav = (navigator.language || "en").toLowerCase();
+  if (nav.indexOf("ru") === 0) return "ru";
+  if (nav.indexOf("zh") === 0) return "zh";
+  return "en";
+}
+
+function applyI18n() {
+  document.documentElement.lang = LANG;
+  document.title = t("page_title");
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  $("lang").value = LANG;
+}
+
+const mapKey = "__MAPTILER_KEY__";
+let mapObj = null;
+let mapPlacemark = null;
+let mapReady = false;
+let mapLoading = false;
+let mapResizeObserver = null;
+let mapLastPos = null;
+let mapLastGps = null;
+let mapFollow = true;
+const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
+let tracks = [];
+let recordState = {};
+let recordPointTotal = 0;
+let lastRecordFetch = 0;
+let currentTrack = null;
+let currentTrackPoints = [];
+let playbackMarker = null;
+let lastPlaybackPos = null;
+let playback = { playing: false, time: 0, speed: 1, last: 0, raf: 0 };
+
+const PLAYBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">' +
+  '<circle cx="11" cy="11" r="8" fill="#58a6ff" stroke="#0b0f14" stroke-width="3"/></svg>';
+
+const DRONE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
+  '<circle cx="24" cy="24" r="22" fill="rgba(63,185,80,0.18)"/>' +
+  '<g stroke="#3fb950" stroke-width="3" stroke-linecap="round">' +
+  '<path d="M24 24 13 13M24 24 35 13M24 24 13 35M24 24 35 35"/></g>' +
+  '<g fill="#0b0f14" stroke="#3fb950" stroke-width="3">' +
+  '<circle cx="12" cy="12" r="4.5"/><circle cx="36" cy="12" r="4.5"/>' +
+  '<circle cx="12" cy="36" r="4.5"/><circle cx="36" cy="36" r="4.5"/></g>' +
+  '<circle cx="24" cy="24" r="5" fill="#3fb950"/></svg>';
+
+function mapVisible() {
+  return !$("mapPage").hidden;
+}
+
+function showMapFailure() {
+  const el = $("mapStatus");
+  el.hidden = false;
+  el.textContent = t("map_load_error");
+}
+
+function ensureMap() {
+  if (mapObj) {
+    setTimeout(refreshMapLayout, 30);
+    return;
+  }
+  if (mapLoading) return;
+  if (window.maptilersdk && window.maptilersdk.Map) {
+    mapLoading = true;
+    initMap();
+    return;
+  }
+  mapLoading = true;
+  const script = document.createElement("script");
+  script.src = "https://cdn.maptiler.com/maptiler-sdk-js/v4.2.0/maptiler-sdk.umd.min.js";
+  script.onload = () => {
+    initMap();
+  };
+  script.onerror = () => {
+    mapLoading = false;
+    showMapFailure();
+  };
+  document.head.appendChild(script);
+  setTimeout(() => {
+    if (!mapObj) {
+      mapLoading = false;
+      showMapFailure();
+    }
+  }, 20000);
+}
+
+async function initMap() {
+  if (mapObj) {
+    mapLoading = false;
+    return;
+  }
+  if (!window.maptilersdk) {
+    mapLoading = false;
+    showMapFailure();
+    return;
+  }
+  const g = mapLastGps && mapLastGps.fix ? mapLastGps : null;
+  const center = g ? [g.lon, g.lat] : [37.618423, 55.751244];
+  let style;
+  let esriBeforeId = null;
+  try {
+    const res = await fetch("https://api.maptiler.com/maps/hybrid/style.json?key=" + encodeURIComponent(mapKey));
+    if (!res.ok) {
+      mapLoading = false;
+      showMapFailure();
+      return;
+    }
+    const spec = await res.json();
+    const sat = spec.sources && spec.sources.satellite;
+    if (sat && sat.url) {
+      sat.url = sat.url.replace("/tiles/satellite-v2/", "/tiles/satellite-mediumres/");
+    }
+    if (spec.layers) {
+      const satIndex = spec.layers.findIndex(l => l.type === "raster" && l.source === "satellite");
+      if (satIndex >= 0 && satIndex + 1 < spec.layers.length) {
+        esriBeforeId = spec.layers[satIndex + 1].id;
+      }
+    }
+    style = spec;
+  } catch (e) {
+    mapLoading = false;
+    showMapFailure();
+    return;
+  }
+  try {
+    maptilersdk.config.apiKey = mapKey;
+    mapObj = new maptilersdk.Map({
+      container: "map",
+      style: style,
+      center: center,
+      zoom: g ? 15 : 4,
+      language: LANG
+    });
+  } catch (e) {
+    mapLoading = false;
+    showMapFailure();
+    return;
+  }
+  mapObj.on("load", () => {
+    try {
+      mapObj.addSource("esri", {
+        type: "raster",
+        tiles: [ESRI_TILES],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: "Esri, Maxar, Earthstar Geographics"
+      });
+      mapObj.addLayer({
+        id: "esri-imagery",
+        type: "raster",
+        source: "esri",
+        minzoom: 12,
+        layout: { visibility: "visible" }
+      }, esriBeforeId || undefined);
+    } catch (e) {
+    }
+    try {
+      mapObj.addSource("track", {
+        type: "geojson",
+        data: { type: "Feature", geometry: { type: "LineString", coordinates: [] } }
+      });
+      mapObj.addLayer({
+        id: "track-line",
+        type: "line",
+        source: "track",
+        paint: { "line-color": "#58a6ff", "line-width": 3, "line-opacity": 0.9 }
+      }, esriBeforeId || undefined);
+    } catch (e) {
+    }
+    updateTrackLine();
+    if (currentTrackPoints.length) {
+      showPlaybackMarker();
+      positionPlaybackMarker(playback.time);
+    }
+  });
+  const icon = document.createElement("div");
+  icon.className = "droneMarker";
+  icon.innerHTML = DRONE_SVG;
+  mapPlacemark = new maptilersdk.Marker({ element: icon, anchor: "center" })
+    .setLngLat(center)
+    .addTo(mapObj);
+  const pIcon = document.createElement("div");
+  pIcon.className = "playbackMarker";
+  pIcon.innerHTML = PLAYBACK_SVG;
+  pIcon.style.display = "none";
+  playbackMarker = new maptilersdk.Marker({ element: pIcon, anchor: "center" })
+    .setLngLat(center)
+    .addTo(mapObj);
+  mapReady = true;
+  mapLoading = false;
+  updateMap(mapLastGps, true);
+  if (window.ResizeObserver && !mapResizeObserver) {
+    mapResizeObserver = new ResizeObserver(() => {
+      if (mapObj) mapObj.resize();
+    });
+    mapResizeObserver.observe($("map"));
+  }
+  [0, 100, 400, 1000].forEach(ms => setTimeout(refreshMapLayout, ms));
+}
+
+function fitMapHeight() {
+  const mapPage = $("mapPage");
+  if (!mapPage || mapPage.hidden) return;
+  const wrap = document.querySelector(".mapWrap");
+  if (!wrap) return;
+  const style = getComputedStyle(mapPage);
+  const padTop = parseFloat(style.paddingTop) || 0;
+  const padBottom = parseFloat(style.paddingBottom) || 0;
+  const pageTop = mapPage.getBoundingClientRect().top + window.scrollY + padTop;
+  const available = Math.floor(window.innerHeight - pageTop - padBottom);
+  if (available > 0) wrap.style.height = available + "px";
+}
+
+function refreshMapLayout() {
+  fitMapHeight();
+  if (!mapObj) return;
+  try {
+    mapObj.resize();
+  } catch (e) {
+  }
+}
+
+function updateMap(gps, force) {
+  if (gps) mapLastGps = gps;
+  const g = mapLastGps;
+  const hasFix = !!(g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon));
+  if (!mapReady) {
+    setText("mapInfo", hasFix ? g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + " · " + g.sats + " " + t("satellites") : "—");
+    return;
+  }
+  if (hasFix) {
+    const pos = [g.lat, g.lon];
+    if (force || !mapLastPos || Math.abs(pos[0] - mapLastPos[0]) > 1e-7 || Math.abs(pos[1] - mapLastPos[1]) > 1e-7) {
+      mapPlacemark.setLngLat([g.lon, g.lat]);
+      mapLastPos = pos;
+      if (mapFollow && mapVisible() && !currentTrack) {
+        mapObj.easeTo({ center: [g.lon, g.lat], duration: 300 });
+      }
+    }
+    $("mapStatus").hidden = true;
+    setText("mapInfo", g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + " · " + g.sats + " " + t("satellites") + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh"));
+  } else {
+    $("mapStatus").hidden = false;
+    setText("mapStatus", t("no_gps"));
+    setText("mapInfo", "—");
+  }
+}
+
+let lastQrData = null;
+let lastQrGps = null;
+
+function updateQr(g, last) {
+  const wrap = $("gpsQrWrap");
+  const box = $("gpsQr");
+  if (g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon)) {
+    lastQrGps = { lat: g.lat, lon: g.lon };
+  }
+  const src = (g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon)) ? g : (last || lastQrGps);
+  if (!src) {
+    wrap.hidden = true;
+    return;
+  }
+  const data = "geo:0,0?q=" + src.lat.toFixed(6) + "," + src.lon.toFixed(6);
+  if (typeof window.qrcode === "function") {
+    if (data !== lastQrData) {
+      const qr = qrcode(0, "M");
+      qr.addData(data);
+      qr.make();
+      box.innerHTML = qr.createSvgTag({ cellSize: 3, margin: 1 });
+      lastQrData = data;
+    }
+  } else {
+    box.textContent = data;
+    lastQrData = null;
+  }
+  wrap.title = t("open_in_maps");
+  wrap.setAttribute("aria-label", t("open_in_maps"));
+  wrap.hidden = false;
+}
+
+function openGpsInMaps() {
+  if (!lastQrGps) return;
+  const data = "geo:0,0?q=" + lastQrGps.lat.toFixed(6) + "," + lastQrGps.lon.toFixed(6);
+  const a = document.createElement("a");
+  a.href = data;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function fmtDur(sec) {
+  sec = Math.max(0, Math.floor(Number(sec) || 0));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+function updateTrackLine() {
+  if (!mapObj || !mapObj.getSource("track")) return;
+  try {
+    mapObj.getSource("track").setData({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: currentTrackPoints.map(p => [p.lon, p.lat]) }
+    });
+  } catch (e) {
+  }
+}
+
+function showPlaybackMarker() {
+  if (playbackMarker) playbackMarker.getElement().style.display = "block";
+}
+
+function hidePlaybackMarker() {
+  if (playbackMarker) playbackMarker.getElement().style.display = "none";
+}
+
+function pointAtTime(time) {
+  const pts = currentTrackPoints;
+  if (!pts.length) return null;
+  if (time <= pts[0].t) return pts[0];
+  if (time >= pts[pts.length - 1].t) return pts[pts.length - 1];
+  let lo = 0;
+  let hi = pts.length - 1;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (pts[mid].t <= time) lo = mid; else hi = mid;
+  }
+  const a = pts[lo];
+  const b = pts[hi];
+  const span = b.t - a.t;
+  const f = span > 0 ? (time - a.t) / span : 0;
+  return { lat: a.lat + (b.lat - a.lat) * f, lon: a.lon + (b.lon - a.lon) * f };
+}
+
+function positionPlaybackMarker(time, follow) {
+  const p = pointAtTime(time);
+  if (!p || !playbackMarker) return;
+  playbackMarker.setLngLat([p.lon, p.lat]);
+  lastPlaybackPos = p;
+  if (follow && mapFollow && mapVisible()) {
+    mapObj.setCenter([p.lon, p.lat]);
+  }
+}
+
+function updatePlaybackUI() {
+  const dur = currentTrack ? Number(currentTrack.duration || 0) : 0;
+  const loaded = !!currentTrack;
+  const selected = !!$("trackSelect").value;
+  const active = !!(recordState && recordState.active);
+  $("trackActions").hidden = !selected;
+  $("playRow").hidden = !loaded;
+  $("deleteTrack").disabled = active || !selected;
+  $("exportGpx").disabled = active || !loaded;
+  $("exportKml").disabled = active || !loaded;
+  const progress = $("trackProgress");
+  progress.max = dur;
+  progress.value = Math.min(playback.time, dur);
+  progress.disabled = !loaded;
+  $("trackTime").textContent = fmtDur(playback.time) + " / " + fmtDur(dur);
+  $("playLabel").textContent = playback.playing ? t("pause") : t("play");
+  $("playBtn").disabled = active || !loaded;
+  $("playSpeed").disabled = !loaded;
+}
+
+function stopPlayback() {
+  playback.playing = false;
+  if (playback.raf) cancelAnimationFrame(playback.raf);
+  playback.raf = 0;
+  updatePlaybackUI();
+}
+
+function playbackStep(ts) {
+  if (!playback.playing || !currentTrack) return;
+  const dt = Math.max(0, (ts - playback.last) / 1000) * playback.speed;
+  playback.last = ts;
+  playback.time += dt;
+  const dur = Number(currentTrack.duration || 0);
+  if (playback.time >= dur) {
+    playback.time = dur;
+    playback.playing = false;
+  }
+  positionPlaybackMarker(playback.time, true);
+  updatePlaybackUI();
+  if (playback.playing) playback.raf = requestAnimationFrame(playbackStep);
+}
+
+function startPlayback() {
+  if (!currentTrack || (recordState && recordState.active)) return;
+  const dur = Number(currentTrack.duration || 0);
+  if (playback.time >= dur) playback.time = 0;
+  playback.playing = true;
+  playback.last = performance.now();
+  showPlaybackMarker();
+  positionPlaybackMarker(playback.time, true);
+  updatePlaybackUI();
+  playback.raf = requestAnimationFrame(playbackStep);
+}
+
+async function fetchRecording(reset) {
+  if (reset) {
+    currentTrackPoints = [];
+    recordPointTotal = 0;
+    updateTrackLine();
+  }
+  let res;
+  try {
+    res = await fetch("/api/record?since=" + recordPointTotal);
+  } catch (e) {
+    return;
+  }
+  if (!res.ok) return;
+  const data = await res.json();
+  if (data.active) {
+    currentTrackPoints = currentTrackPoints.concat(data.points || []);
+    recordPointTotal = data.total || currentTrackPoints.length;
+    updateTrackLine();
+  }
+}
+
+async function refreshTracks() {
+  let res;
+  try {
+    res = await fetch("/api/tracks");
+  } catch (e) {
+    return;
+  }
+  if (!res.ok) return;
+  const data = await res.json();
+  tracks = data.tracks || [];
+  const sel = $("trackSelect");
+  const prev = sel.value;
+  sel.innerHTML = "";
+  if (!tracks.length) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = t("no_tracks");
+    opt.disabled = true;
+    sel.appendChild(opt);
+  } else {
+    for (const tr of tracks) {
+      const opt = document.createElement("option");
+      opt.value = tr.id;
+      opt.textContent = (tr.started_at || tr.id) + " · " + fmtDur(tr.duration) + " · " + tr.point_count + " " + t("points");
+      sel.appendChild(opt);
+    }
+    if (currentTrack && tracks.some(tr => tr.id === currentTrack.id)) sel.value = currentTrack.id;
+    else if (prev && tracks.some(tr => tr.id === prev)) sel.value = prev;
+  }
+  updateRecordUi();
+  updatePlaybackUI();
+  if (!currentTrack && sel.value && !(recordState && recordState.active)) {
+    await loadSelectedTrack();
+  }
+}
+
+async function loadSelectedTrack() {
+  const id = $("trackSelect").value;
+  if (!id) return;
+  let res;
+  try {
+    res = await fetch("/api/tracks/" + encodeURIComponent(id));
+  } catch (e) {
+    return;
+  }
+  if (!res.ok) return;
+  const track = await res.json();
+  currentTrack = track;
+  currentTrackPoints = track.points || [];
+  stopPlayback();
+  playback.time = 0;
+  updateTrackLine();
+  showPlaybackMarker();
+  positionPlaybackMarker(0, false);
+  updatePlaybackUI();
+}
+
+async function toggleRecord() {
+  const active = !!(recordState && recordState.active);
+  const action = active ? "stop" : "start";
+  let res;
+  try {
+    res = await fetch("/api/record/" + action, { method: "POST" });
+  } catch (e) {
+    return;
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    setText("recordStatus", data.error || "record error");
+    return;
+  }
+  if (action === "start") {
+    stopPlayback();
+    currentTrack = null;
+    currentTrackPoints = [];
+    recordPointTotal = 0;
+    lastRecordFetch = 0;
+    updateTrackLine();
+    hidePlaybackMarker();
+    fetchRecording(true);
+  } else {
+    await refreshTracks();
+    const id = data.track && data.track.id;
+    if (id) {
+      $("trackSelect").value = id;
+      await loadSelectedTrack();
+    }
+    setText("recordStatus", "");
+  }
+  recordState = { active: action === "start", point_count: 0, duration: 0 };
+  updateRecordUi();
+}
+
+function updateRecordUi() {
+  const active = !!(recordState && recordState.active);
+  $("recordBtn").classList.toggle("recording", active);
+  $("recordLabel").textContent = active ? t("stop") : t("record");
+  if (active) {
+    setText("recordStatus", t("recording") + " · " + fmtDur(recordState.duration) + " · " + Number(recordState.point_count || 0) + " " + t("points"));
+  } else {
+    setText("recordStatus", "");
+  }
+  $("trackSelect").disabled = active;
+  updatePlaybackUI();
+}
+
+let trackCollapsed = true;
+
+function setTrackCollapsed(collapsed) {
+  trackCollapsed = collapsed;
+  $("trackPanel").classList.toggle("collapsed", collapsed);
+  $("trackToggle").setAttribute("aria-expanded", collapsed ? "false" : "true");
+  $("trackChevron").textContent = collapsed ? "▸" : "▾";
+  if (!window.matchMedia("(max-width: 520px)").matches) {
+    $("mapInfo").style.bottom = collapsed ? "56px" : "126px";
+  }
+}
+
+function xmlEscape(value) {
+  return String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
+}
+
+function exportTrack(format) {
+  if (!currentTrack) return;
+  const name = currentTrack.started_at || currentTrack.id || "track";
+  const points = currentTrack.points || [];
+  let text;
+  if (format === "gpx") {
+    text = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="ELRS Backpack Telemetry Viewer" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${xmlEscape(name)}</name><trkseg>
+`;
+    for (const p of points) {
+      text += `<trkpt lat="${Number(p.lat).toFixed(7)}" lon="${Number(p.lon).toFixed(7)}">`;
+      if (Number.isFinite(Number(p.alt))) text += `<ele>${Number(p.alt).toFixed(1)}</ele>`;
+      text += `</trkpt>\n`;
+    }
+    text += `</trkseg></trk></gpx>\n`;
+    downloadText((currentTrack.id || "track") + ".gpx", text, "application/gpx+xml");
+  } else {
+    text = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xmlEscape(name)}</name><Placemark><name>${xmlEscape(name)}</name><LineString><altitudeMode>absolute</altitudeMode><coordinates>
+`;
+    for (const p of points) {
+      text += `${Number(p.lon).toFixed(7)},${Number(p.lat).toFixed(7)},${Number.isFinite(Number(p.alt)) ? Number(p.alt).toFixed(1) : "0"}\n`;
+    }
+    text += `</coordinates></LineString></Placemark></Document></kml>\n`;
+    downloadText((currentTrack.id || "track") + ".kml", text, "application/vnd.google-earth.kml+xml");
+  }
+}
+
+function downloadText(filename, text, mime) {
+  if (window.AndroidExport && typeof window.AndroidExport.saveFile === "function") {
+    try {
+      window.AndroidExport.saveFile(filename, mime, text);
+      return;
+    } catch (e) {
+    }
+  }
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === name));
+  $("telemetryPage").hidden = name !== "telemetry";
+  $("mapPage").hidden = name !== "map";
+  if (name === "map") {
+    window.scrollTo(0, 0);
+    ensureMap();
+    refreshTracks();
+    if (recordState && recordState.active) fetchRecording(false);
+    updateRecordUi();
+    updatePlaybackUI();
+    setTimeout(() => { refreshMapLayout(); updateMap(mapLastGps, true); }, 60);
+  }
+}
+
+function render(s) {
+  const st = s.stats || {};
+  const online = st.age !== null && st.age !== undefined && st.age < 2 && st.total > 0;
+  const pill = $("status");
+  const mobile = window.matchMedia("(max-width: 520px)").matches;
+  if (online) {
+    pill.className = "pill on";
+    pill.textContent = t(mobile ? "status_online_short" : "status_online", { pps: st.pps });
+  } else {
+    pill.className = "pill off";
+    pill.textContent = st.total
+      ? t(mobile ? "status_stale_short" : "status_stale", { age: st.age != null ? st.age.toFixed(1) : "?" })
+      : t(mobile ? "status_no_data_short" : "status_no_data");
+  }
+
+  const l = s.link;
+  if (l) {
+    setText("lqUp", l.lq + "%");   bar("barUp", l.lq);
+    setText("lqDn", l.lq_d + "%"); bar("barDn", l.lq_d);
+    setText("rssiUp", rssi(l.rssi1)); setText("rssiDn", rssi(l.rssi_d));
+    setText("snrUp", snr(l.snr));     setText("snrDn", snr(l.snr_d));
+    setText("txp", TX_POWER_MW[l.tx_power] !== undefined ? TX_POWER_MW[l.tx_power] + " " + t("u_mw") : "—");
+    setText("ant", l.active_ant === 0 ? "1" : l.active_ant === 1 ? "2" : "—");
+    const rf = RF_MODES[l.rf_mode] || null;
+    if (rf) {
+      setText("band", bandText(rf[0]));
+      setText("pktRate", rf[1]);
+      let rssi = (l.active_ant === 1) ? l.rssi2 : l.rssi1;
+      if ((rssi === null || rssi === undefined || rssi === 0) && l.active_ant === 1) rssi = l.rssi1;
+      if (rf[2] !== null && rssi !== null && rssi !== undefined && rssi !== 0) {
+        const clamped = Math.min(-50, rssi);
+        const target = Math.round(100 * (clamped + 50) / (rf[2] + 50));
+        if (rangeMode !== l.rf_mode || rangeSmooth === null) {
+          rangeSmooth = target;
+          rangeMode = l.rf_mode;
+        } else {
+          rangeSmooth = Math.round(rangeSmooth * 0.6 + target * 0.4);
+        }
+        setText("rangePct", rangeSmooth + "%");
+        rangeBar("barRange", rangeSmooth);
+      } else {
+        setText("rangePct", "—");
+        rangeBar("barRange", 0);
+      }
+    } else {
+      setText("band", "—"); setText("pktRate", "—");
+      setText("rangePct", "—"); rangeBar("barRange", 0);
+      rangeSmooth = null; rangeMode = null;
+    }
+  } else {
+    ["lqUp","lqDn","rssiUp","rssiDn","snrUp","snrDn","txp","ant","band","pktRate","rangePct"].forEach(id => setText(id, "—"));
+    bar("barUp", 0); bar("barDn", 0); rangeBar("barRange", 0);
+    rangeSmooth = null; rangeMode = null;
+  }
+
+  const b = s.battery;
+  if (b && (b.voltage || b.current || b.capacity)) {
+    setText("volt", b.voltage.toFixed(1));
+    setText("curr", b.current.toFixed(1) + " " + t("u_a"));
+    setText("cap", b.capacity + " " + t("u_mah"));
+    setText("remTxt", b.remaining + "%"); bar("barRem", b.remaining);
+  } else {
+    setText("volt", "—"); setText("curr", "—"); setText("cap", "—");
+    setText("remTxt", t("no_data")); bar("barRem", 0);
+  }
+
+  const g = s.gps;
+  if (g) {
+    setText("sats", g.sats);
+    setText("lat", g.fix ? g.lat.toFixed(7) : "—");
+    setText("lon", g.fix ? g.lon.toFixed(7) : "—");
+    setText("alt", g.alt.toFixed(1) + " " + t("u_m"));
+    setText("spd", g.speed.toFixed(1) + " " + t("u_kmh"));
+    setText("hdg", g.heading.toFixed(0) + "°");
+    $("showMap").style.display = g.fix ? "inline-block" : "none";
+  } else {
+    ["sats","lat","lon","alt","spd","hdg"].forEach(id => setText(id, "—"));
+    $("showMap").style.display = "none";
+  }
+  updateQr(g, s.gps_last);
+  const ge = s.gps_ext;
+  if (ge) {
+    const fixes = {0: t("fix_none"), 1: t("fix_none"), 2: "2D", 3: "3D"};
+    setText("fixType", fixes[ge.fix_type] || t("fix_type", { n: ge.fix_type }));
+    setText("hdop", ge.hdop.toFixed(1));
+  } else {
+    setText("fixType", g ? (g.fix ? "3D" : t("fix_none")) : "—");
+    setText("hdop", "—");
+  }
+
+  setText("flightMode", s.flight_mode || "—");
+  const mode = s.flight_mode || "";
+  let modeNote = "";
+  if (mode === "!FS!") modeNote = t("mode_failsafe");
+  else if (mode.endsWith("!")) modeNote = t("mode_blocked");
+  else if (mode.endsWith("?")) modeNote = t("mode_gps_rescue_off");
+  else if (mode.endsWith("*")) modeNote = t("mode_ready");
+  else if (mode) modeNote = t("mode_armed");
+  setText("flightNote", modeNote);
+  const br = s.baro;
+  setText("baroAlt", br ? br.alt.toFixed(1) + " " + t("u_m") : "—");
+  const vario = s.vario != null ? s.vario : (br ? br.vario : null);
+  setText("vario", vario != null ? (vario >= 0 ? "+" : "") + vario.toFixed(1) + " " + t("u_ms") : "—");
+  setText("gpsTime", s.gps_time || "—");
+  setText("device", s.device || "—");
+
+  const a = s.attitude;
+  if (a) {
+    setText("pitch", a.pitch.toFixed(1) + "°");
+    setText("roll", a.roll.toFixed(1) + "°");
+    setText("yaw", a.yaw.toFixed(1) + "°");
+    $("horizon").style.transform = "rotate(" + (-a.roll).toFixed(1) + "deg) translateY(" + (a.pitch * 3).toFixed(1) + "px)";
+  } else {
+    ["pitch","roll","yaw"].forEach(id => setText(id, "—"));
+  }
+
+  setText("pps", st.pps ?? "—");
+  setText("total", st.total ?? "—");
+  setText("age", st.age != null ? st.age.toFixed(2) + " " + t("u_s") : "—");
+
+  const f = s.frames || {};
+  const keys = Object.keys(f).sort((x, y) => Number(x) - Number(y));
+  setText("typesCount", keys.length);
+  const rows = keys.map(k => {
+    const type = Number(k);
+    const info = frameInfo(type);
+    const name = info ? info[0] : t("unknown_frame");
+    const desc = info ? info[1] : t("not_described");
+    return "<tr" + (info ? "" : ' class="unknown"') + ">" +
+      "<td>0x" + type.toString(16).toUpperCase().padStart(2, "0") + "</td>" +
+      "<td>" + name + "</td>" +
+      "<td>" + f[k] + "</td>" +
+      "<td>" + desc + "</td></tr>";
+  });
+  $("framesBody").innerHTML = rows.length
+    ? rows.join("")
+    : '<tr><td colspan="4" class="muted">' + t("no_frames") + "</td></tr>";
+
+  if (s.gps) mapLastGps = s.gps;
+  updateMap(s.gps, false);
+  const rec = s.record || {};
+  if (rec.active && !(recordState && recordState.active)) {
+    currentTrackPoints = [];
+    recordPointTotal = 0;
+    updateTrackLine();
+  }
+  recordState = rec;
+  updateRecordUi();
+}
+
+let lastState = null;
+
+async function tick() {
+  try {
+    const res = await fetch("/api/state", { cache: "no-store" });
+    lastState = await res.json();
+    render(lastState);
+    if (lastState.record && lastState.record.active) {
+      const now = performance.now();
+      if (now - lastRecordFetch > 1000 && lastState.record.point_count > recordPointTotal) {
+        lastRecordFetch = now;
+        fetchRecording(false);
+      }
+    }
+  } catch (e) {
+    const pill = $("status");
+    pill.className = "pill off";
+    pill.textContent = t("status_no_server");
+  }
+  setTimeout(tick, 250);
+}
+
+LANG = pickLang();
+applyI18n();
+$("lang").addEventListener("change", e => {
+  LANG = e.target.value;
+  localStorage.setItem("tlm_lang", LANG);
+  applyI18n();
+  if (ANDROID_SETTINGS) loadPermissions();
+  if (lastState) render(lastState);
+});
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
+$("showMap").addEventListener("click", () => switchTab("map"));
+window.addEventListener("resize", () => setTimeout(refreshMapLayout, 50));
+window.addEventListener("orientationchange", () => setTimeout(refreshMapLayout, 200));
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) setTimeout(refreshMapLayout, 100);
+});
+if (window.ResizeObserver) {
+  new ResizeObserver(() => {
+    if (!$("mapPage").hidden) refreshMapLayout();
+  }).observe(document.querySelector("header"));
+}
+$("gpsQrWrap").addEventListener("click", openGpsInMaps);
+$("gpsQrWrap").addEventListener("keydown", e => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    openGpsInMaps();
+  }
+});
+$("followDrone").addEventListener("change", e => {
+  mapFollow = e.target.checked;
+  if (mapFollow) updateMap(mapLastGps, true);
+});
+$("centerMap").addEventListener("click", () => {
+  if (!mapReady) return;
+  const p = (currentTrack && lastPlaybackPos) ? lastPlaybackPos : (mapLastGps && mapLastGps.fix ? { lon: mapLastGps.lon, lat: mapLastGps.lat } : null);
+  if (!p) return;
+  mapObj.easeTo({ center: [p.lon, p.lat], zoom: Math.max(mapObj.getZoom(), 15), duration: 300 });
+});
+$("trackToggle").addEventListener("click", () => setTrackCollapsed(!trackCollapsed));
+$("exportGpx").addEventListener("click", () => exportTrack("gpx"));
+$("exportKml").addEventListener("click", () => exportTrack("kml"));
+$("recordBtn").addEventListener("click", () => toggleRecord());
+$("trackSelect").addEventListener("change", async () => {
+  currentTrack = null;
+  currentTrackPoints = [];
+  stopPlayback();
+  updateTrackLine();
+  hidePlaybackMarker();
+  updatePlaybackUI();
+  await loadSelectedTrack();
+});
+$("deleteTrack").addEventListener("click", async () => {
+  const id = $("trackSelect").value;
+  if (!id || !confirm(t("delete_confirm"))) return;
+  await fetch("/api/tracks/" + encodeURIComponent(id), { method: "DELETE" }).catch(() => {});
+  if (currentTrack && currentTrack.id === id) {
+    currentTrack = null;
+    currentTrackPoints = [];
+    stopPlayback();
+    updateTrackLine();
+    hidePlaybackMarker();
+    updatePlaybackUI();
+  }
+  await refreshTracks();
+});
+$("playBtn").addEventListener("click", () => {
+  if (playback.playing) stopPlayback(); else startPlayback();
+});
+$("trackProgress").addEventListener("input", e => {
+  playback.time = parseFloat(e.target.value) || 0;
+  playback.last = performance.now();
+  positionPlaybackMarker(playback.time, false);
+  updatePlaybackUI();
+});
+$("playSpeed").addEventListener("change", e => {
+  playback.speed = parseFloat(e.target.value) || 1;
+});
+
+$("udpPortSave").addEventListener("click", async () => {
+  const port = parseInt($("udpPortInput").value, 10);
+  if (!Number.isFinite(port) || port < 1 || port > 65535) {
+    setSettingsMsg("udpPortMsg", t("udp_port_error"), true);
+    return;
+  }
+  setSettingsMsg("udpPortMsg", "");
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ udp_port: port }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setSettingsMsg("udpPortMsg", t("udp_port_saved"));
+      if (data.settings) applySettingsData(data.settings);
+    } else {
+      setSettingsMsg("udpPortMsg", data.error || t("udp_port_error"), true);
+    }
+  } catch (e) {
+    setSettingsMsg("udpPortMsg", t("udp_port_error"), true);
+  }
+});
+$("chooseTracksFolder").addEventListener("click", () => {
+  if (ANDROID_SETTINGS) AndroidSettings.chooseTracksFolder();
+});
+$("resetTracksFolder").addEventListener("click", () => {
+  if (ANDROID_SETTINGS) AndroidSettings.resetTracksFolder();
+});
+$("refreshPermissions").addEventListener("click", () => loadPermissions());
+$("openAppSettings").addEventListener("click", () => {
+  if (ANDROID_SETTINGS) AndroidSettings.openAppSettings();
+});
+
+setTrackCollapsed(true);
+const initialTab = new URLSearchParams(location.search).get("tab") === "map" ? "map" : "telemetry";
+switchTab(initialTab);
+tick();
+if (ANDROID_SETTINGS) loadSettings();
+</script>
+</body>
+</html>
