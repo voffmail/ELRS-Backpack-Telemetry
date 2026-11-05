@@ -8,6 +8,7 @@ Detailed setup is in `DEVELOP.md`.
 - Build: `cd android && ./gradlew assembleDebug`
 - APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 - CI: `.github/workflows/android-apk.yml` uploads the artifact `elrs-backpack-debug-apk`.
+- Release: tag `v*` → `.github/workflows/release-apk.yml` (signed APK attached to a GitHub Release).
 - Python checks: `python3 -m py_compile tlm_viewer.py replay.py`
 - MapTiler key: `MAPTILER_KEY` env or `maptiler.key` (git-ignored); CI uses the `MAPTILER_KEY` secret. See `DEVELOP.md`.
 

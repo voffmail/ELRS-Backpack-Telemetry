@@ -84,6 +84,8 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 CI: `.github/workflows/android-apk.yml` собирает debug APK на push/PR и вручную; готовый APK доступен как артефакт `elrs-backpack-debug-apk` на странице запуска GitHub Actions.
 
+Релизы: `.github/workflows/release-apk.yml` по тегу `v*` или вручную собирает подписанный release APK и прикрепляет `ELRS-Backpack-<tag>.apk` к GitHub Release. Debug APK остаётся тестовым артефактом.
+
 Установка на телефон:
 
 ```bash
@@ -265,7 +267,7 @@ tracks/         сохранённые GPS-треки (JSON)
 AGENTS.md       заметки/skill для агентов (как воспроизводить оффлайн)
 DEVELOP.md      настройка toolchain, сборка, CI, ключ MapTiler и регрессия
 LICENSE         MIT
-.github/        GitHub Actions: сборка APK и артефакт
+.github/        GitHub Actions: APK-артефакт и релизы
 ```
 
 ## Диагностика

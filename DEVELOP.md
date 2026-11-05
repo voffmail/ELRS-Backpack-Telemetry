@@ -81,6 +81,26 @@ The workflow:
 
 Download the APK from the workflow run page under **Artifacts**.
 
+## Release APK and GitHub Releases
+
+The debug APK is intended for testing. Releases use a signed release build with a stable key.
+
+Local signing files (git-ignored):
+- `android/keystore/elrs-release.jks`
+- `android/keystore.properties`
+
+Back them up. The same keystore is stored in the GitHub Actions secrets
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+`ANDROID_KEY_PASSWORD`.
+
+Create a release:
+- push a tag: `git tag v1.0.0 && git push origin v1.0.0`; or
+- run **Actions → Release APK → Run workflow** with a tag.
+
+`.github/workflows/release-apk.yml` builds `assembleRelease`, verifies the signature, and attaches
+`ELRS-Backpack-<tag>.apk` to the GitHub Release. The debug APK workflow remains available for test
+artifacts.
+
 ## Desktop viewer and replay
 
 ```bash
