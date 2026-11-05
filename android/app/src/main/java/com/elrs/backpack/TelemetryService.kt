@@ -15,12 +15,16 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.widget.Toast
 import org.json.JSONObject
 import java.io.File
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 class TelemetryService : Service(), SettingsHost {
 
@@ -30,8 +34,10 @@ class TelemetryService : Service(), SettingsHost {
         const val ACTION_SET_TRACKS = "com.elrs.backpack.SET_TRACKS"
         const val ACTION_SETTINGS_CHANGED = "com.elrs.backpack.SETTINGS_CHANGED"
         const val EXTRA_TRACKS_URI = "tracks_uri"
-        private const val CHANNEL_ID = "elrs_telemetry"
+        private const val CHANNEL_ID = "elrs_telemetry_v2"
+        private const val ALERT_CHANNEL_ID = "elrs_alerts"
         private const val NOTIFICATION_ID = 14550
+        private const val ALERT_NOTIFICATION_ID = 14551
 
         @Volatile
         var httpReady = false
@@ -54,6 +60,12 @@ class TelemetryService : Service(), SettingsHost {
     @Volatile
     private var currentUdpPort = AppSettings.DEFAULT_UDP_PORT
 
+    @Volatile
+    private var powerSave = false
+
+    private var watchdog: ScheduledExecutorService? = null
+    private var serviceStartMono = 0L
+
     private var wifiLock: WifiManager.WifiLock? = null
     private var multicastLock: WifiManager.MulticastLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -62,6 +74,7 @@ class TelemetryService : Service(), SettingsHost {
         super.onCreate()
         running = true
         httpReady = false
+        serviceStartMono = SystemClock.elapsedRealtime()
         settings = AppSettings(this)
         currentUdpPort = settings.udpPort
         state = TelemetryState(initialTrackStore())
@@ -76,16 +89,23 @@ class TelemetryService : Service(), SettingsHost {
             }
         }
         startHttp()
+        startWatchdog()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        if (intent == null) return START_STICKY
+        when (intent.action) {
             ACTION_STOP -> {
                 stopSelf()
                 return START_NOT_STICKY
             }
 
-            ACTION_SET_TRACKS -> applyTracksUriAsync(intent.getStringExtra(EXTRA_TRACKS_URI))
+            ACTION_SET_TRACKS -> {
+                applyTracksUriAsync(intent.getStringExtra(EXTRA_TRACKS_URI))
+                mainHandler.post { exitPowerSaveNow() }
+            }
+
+            else -> mainHandler.post { exitPowerSaveNow() }
         }
         return START_STICKY
     }
@@ -94,6 +114,7 @@ class TelemetryService : Service(), SettingsHost {
 
     override fun onDestroy() {
         running = false
+        stopWatchdog()
         stopUdp()
         http?.stop()
         http = null
@@ -107,6 +128,7 @@ class TelemetryService : Service(), SettingsHost {
         .put("tracks_location", state.tracksLocation())
         .put("tracks_uri", settings.tracksUri ?: JSONObject.NULL)
         .put("recording", state.isRecording())
+        .put("idle_release_min", settings.idleReleaseMinutes)
         .toString()
 
     override fun changeUdpPort(port: Int): Pair<Boolean, String> {
@@ -127,6 +149,15 @@ class TelemetryService : Service(), SettingsHost {
             currentUdpPort = oldPort
         }
         return Pair(false, "failed to bind UDP $port")
+    }
+
+    override fun changeIdleReleaseMinutes(minutes: Int): Pair<Boolean, String> {
+        if (minutes !in 0..1440) return Pair(false, "idle timeout must be 0..1440")
+        settings.idleReleaseMinutes = minutes
+        if (minutes == 0) mainHandler.post { exitPowerSaveNow() }
+        mainHandler.post { updateNotification() }
+        notifySettingsChanged()
+        return Pair(true, "")
     }
 
     private fun initialTrackStore(): TrackStore {
@@ -203,6 +234,7 @@ class TelemetryService : Service(), SettingsHost {
                         break
                     }
                     state.onDatagram(buffer, packet.length)
+                    if (powerSave) mainHandler.post { exitPowerSaveNow() }
                 }
             }, "elrs-udp")
             thread.isDaemon = true
@@ -270,11 +302,33 @@ class TelemetryService : Service(), SettingsHost {
         val manager = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            getString(R.string.app_name),
-            NotificationManager.IMPORTANCE_LOW,
+            getString(R.string.notif_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT,
         )
+        channel.setSound(null, null)
+        channel.enableVibration(false)
         channel.setShowBadge(false)
+        channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         manager.createNotificationChannel(channel)
+
+        val alert = NotificationChannel(
+            ALERT_CHANNEL_ID,
+            getString(R.string.alert_channel_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        )
+        alert.setShowBadge(false)
+        manager.createNotificationChannel(alert)
+    }
+
+    private fun notificationText(): String {
+        val age = state.lastPacketAgeSeconds()
+        val total = state.totalPackets()
+        val pps = state.recentPps(5.0)
+        return when {
+            powerSave -> getString(R.string.notif_powersave_text, settings.idleReleaseMinutes)
+            age == null || age > 5.0 -> getString(R.string.notif_waiting, currentUdpPort)
+            else -> getString(R.string.notif_running, currentUdpPort, pps, total)
+        }
     }
 
     private fun buildNotification(): Notification {
@@ -299,10 +353,11 @@ class TelemetryService : Service(), SettingsHost {
             Notification.Builder(this).setPriority(Notification.PRIORITY_LOW)
         }
         builder
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText("UDP $currentUdpPort · http://127.0.0.1:$HTTP_PORT")
+            .setContentTitle(getString(if (powerSave) R.string.notif_title_powersave else R.string.notif_title))
+            .setContentText(notificationText())
             .setSmallIcon(R.drawable.ic_stat_elrs)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(openIntent)
             .addAction(
                 Notification.Action.Builder(
@@ -312,6 +367,88 @@ class TelemetryService : Service(), SettingsHost {
                 ).build(),
             )
         return builder.build()
+    }
+
+    private fun startWatchdog() {
+        if (watchdog != null) return
+        val executor = Executors.newSingleThreadScheduledExecutor { runnable ->
+            Thread(runnable, "elrs-watchdog").apply { isDaemon = true }
+        }
+        watchdog = executor
+        executor.scheduleAtFixedRate({
+            if (running) {
+                try {
+                    mainHandler.post { if (running) updateNotification() }
+                    checkIdleTimeout()
+                } catch (_: Exception) {
+                }
+            }
+        }, 5, 5, TimeUnit.SECONDS)
+    }
+
+    private fun stopWatchdog() {
+        try {
+            watchdog?.shutdownNow()
+        } catch (_: Exception) {
+        }
+        watchdog = null
+    }
+
+    private fun checkIdleTimeout() {
+        if (powerSave) return
+        val minutes = settings.idleReleaseMinutes
+        if (minutes <= 0) return
+        val age = state.lastPacketAgeSeconds()
+        val idleSeconds = age ?: ((SystemClock.elapsedRealtime() - serviceStartMono) / 1000.0)
+        if (idleSeconds >= minutes * 60.0) {
+            mainHandler.post { enterPowerSave() }
+        }
+    }
+
+    private fun enterPowerSave() {
+        if (!running || powerSave) return
+        powerSave = true
+        updateNotification()
+        showPowerSaveAlert()
+        releaseLocks()
+    }
+
+    private fun exitPowerSaveNow() {
+        if (!running || !powerSave) return
+        powerSave = false
+        acquireLocks()
+        updateNotification()
+        try {
+            getSystemService(NotificationManager::class.java).cancel(ALERT_NOTIFICATION_ID)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun showPowerSaveAlert() {
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+        val openIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            flags,
+        )
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, ALERT_CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this).setPriority(Notification.PRIORITY_HIGH)
+        }
+        builder
+            .setContentTitle(getString(R.string.alert_title))
+            .setContentText(getString(R.string.alert_text, settings.idleReleaseMinutes))
+            .setSmallIcon(R.drawable.ic_stat_elrs)
+            .setAutoCancel(true)
+            .setContentIntent(openIntent)
+        try {
+            getSystemService(NotificationManager::class.java).notify(ALERT_NOTIFICATION_ID, builder.build())
+        } catch (_: Exception) {
+        }
     }
 
     private fun startForegroundCompat(notification: Notification) {
@@ -328,6 +465,7 @@ class TelemetryService : Service(), SettingsHost {
 
     @Suppress("DEPRECATION")
     private fun acquireLocks() {
+        if (wakeLock != null || wifiLock != null || multicastLock != null) return
         try {
             val power = getSystemService(PowerManager::class.java)
             wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ELRSBackpack::telemetry").apply {

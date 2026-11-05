@@ -35,6 +35,7 @@ STATE = {
     "gps": None,
     "gps_last": None,
     "gps_ext": None,
+    "gps_ext_at": 0.0,
     "gps_time": None,
     "attitude": None,
     "baro": None,
@@ -89,15 +90,24 @@ def parse_frame(t, p):
         STATE["attitude"] = {"pitch": pitch * k, "roll": roll * k, "yaw": yaw * k}
     elif t == 0x02 and len(p) >= 15:
         lat, lon, spd, hdg, alt, sats = struct.unpack(">iiHHHB", p[:15])
+        now_mono = time.monotonic()
+        ge = STATE["gps_ext"]
+        fresh_ext = ge is not None and now_mono - STATE["gps_ext_at"] <= 5.0
+        if fresh_ext:
+            fix_3d = ge["fix_type"] == 3 and sats >= 4
+            fix_pos = ge["fix_type"] in (2, 3) and sats >= 3
+        else:
+            fix_3d = sats >= 4
+            fix_pos = sats >= 3
         STATE["gps"] = {
             "lat": lat / 1e7, "lon": lon / 1e7,
             "speed": spd / 10.0, "heading": hdg / 100.0,
             "alt": float(alt - 1000), "sats": sats,
-            "fix": lat != 0 or lon != 0,
+            "fix": fix_pos, "fix3d": fix_3d,
         }
-        if STATE["gps"]["fix"]:
+        if fix_pos:
             STATE["gps_last"] = dict(STATE["gps"])
-            if RECORD["active"]:
+            if fix_3d and RECORD["active"]:
                 g = STATE["gps"]
                 RECORD["points"].append({
                     "t": round(time.monotonic() - RECORD["start_mono"], 3),
@@ -132,6 +142,7 @@ def parse_frame(t, p):
             "h_acc": ha / 100.0, "v_acc": va / 100.0,
             "hdop": p[18] / 10.0, "vdop": p[19] / 10.0,
         }
+        STATE["gps_ext_at"] = time.monotonic()
     elif t == 0x21 and p:
         STATE["flight_mode"] = p.split(b"\x00", 1)[0].decode("ascii", "replace")
     elif t == 0x29 and len(p) > 2:
@@ -617,6 +628,15 @@ PAGE = """<!doctype html>
       <div class="guideNote" data-i18n="udp_port_note">The backpack must send telemetry to this port.</div>
     </div>
     <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="idle_release">Release locks when no data (min)</div>
+      <div class="settingsRow">
+        <input id="idleReleaseMin" type="number" min="0" max="1440" inputmode="numeric" placeholder="5">
+        <button id="idleReleaseSave" class="mapBtn" data-i18n="apply">Apply</button>
+        <span id="idleReleaseMsg" class="settingsMsg"></span>
+      </div>
+      <div class="guideNote" data-i18n="idle_release_note">0 or empty — never release locks.</div>
+    </div>
+    <div class="settingsGroup">
       <div class="settingsLabel" data-i18n="tracks_location">Track storage</div>
       <div id="tracksLocation" class="settingsValue">—</div>
       <div class="settingsRow">
@@ -745,6 +765,8 @@ function applySettingsData(data) {
     location.textContent = data.tracks_location || "—";
     location.title = data.tracks_uri || data.tracks_location || "";
   }
+  const idle = $("idleReleaseMin");
+  if (idle) idle.value = data.idle_release_min ?? "";
 }
 
 function setSettingsMsg(id, text, isError) {
@@ -863,6 +885,10 @@ const I18N = {
     udp_port: "UDP listen port",
     apply: "Apply",
     udp_port_note: "The backpack must send telemetry to this port.",
+    idle_release: "Release locks when no data (min)",
+    idle_release_note: "0 or empty — never release locks.",
+    idle_release_saved: "Power saving timeout updated",
+    idle_release_error: "Could not update timeout",
     tracks_location: "Track storage",
     choose_folder: "Choose folder",
     reset_folder: "Reset",
@@ -1022,6 +1048,10 @@ const I18N = {
     udp_port: "UDP-порт прослушивания",
     apply: "Применить",
     udp_port_note: "Бэкпак должен отправлять телеметрию на этот порт.",
+    idle_release: "Отпускать блокировки при отсутствии данных, мин",
+    idle_release_note: "0 или пусто — никогда не отпускать блокировки.",
+    idle_release_saved: "Таймаут энергосбережения обновлён",
+    idle_release_error: "Не удалось изменить таймаут",
     tracks_location: "Расположение треков",
     choose_folder: "Выбрать папку",
     reset_folder: "Сбросить",
@@ -1181,6 +1211,10 @@ const I18N = {
     udp_port: "UDP 监听端口",
     apply: "应用",
     udp_port_note: "背包必须将遥测发送到此端口。",
+    idle_release: "无数据时释放锁（分钟）",
+    idle_release_note: "0 或留空 — 永不释放锁。",
+    idle_release_saved: "节能超时已更新",
+    idle_release_error: "无法更新超时",
     tracks_location: "轨迹存储",
     choose_folder: "选择文件夹",
     reset_folder: "重置",
@@ -2037,28 +2071,23 @@ function render(s) {
   }
 
   const g = s.gps;
-  if (g) {
-    setText("sats", g.sats);
-    setText("lat", g.fix ? g.lat.toFixed(7) : "—");
-    setText("lon", g.fix ? g.lon.toFixed(7) : "—");
-    setText("alt", g.alt.toFixed(1) + " " + t("u_m"));
-    setText("spd", g.speed.toFixed(1) + " " + t("u_kmh"));
-    setText("hdg", g.heading.toFixed(0) + "°");
-    $("showMap").style.display = g.fix ? "inline-block" : "none";
+  const gp = (g && g.fix) ? g : s.gps_last;
+  setText("sats", g ? g.sats : "—");
+  if (gp) {
+    setText("lat", gp.lat.toFixed(7));
+    setText("lon", gp.lon.toFixed(7));
+    setText("alt", gp.alt.toFixed(1) + " " + t("u_m"));
+    setText("spd", gp.speed.toFixed(1) + " " + t("u_kmh"));
+    setText("hdg", gp.heading.toFixed(0) + "°");
+    $("showMap").style.display = "inline-block";
   } else {
-    ["sats","lat","lon","alt","spd","hdg"].forEach(id => setText(id, "—"));
+    ["lat","lon","alt","spd","hdg"].forEach(id => setText(id, "—"));
     $("showMap").style.display = "none";
   }
   updateQr(g, s.gps_last);
   const ge = s.gps_ext;
-  if (ge) {
-    const fixes = {0: t("fix_none"), 1: t("fix_none"), 2: "2D", 3: "3D"};
-    setText("fixType", fixes[ge.fix_type] || t("fix_type", { n: ge.fix_type }));
-    setText("hdop", ge.hdop.toFixed(1));
-  } else {
-    setText("fixType", g ? (g.fix ? "3D" : t("fix_none")) : "—");
-    setText("hdop", "—");
-  }
+  setText("fixType", g ? (g.fix3d ? "3D" : (g.fix ? "2D" : t("fix_none"))) : "—");
+  setText("hdop", ge ? ge.hdop.toFixed(1) : "—");
 
   setText("flightMode", s.flight_mode || "—");
   const mode = s.flight_mode || "";
@@ -2244,6 +2273,31 @@ $("udpPortSave").addEventListener("click", async () => {
     }
   } catch (e) {
     setSettingsMsg("udpPortMsg", t("udp_port_error"), true);
+  }
+});
+$("idleReleaseSave").addEventListener("click", async () => {
+  const raw = $("idleReleaseMin").value.trim();
+  const minutes = raw === "" ? 0 : parseInt(raw, 10);
+  if (!Number.isFinite(minutes) || minutes < 0 || minutes > 1440) {
+    setSettingsMsg("idleReleaseMsg", t("idle_release_error"), true);
+    return;
+  }
+  setSettingsMsg("idleReleaseMsg", "");
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idle_release_min: minutes }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setSettingsMsg("idleReleaseMsg", t("idle_release_saved"));
+      if (data.settings) applySettingsData(data.settings);
+    } else {
+      setSettingsMsg("idleReleaseMsg", data.error || t("idle_release_error"), true);
+    }
+  } catch (e) {
+    setSettingsMsg("idleReleaseMsg", t("idle_release_error"), true);
   }
 });
 $("chooseTracksFolder").addEventListener("click", () => {

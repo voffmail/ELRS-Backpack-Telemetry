@@ -48,6 +48,7 @@ private data class Gps(
     val alt: Double,
     val sats: Int,
     val fix: Boolean,
+    val fix3d: Boolean,
 ) {
     fun toJson() = JSONObject()
         .put("lat", lat)
@@ -57,6 +58,7 @@ private data class Gps(
         .put("alt", alt)
         .put("sats", sats)
         .put("fix", fix)
+        .put("fix3d", fix3d)
 }
 
 private data class Battery(
@@ -130,6 +132,23 @@ class TelemetryState(initialStore: TrackStore) {
 
     fun isRecording(): Boolean = synchronized(lock) { recording.active }
 
+    fun totalPackets(): Long = synchronized(lock) { total }
+
+    fun lastPacketAgeSeconds(): Double? = synchronized(lock) {
+        if (last == 0L) null else (System.currentTimeMillis() - last) / 1000.0
+    }
+
+    fun recentPps(windowSeconds: Double): Int = synchronized(lock) {
+        if (windowSeconds <= 0.0) {
+            0
+        } else {
+            val cutoff = System.currentTimeMillis() - (windowSeconds * 1000.0).toLong()
+            var count = 0
+            for (t in times) if (t >= cutoff) count += 1
+            (count / windowSeconds).toInt()
+        }
+    }
+
     companion object {
         private val TRACK_ID = Regex("[A-Za-z0-9_-]{1,80}")
         private const val MAX_TIMES = 4000
@@ -151,6 +170,7 @@ class TelemetryState(initialStore: TrackStore) {
     private var gps: Gps? = null
     private var gpsLast: Gps? = null
     private var gpsExt: GpsExt? = null
+    private var gpsExtAt = 0L
     private var gpsTime: String? = null
     private var attitude: Attitude? = null
     private var baro: Baro? = null
@@ -228,7 +248,18 @@ class TelemetryState(initialStore: TrackStore) {
                 val heading = u16(data, from + 10)
                 val alt = u16(data, from + 12)
                 val sats = u(data, from + 14)
-                val fix = lat != 0 || lon != 0
+                val nowMono = SystemClock.elapsedRealtime()
+                val freshExt = gpsExt?.let { nowMono - gpsExtAt <= 5000L } == true
+                val ext = gpsExt
+                val fix3d: Boolean
+                val fixPos: Boolean
+                if (freshExt && ext != null) {
+                    fix3d = ext.fixType == 3 && sats >= 4
+                    fixPos = ext.fixType in 2..3 && sats >= 3
+                } else {
+                    fix3d = sats >= 4
+                    fixPos = sats >= 3
+                }
                 val fixData = Gps(
                     lat = lat / 1e7,
                     lon = lon / 1e7,
@@ -236,15 +267,16 @@ class TelemetryState(initialStore: TrackStore) {
                     heading = heading / 100.0,
                     alt = (alt - 1000).toDouble(),
                     sats = sats,
-                    fix = fix,
+                    fix = fixPos,
+                    fix3d = fix3d,
                 )
                 gps = fixData
-                if (fix) {
+                if (fixPos) {
                     gpsLast = fixData
-                    if (recording.active) {
+                    if (fix3d && recording.active) {
                         recording.points.add(
                             TrackPoint(
-                                t = (SystemClock.elapsedRealtime() - recording.startMono) / 1000.0,
+                                t = (nowMono - recording.startMono) / 1000.0,
                                 lat = fixData.lat,
                                 lon = fixData.lon,
                                 alt = fixData.alt,
@@ -312,6 +344,7 @@ class TelemetryState(initialStore: TrackStore) {
                     hdop = u(data, from + 18) / 10.0,
                     vdop = u(data, from + 19) / 10.0,
                 )
+                gpsExtAt = SystemClock.elapsedRealtime()
             }
 
             0x21 -> if (len > 0) {

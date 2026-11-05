@@ -14,4 +14,13 @@
     <string name="stop_recording_first">Stop recording first</string>
     <string name="tracks_folder_error">Could not use this folder</string>
     <string name="tracks_location_changed">Tracks: %1$s</string>
+    <string name="notif_channel_name">Telemetry service</string>
+    <string name="alert_channel_name">Telemetry alerts</string>
+    <string name="notif_title">ELRS Backpack · telemetry</string>
+    <string name="notif_title_powersave">ELRS Backpack · power saving</string>
+    <string name="notif_running">UDP %1$d · %2$d pkt/s · total %3$d</string>
+    <string name="notif_waiting">UDP %1$d · waiting for data</string>
+    <string name="notif_powersave_text">No data for %1$d min · locks released</string>
+    <string name="alert_title">Telemetry is not arriving</string>
+    <string name="alert_text">No data for %1$d min. Locks released to save battery.</string>
 </resources>

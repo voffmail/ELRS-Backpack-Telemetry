@@ -14,9 +14,15 @@ class AppSettings(context: Context) {
         get() = prefs.getString(KEY_TRACKS_URI, null)
         set(value) = prefs.edit().putString(KEY_TRACKS_URI, value).apply()
 
+    var idleReleaseMinutes: Int
+        get() = prefs.getInt(KEY_IDLE_RELEASE_MIN, DEFAULT_IDLE_RELEASE_MIN)
+        set(value) = prefs.edit().putInt(KEY_IDLE_RELEASE_MIN, value).apply()
+
     companion object {
         const val DEFAULT_UDP_PORT = 14550
+        const val DEFAULT_IDLE_RELEASE_MIN = 5
         private const val KEY_UDP_PORT = "udp_port"
         private const val KEY_TRACKS_URI = "tracks_uri"
+        private const val KEY_IDLE_RELEASE_MIN = "idle_release_min"
     }
 }

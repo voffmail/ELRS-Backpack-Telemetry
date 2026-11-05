@@ -58,12 +58,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val serviceIntent = Intent(this, TelemetryService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
+        startTelemetryService()
 
         webView = WebView(this)
         webView.setBackgroundColor(0xFF0B0F14.toInt())
@@ -122,10 +117,24 @@ class MainActivity : Activity() {
         handler.postDelayed({ maybePromptStartupPermissions() }, 1500)
     }
 
+    override fun onStart() {
+        super.onStart()
+        startTelemetryService()
+    }
+
     override fun onResume() {
         super.onResume()
         if (this::webView.isInitialized) {
             handler.postDelayed({ notifyWebSettingsChanged() }, 300)
+        }
+    }
+
+    private fun startTelemetryService() {
+        val serviceIntent = Intent(this, TelemetryService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
         }
     }
 

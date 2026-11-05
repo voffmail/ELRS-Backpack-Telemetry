@@ -13,6 +13,7 @@ import java.util.concurrent.Executors
 interface SettingsHost {
     fun settingsJson(): String
     fun changeUdpPort(port: Int): Pair<Boolean, String>
+    fun changeIdleReleaseMinutes(minutes: Int): Pair<Boolean, String>
 }
 
 class HttpServer(
@@ -191,25 +192,37 @@ class HttpServer(
                 }
                 if (data == null) {
                     json(JSONObject().put("ok", false).put("error", "invalid json").toString(), 400)
+                } else if (!data.has("udp_port") && !data.has("idle_release_min")) {
+                    json(JSONObject().put("ok", false).put("error", "no settings").toString(), 400)
                 } else {
-                    val newPort = data.optInt("udp_port", -1)
-                    if (newPort !in 1..65535) {
+                    var error: String? = null
+                    if (data.has("udp_port")) {
+                        val newPort = data.optInt("udp_port", -1)
+                        if (newPort !in 1..65535) {
+                            error = "port must be 1..65535"
+                        } else {
+                            val (ok, portError) = host.changeUdpPort(newPort)
+                            if (!ok) error = portError
+                        }
+                    }
+                    if (error == null && data.has("idle_release_min")) {
+                        val minutes = data.optInt("idle_release_min", -1)
+                        if (minutes !in 0..1440) {
+                            error = "idle timeout must be 0..1440"
+                        } else {
+                            val (ok, idleError) = host.changeIdleReleaseMinutes(minutes)
+                            if (!ok) error = idleError
+                        }
+                    }
+                    if (error == null) {
                         json(
-                            JSONObject().put("ok", false).put("error", "port must be 1..65535").toString(),
-                            400,
+                            JSONObject()
+                                .put("ok", true)
+                                .put("settings", JSONObject(host.settingsJson()))
+                                .toString(),
                         )
                     } else {
-                        val (ok, error) = host.changeUdpPort(newPort)
-                        if (ok) {
-                            json(
-                                JSONObject()
-                                    .put("ok", true)
-                                    .put("settings", JSONObject(host.settingsJson()))
-                                    .toString(),
-                            )
-                        } else {
-                            json(JSONObject().put("ok", false).put("error", error).toString(), 409)
-                        }
+                        json(JSONObject().put("ok", false).put("error", error).toString(), 409)
                     }
                 }
             }
