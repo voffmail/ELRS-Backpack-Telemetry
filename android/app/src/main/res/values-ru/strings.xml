@@ -4,6 +4,7 @@
     <string name="saved_to">Сохранено: %1$s</string>
     <string name="save_failed">Не удалось сохранить %1$s</string>
     <string name="no_navigation_app">Не найдено приложение для навигации</string>
+    <string name="no_browser_app">Не найден браузер</string>
     <string name="permissions_title">Разрешения для работы в фоне</string>
     <string name="battery_prompt_message">Разрешить приложению работу без ограничений батареи? Это нужно, чтобы телеметрия принималась при заблокированном экране.</string>
     <string name="allow">Разрешить</string>

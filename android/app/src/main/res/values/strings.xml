@@ -5,6 +5,7 @@
     <string name="saved_to">Saved: %1$s</string>
     <string name="save_failed">Could not save %1$s</string>
     <string name="no_navigation_app">No navigation app found</string>
+    <string name="no_browser_app">No browser found</string>
     <string name="permissions_title">Background permissions</string>
     <string name="battery_prompt_message">Allow the app to run without battery restrictions? This keeps telemetry running while the screen is locked.</string>
     <string name="allow">Allow</string>

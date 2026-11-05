@@ -80,6 +80,8 @@ class MainActivity : Activity() {
                 return when (uri.scheme?.lowercase(Locale.US)) {
                     "geo", "maps", "google.navigation", "yandexmaps", "yandexnavi" ->
                         openExternalGeo(uri)
+
+                    "http", "https" -> openExternalUrl(uri)
                     else -> false
                 }
             }
@@ -328,6 +330,16 @@ class MainActivity : Activity() {
             true
         } catch (_: ActivityNotFoundException) {
             toast(getString(R.string.no_navigation_app))
+            true
+        }
+    }
+
+    private fun openExternalUrl(uri: Uri): Boolean {
+        return try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+            true
+        } catch (_: ActivityNotFoundException) {
+            toast(getString(R.string.no_browser_app))
             true
         }
     }

@@ -330,10 +330,11 @@ PAGE = """<!doctype html>
   header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
            padding: 7px 16px; border-bottom: 1px solid #1f2630; position: sticky; top: 0;
            background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 2; }
-  .brand { display: flex; flex-direction: column; gap: 1px; font-size: 15px;
+  .brand { display: flex; flex-direction: column; gap: 3px; font-size: 15px;
            letter-spacing: .2px; line-height: 1.1; }
   .brand b { color: #3fb950; }
   .brandSub { color: #7d8590; font-size: 9px; letter-spacing: .03em; }
+  .brand > .pill { align-self: flex-start; }
   .pill { font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid #30363d;
           color: #7d8590; white-space: nowrap; }
   .pill.on { color: #3fb950; border-color: #238636; background: rgba(63,185,80,.1); }
@@ -458,12 +459,17 @@ PAGE = """<!doctype html>
   .permState.ok { color: #3fb950; border-color: #238636; background: rgba(63,185,80,.1); }
   .permState.bad { color: #f85149; border-color: #6e2c2c; background: rgba(248,81,73,.08); }
   .permBtn { padding: 3px 8px !important; font-size: 11px !important; }
-  .guideCard summary { cursor: pointer; font-size: 15px; font-weight: 600; color: #e6edf3; }
-  .guideBody { margin-top: 10px; }
+  .guideCard summary, .settingsCard summary { cursor: pointer; font-size: 15px; font-weight: 600; color: #e6edf3; }
+  .guideBody, .settingsBody { margin-top: 10px; }
   .guideBody b { display: block; margin: 10px 0 4px; font-size: 13px; color: #e6edf3; }
   .guideList { margin: 0 0 0 18px; padding: 0; color: #c9d1d9; font-size: 13px; line-height: 1.5; }
   .guideList li { margin-bottom: 5px; }
   .guideNote { color: #9da7b3; font-size: 12px; line-height: 1.45; margin-top: 6px; }
+  .supportCard { grid-column: 1 / -1; padding: 0; }
+  .supportLink { display: block; padding: 14px 16px; color: #c9d1d9; text-decoration: none;
+                 font-size: 13px; line-height: 1.45; border-radius: 14px; }
+  .supportLink:hover { background: rgba(63,185,80,.06); color: #e6edf3; }
+  .supportChannel { color: #3fb950; font-weight: 600; }
   #mapInfo { bottom: 56px; }
   .mapBar { position: absolute; left: 12px; top: 12px; z-index: 5; display: flex; flex-wrap: wrap;
             align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #30363d;
@@ -484,19 +490,19 @@ PAGE = """<!doctype html>
 </head>
 <body>
 <header>
-  <div class="brand"><div><b>ELRS</b> Backpack</div><span class="brandSub" data-i18n="brand_sub">Wi-Fi telemetry</span></div>
+  <div class="brand">
+    <div><b>ELRS</b> Backpack</div>
+    <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
+  </div>
   <nav class="tabs">
     <button class="tab active" data-tab="telemetry" data-i18n="tab_telemetry">Telemetry</button>
     <button class="tab" data-tab="map" data-i18n="tab_map">Map</button>
   </nav>
-  <div class="headRight">
-    <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
-    <select id="lang" class="lang" aria-label="Language">
-      <option value="en">EN</option>
-      <option value="ru">RU</option>
-      <option value="zh">中文</option>
-    </select>
-  </div>
+  <select id="lang" class="lang" aria-label="Language">
+    <option value="en">EN</option>
+    <option value="ru">RU</option>
+    <option value="zh">中文</option>
+  </select>
 </header>
 <main id="telemetryPage">
   <section class="card">
@@ -598,8 +604,9 @@ PAGE = """<!doctype html>
     </details>
   </section>
 
-  <section class="card" id="settingsCard" hidden>
-    <h2 data-i18n="settings">Settings</h2>
+  <details class="card settingsCard" id="settingsCard" hidden>
+    <summary data-i18n="settings">Settings</summary>
+    <div class="settingsBody">
     <div class="settingsGroup">
       <div class="settingsLabel" data-i18n="udp_port">UDP listen port</div>
       <div class="settingsRow">
@@ -628,7 +635,8 @@ PAGE = """<!doctype html>
       </div>
       <div class="guideNote" data-i18n="permissions_note">Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.</div>
     </div>
-  </section>
+    </div>
+  </details>
 
   <details class="card guideCard">
     <summary data-i18n="guide_title">Quick setup guide</summary>
@@ -650,6 +658,13 @@ PAGE = """<!doctype html>
       <div class="guideNote" data-i18n="guide_note">Settings are available in the Android app. In the Python viewer the UDP port is set by --udp-port.</div>
     </div>
   </details>
+
+  <section class="card supportCard">
+    <a class="supportLink" href="https://rutube.ru/channel/36225989/" target="_blank" rel="noopener noreferrer">
+      <span data-i18n="support_text">Вы можете отблагодарить автора за потраченные токены и время на Rutube-канале</span>
+      <span class="supportChannel">Рассказы ветра</span>
+    </a>
+  </section>
 </main>
 <section id="mapPage" hidden>
   <div class="mapWrap">
@@ -856,6 +871,7 @@ const I18N = {
     check_again: "Check again",
     app_settings: "App settings",
     permissions_note: "Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.",
+    support_text: "You can thank the author for the tokens and time spent on the Rutube channel",
     permission_notifications: "Notifications",
     permission_battery: "Unrestricted background (battery)",
     permission_wifi: "Wi-Fi / multicast / wake lock",
@@ -1014,6 +1030,7 @@ const I18N = {
     check_again: "Проверить снова",
     app_settings: "Настройки приложения",
     permissions_note: "Разрешения уровня установки выдаются автоматически; уведомления и исключение из оптимизации батареи запрашиваются при первом запуске.",
+    support_text: "Вы можете отблагодарить автора за потраченные токены и время на Rutube-канале",
     permission_notifications: "Уведомления",
     permission_battery: "Работа в фоне без ограничений (батарея)",
     permission_wifi: "Wi-Fi / multicast / wake lock",
@@ -1172,6 +1189,7 @@ const I18N = {
     check_again: "重新检查",
     app_settings: "应用设置",
     permissions_note: "安装时权限会自动授予；通知和电池优化豁免会在首次启动时请求。",
+    support_text: "感谢作者为此花费的 token 和时间，欢迎访问 Rutube 频道",
     permission_notifications: "通知",
     permission_battery: "后台无限制（电池）",
     permission_wifi: "Wi-Fi / 多播 / 唤醒锁",
