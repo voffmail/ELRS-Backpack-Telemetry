@@ -21,3 +21,6 @@ android/keystore.properties
 *.apk
 .DS_Store
 Thumbs.db
+
+# Local toolchain (JDK/SDK/Gradle caches)
+.toolchain/

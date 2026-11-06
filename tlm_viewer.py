@@ -476,6 +476,11 @@ PAGE = """<!doctype html>
   .guideList { margin: 0 0 0 18px; padding: 0; color: #c9d1d9; font-size: 13px; line-height: 1.5; }
   .guideList li { margin-bottom: 5px; }
   .guideNote { color: #9da7b3; font-size: 12px; line-height: 1.45; margin-top: 6px; }
+  .guideDetails { margin-top: 10px; padding: 8px 10px; border: 1px solid #1f2630;
+                  border-radius: 10px; background: #0b0f14; }
+  .guideDetails summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #e6edf3; }
+  .guideDetails .guideList { margin-top: 8px; }
+  .guideDetails .guideLink { display: inline-block; margin-top: 8px; }
   .supportCard { grid-column: 1 / -1; padding: 0; }
   .supportLink { display: block; padding: 14px 16px; color: #c9d1d9; text-decoration: none;
                  font-size: 13px; line-height: 1.45; border-radius: 14px; }
@@ -489,6 +494,10 @@ PAGE = """<!doctype html>
   .mapBtn { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px;
             padding: 5px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
   .mapBtn:hover { border-color: #3fb950; }
+  .closeCard { grid-column: 1 / -1; padding: 10px; }
+  .closeCard .closeBtn { width: 100%; padding: 12px; font-size: 14px; color: #f85149;
+                         border-color: #6e2c2c; background: rgba(248,81,73,.06); }
+  .closeCard .closeBtn:hover { border-color: #f85149; background: rgba(248,81,73,.12); }
   #mapStatus { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); z-index: 6;
                padding: 6px 12px; border-radius: 999px; border: 1px solid #6e2c2c;
                background: rgba(11,15,20,.9); color: #f85149; font-size: 12px; white-space: nowrap; }
@@ -663,19 +672,40 @@ PAGE = """<!doctype html>
     <div class="guideBody">
       <b data-i18n="guide_backpack">ELRS backpack</b>
       <ol class="guideList">
-        <li data-i18n="guide_backpack_1">On the radio open ELRS Lua → Backpack → Telemetry → WiFi (not “WiFi Connectivity”).</li>
-        <li data-i18n="guide_backpack_2">Connect the phone to the same network as the backpack: home Wi-Fi/hotspot or the “ExpressLRS TX Backpack” access point (password expresslrs).</li>
-        <li data-i18n="guide_backpack_3">The backpack must send telemetry to the UDP port shown in Settings (14550 by default).</li>
+        <li data-i18n="guide_backpack_1">You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).</li>
+        <li data-i18n="guide_backpack_2">In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.</li>
+        <li data-i18n="guide_backpack_3">Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.</li>
+        <li data-i18n="guide_backpack_4">Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.</li>
       </ol>
+      <b data-i18n="guide_problems">Possible problems</b>
+      <ul class="guideList">
+        <li data-i18n="guide_problem_nodata_android" data-platform="android">No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.</li>
+        <li data-i18n="guide_problem_nodata_python" data-platform="python">No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.</li>
+        <li data-i18n="guide_problem_port_android" data-platform="android">Port 14550 busy? Change it in Settings → UDP port.</li>
+        <li data-i18n="guide_problem_port_python" data-platform="python">Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port &lt;port&gt;.</li>
+        <li data-i18n="guide_problem_vendor">Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.</li>
+      </ul>
+      <details class="guideDetails">
+        <summary data-i18n="guide_flash_title">Backpack flashing</summary>
+        <ul class="guideList">
+          <li data-i18n="guide_flash_1">Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.</li>
+          <li data-i18n="guide_flash_2">The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.</li>
+          <li data-i18n="guide_flash_3">The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.</li>
+          <li data-i18n="guide_flash_4">Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.</li>
+          <li data-i18n="guide_flash_5">Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.</li>
+        </ul>
+        <a class="guideLink" data-i18n="guide_flash_link" href="https://www.expresslrs.org/hardware/backpack/backpack-tx-setup/" target="_blank" rel="noopener noreferrer">Tx Backpack Setup — ExpressLRS</a>
+      </details>
       <b data-i18n="guide_app">App</b>
       <ol class="guideList">
         <li data-i18n="guide_app_1">Allow notifications and battery exemption — otherwise Android may suspend reception in the background.</li>
         <li data-i18n="guide_app_2">Keep the app running; reception works in a foreground service even with the screen locked.</li>
         <li data-i18n="guide_app_3">Change the UDP port in Settings if needed; the listener restarts automatically.</li>
         <li data-i18n="guide_app_4">Choose a folder for tracks; existing tracks are copied to it.</li>
-        <li data-i18n="guide_app_5">No data? Check the network, UDP port, firewall and that the backpack is in Telemetry WiFi mode.</li>
+        <li data-i18n="guide_app_background" data-platform="android">The app keeps receiving in the background: the Back button only hides the window.</li>
+        <li data-i18n="guide_app_stop_android" data-platform="android">To stop reception completely, press “Stop” in the notification.</li>
+        <li data-i18n="guide_app_stop_python" data-platform="python">To stop the viewer, press Ctrl+C in the terminal.</li>
       </ol>
-      <div class="guideNote" data-i18n="guide_note">Settings are available in the Android app. In the Python viewer the UDP port is set by --udp-port.</div>
     </div>
   </details>
 
@@ -684,6 +714,10 @@ PAGE = """<!doctype html>
       <span data-i18n="support_text">Вы можете отблагодарить автора за потраченные токены и время на Rutube-канале</span>
       <span class="supportChannel">Рассказы ветра</span>
     </a>
+  </section>
+
+  <section class="card closeCard" data-platform="android">
+    <button id="closeApp" class="mapBtn closeBtn" data-i18n="close_app">Close app</button>
   </section>
 </main>
 <section id="mapPage" hidden>
@@ -898,6 +932,8 @@ const I18N = {
     app_settings: "App settings",
     permissions_note: "Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.",
     support_text: "You can thank the author for the tokens and time spent on the Rutube channel",
+    close_app: "Close app",
+    close_recording_confirm: "Track recording is in progress. If you close the app, recording will be interrupted and will not be saved. Close?",
     permission_notifications: "Notifications",
     permission_battery: "Unrestricted background (battery)",
     permission_wifi: "Wi-Fi / multicast / wake lock",
@@ -911,16 +947,31 @@ const I18N = {
     udp_port_error: "Could not change port",
     guide_title: "Quick setup guide",
     guide_backpack: "ELRS backpack",
-    guide_backpack_1: "On the radio open ELRS Lua → Backpack → Telemetry → WiFi (not “WiFi Connectivity”).",
-    guide_backpack_2: "Connect the phone to the same network as the backpack: home Wi-Fi/hotspot or the “ExpressLRS TX Backpack” access point (password expresslrs).",
-    guide_backpack_3: "The backpack must send telemetry to the UDP port shown in Settings (14550 by default).",
+    guide_backpack_1: "You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).",
+    guide_backpack_2: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.",
+    guide_backpack_3: "Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.",
+    guide_backpack_4: "Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.",
+    guide_problems: "Possible problems",
+    guide_problem_nodata_android: "No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.",
+    guide_problem_nodata_python: "No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.",
+    guide_problem_port_android: "Port 14550 busy? Change it in Settings → UDP port.",
+    guide_problem_port_python: "Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port <port>.",
+    guide_problem_vendor: "Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.",
+    guide_flash_title: "Backpack flashing",
+    guide_flash_1: "Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.",
+    guide_flash_3: "The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.",
+    guide_flash_4: "Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.",
+    guide_flash_5: "Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.",
+    guide_flash_link: "Tx Backpack Setup — ExpressLRS",
     guide_app: "App",
     guide_app_1: "Allow notifications and battery exemption — otherwise Android may suspend reception in the background.",
     guide_app_2: "Keep the app running; reception works in a foreground service even with the screen locked.",
     guide_app_3: "Change the UDP port in Settings if needed; the listener restarts automatically.",
     guide_app_4: "Choose a folder for tracks; existing tracks are copied to it.",
-    guide_app_5: "No data? Check the network, UDP port, firewall and that the backpack is in Telemetry WiFi mode.",
-    guide_note: "Settings are available in the Android app. In the Python viewer the UDP port is set by --udp-port.",
+    guide_app_background: "The app keeps receiving in the background: the Back button only hides the window.",
+    guide_app_stop_android: "To stop reception and close the app, press “Close app” at the bottom of the Telemetry tab (or “Stop” in the notification).",
+    guide_app_stop_python: "To stop the viewer, press Ctrl+C in the terminal.",
     save: "Save",
     card_battery: "Battery",
     current: "Current",
@@ -1016,8 +1067,8 @@ const I18N = {
     status_no_server: "нет связи с сервером",
     open_in_maps: "Открыть в приложении навигации",
     card_link: "Линк",
-    lq_uplink: "LQ вверх",
-    lq_downlink: "LQ вниз",
+    lq_uplink: "LQ up",
+    lq_downlink: "LQ down",
     rssi: "RSSI",
     snr: "SNR",
     tx_power: "Мощность TX",
@@ -1061,6 +1112,8 @@ const I18N = {
     app_settings: "Настройки приложения",
     permissions_note: "Разрешения уровня установки выдаются автоматически; уведомления и исключение из оптимизации батареи запрашиваются при первом запуске.",
     support_text: "Вы можете отблагодарить автора за потраченные токены и время на Rutube-канале",
+    close_app: "Закрыть приложение",
+    close_recording_confirm: "Идёт запись трека. Если закрыть приложение, запись будет прервана и не сохранится. Закрыть?",
     permission_notifications: "Уведомления",
     permission_battery: "Работа в фоне без ограничений (батарея)",
     permission_wifi: "Wi-Fi / multicast / wake lock",
@@ -1074,16 +1127,31 @@ const I18N = {
     udp_port_error: "Не удалось изменить порт",
     guide_title: "Краткое руководство",
     guide_backpack: "Бэкпак ELRS",
-    guide_backpack_1: "На аппаратуре откройте ELRS Lua → Backpack → Telemetry → WiFi (не «WiFi Connectivity»).",
-    guide_backpack_2: "Подключите телефон к той же сети, что и бэкпак: домашний Wi-Fi/хот-спот или точка «ExpressLRS TX Backpack» (пароль expresslrs).",
-    guide_backpack_3: "Бэкпак должен отправлять телеметрию на UDP-порт из настроек (по умолчанию 14550).",
+    guide_backpack_1: "Нужен TX-бэкпак ELRS с поддержкой Wi-Fi-телеметрии (Backpack 1.5.7+).",
+    guide_backpack_2: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите значение «WiFi». Не используйте пункт «WiFi Connectivity» — это режим настройки передатчика, а не его модуля Backpack.",
+    guide_backpack_3: "Подключите телефон/ПК к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или наоборот — Backpack к мобильной точке доступа смартфона или к той же домашней сети/хот-споту, если бэкпак в неё включён. Цель — чтобы Backpack и приложение оказались в одном сегменте сети. При этом для функциональности карты должен быть доступен интернет.",
+    guide_backpack_4: "Откройте вкладку «Телеметрия» и дождитесь статуса «онлайн · N пак/с» — в «Приёме» должны расти пакеты.",
+    guide_problems: "Возможные проблемы",
+    guide_problem_nodata_android: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, телефон в той же сети, VPN не режет локальный трафик, а порт 14550 не занят другой программой.",
+    guide_problem_nodata_python: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, компьютер в той же сети, firewall не режет UDP, а порт 14550 не занят другой программой.",
+    guide_problem_port_android: "Порт 14550 занят? Смените его в Настройки → UDP-порт.",
+    guide_problem_port_python: "Порт 14550 занят? Запустите вьюер с другим портом: python3 tlm_viewer.py --udp-port <порт>.",
+    guide_problem_vendor: "У некоторых вендоров существует баг нестартующего «ExpressLRS TX Backpack XXXXXX», фикса которого нет в релизах, и нужна прошивка из master.",
+    guide_flash_title: "Прошивка бэкпака",
+    guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi или в меню нет Telemetry → WiFi. Прошивать через ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "Binding Phrase для Wi-Fi-телеметрии не обязательна: вьюер не проверяет UID.",
+    guide_flash_3: "Фраза задаёт UID, который бэкпак использует как адрес ESP-NOW-группы и как суффикс SSID «ExpressLRS TX Backpack XXXXXX». Её указывают для ESP-NOW (VRX/таймер/AAT) и стабильного имени сети; обычно берут ту же фразу, что в ELRS-линке.",
+    guide_flash_4: "Если фразу не задавать, бэкпак возьмёт адрес группы из EEPROM (после бинда от TX-модуля) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs, фраза его не меняет.",
+    guide_flash_5: "При смене фразы меняются UID и SSID — перепрошейте с той же фразой все устройства группы.",
+    guide_flash_link: "Прошивка TX Backpack — ExpressLRS",
     guide_app: "Приложение",
     guide_app_1: "Разрешите уведомления и исключение из оптимизации батареи — иначе Android может приостановить приём в фоне.",
     guide_app_2: "Оставьте приложение запущенным: приём идёт в foreground-сервисе даже при заблокированном экране.",
     guide_app_3: "При необходимости смените UDP-порт в настройках — приём перезапустится автоматически.",
     guide_app_4: "Выберите папку для треков; существующие треки будут скопированы.",
-    guide_app_5: "Нет данных? Проверьте сеть, UDP-порт, firewall и режим Telemetry WiFi на бэкпаке.",
-    guide_note: "Настройки доступны в Android-приложении. В Python-вьюере UDP-порт задаётся параметром --udp-port.",
+    guide_app_background: "Приложение принимает данные в фоне: кнопка «Назад» только сворачивает окно.",
+    guide_app_stop_android: "Чтобы остановить приём и закрыть приложение, нажмите «Закрыть приложение» внизу вкладки «Телеметрия» (или «Стоп» в уведомлении).",
+    guide_app_stop_python: "Чтобы завершить вьюер, нажмите Ctrl+C в терминале.",
     save: "Сохранить",
     card_battery: "Батарея",
     current: "Ток",
@@ -1224,6 +1292,8 @@ const I18N = {
     app_settings: "应用设置",
     permissions_note: "安装时权限会自动授予；通知和电池优化豁免会在首次启动时请求。",
     support_text: "感谢作者为此花费的 token 和时间，欢迎访问 Rutube 频道",
+    close_app: "关闭应用",
+    close_recording_confirm: "正在录制轨迹。关闭应用将中断录制且不会保存。是否关闭？",
     permission_notifications: "通知",
     permission_battery: "后台无限制（电池）",
     permission_wifi: "Wi-Fi / 多播 / 唤醒锁",
@@ -1237,16 +1307,31 @@ const I18N = {
     udp_port_error: "无法更改端口",
     guide_title: "快速设置指南",
     guide_backpack: "ELRS 背包",
-    guide_backpack_1: "在遥控器上打开 ELRS Lua → Backpack → Telemetry → WiFi（不要选“WiFi Connectivity”）。",
-    guide_backpack_2: "将手机连接到与背包相同的网络：家庭 Wi-Fi/热点或“ExpressLRS TX Backpack”接入点（密码 expresslrs）。",
-    guide_backpack_3: "背包必须将遥测发送到设置中的 UDP 端口（默认 14550）。",
+    guide_backpack_1: "需要支持 Wi-Fi 遥测的 ELRS TX 背包（Backpack 1.5.7+）。",
+    guide_backpack_2: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器，而不是它的 Backpack 模块。",
+    guide_backpack_3: "将手机/电脑连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或者反过来把 Backpack 连接到手机的移动热点或同一个家庭网络/热点（如果背包已接入该网络）。目标是让 Backpack 和应用处于同一网段。地图功能需要可用的互联网连接。",
+    guide_backpack_4: "打开“遥测”标签页，等待状态变为“在线 · N 包/秒”——“接收”中的包计数应持续增长。",
+    guide_problems: "可能的问题",
+    guide_problem_nodata_android: "没有数据？检查是否启用了 Telemetry → WiFi，手机是否在同一网络，VPN 是否拦截本地流量，以及 UDP 端口 14550 是否被其他应用占用。",
+    guide_problem_nodata_python: "没有数据？检查是否启用了 Telemetry → WiFi，电脑是否在同一网络，防火墙是否拦截 UDP，以及 UDP 端口 14550 是否被其他程序占用。",
+    guide_problem_port_android: "端口 14550 被占用？在 设置 → UDP 端口 中更改。",
+    guide_problem_port_python: "端口 14550 被占用？使用其他端口启动查看器：python3 tlm_viewer.py --udp-port <端口>。",
+    guide_problem_vendor: "部分厂商存在“ExpressLRS TX Backpack XXXXXX”无法启动的 bug，正式版尚未修复，需要刷写 master 固件。",
+    guide_flash_title: "背包刷写",
+    guide_flash_1: "如果背包无法启动 Wi-Fi 或菜单中没有 Telemetry → WiFi，则需要刷写。通过 ExpressLRS Configurator → Backpack 刷写。",
+    guide_flash_2: "Wi-Fi 遥测不要求 Binding Phrase：查看器不校验 UID。",
+    guide_flash_3: "该短语会生成 UID，背包将其用作 ESP-NOW 组地址和 SSID 后缀“ExpressLRS TX Backpack XXXXXX”。需要 ESP-NOW（VRX/计时器/AAT）和稳定网络名称时设置；通常使用与 ELRS 链路相同的短语。",
+    guide_flash_4: "如果不设置短语，背包会使用 EEPROM 中的组地址（由 TX 模块绑定后写入），否则保持为零；Wi-Fi 遥测仍然可用。热点密码始终是 expresslrs，与短语无关。",
+    guide_flash_5: "更改短语会改变 UID 和 SSID——请用相同短语重新刷写组内所有设备。",
+    guide_flash_link: "TX Backpack 刷写 — ExpressLRS",
     guide_app: "应用",
     guide_app_1: "允许通知和电池优化豁免，否则 Android 可能会在后台暂停接收。",
     guide_app_2: "保持应用运行；即使锁屏，前台服务也会继续接收。",
     guide_app_3: "如有需要，在设置中更改 UDP 端口；监听会自动重启。",
     guide_app_4: "选择轨迹文件夹；现有轨迹会被复制。",
-    guide_app_5: "没有数据？检查网络、UDP 端口、防火墙以及背包是否处于 Telemetry WiFi 模式。",
-    guide_note: "设置仅在 Android 应用中可用。在 Python 查看器中，UDP 端口由 --udp-port 指定。",
+    guide_app_background: "应用会在后台继续接收：按“返回”只会隐藏窗口。",
+    guide_app_stop_android: "要停止接收并关闭应用，请按“遥测”标签页底部的“关闭应用”（或通知中的“停止”）。",
+    guide_app_stop_python: "要结束查看器，请在终端中按 Ctrl+C。",
     save: "保存",
     card_battery: "电池",
     current: "电流",
@@ -1404,6 +1489,12 @@ function pickLang() {
   return "en";
 }
 
+function applyPlatformUi() {
+  document.querySelectorAll("[data-platform]").forEach(el => {
+    el.hidden = (el.getAttribute("data-platform") === "android") !== ANDROID_SETTINGS;
+  });
+}
+
 function applyI18n() {
   document.documentElement.lang = LANG;
   document.title = t("page_title");
@@ -1411,6 +1502,7 @@ function applyI18n() {
     el.textContent = t(el.getAttribute("data-i18n"));
   });
   $("lang").value = LANG;
+  applyPlatformUi();
 }
 
 const mapKey = "__MAPTILER_KEY__";
@@ -2309,6 +2401,12 @@ $("resetTracksFolder").addEventListener("click", () => {
 $("refreshPermissions").addEventListener("click", () => loadPermissions());
 $("openAppSettings").addEventListener("click", () => {
   if (ANDROID_SETTINGS) AndroidSettings.openAppSettings();
+});
+$("closeApp").addEventListener("click", () => {
+  if (!ANDROID_SETTINGS || typeof AndroidSettings.closeApp !== "function") return;
+  const recording = !!(lastState && lastState.record && lastState.record.active);
+  if (recording && !confirm(t("close_recording_confirm"))) return;
+  AndroidSettings.closeApp();
 });
 
 setTrackCollapsed(true);

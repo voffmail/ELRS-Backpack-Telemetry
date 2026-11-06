@@ -278,6 +278,13 @@ class MainActivity : Activity() {
         }
     }
 
+    fun closeApp() {
+        runOnUiThread {
+            stopService(Intent(this, TelemetryService::class.java))
+            finishAndRemoveTask()
+        }
+    }
+
     private fun openBatterySettings() {
         try {
             startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))

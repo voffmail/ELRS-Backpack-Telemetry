@@ -47,8 +47,8 @@ private data class Gps(
     val heading: Double,
     val alt: Double,
     val sats: Int,
-    val fix: Boolean,
-    val fix3d: Boolean,
+    val fixType: Int,
+    val fixTypeComputed: Boolean,
 ) {
     fun toJson() = JSONObject()
         .put("lat", lat)
@@ -57,8 +57,8 @@ private data class Gps(
         .put("heading", heading)
         .put("alt", alt)
         .put("sats", sats)
-        .put("fix", fix)
-        .put("fix3d", fix3d)
+        .put("fix_type", fixType)
+        .put("fix_type_computed", fixTypeComputed)
 }
 
 private data class Battery(
@@ -83,8 +83,12 @@ private data class GpsExt(
     val vn: Double,
     val ve: Double,
     val vv: Double,
+    val speedAcc: Double,
+    val trackAcc: Double,
+    val altEllipsoid: Double,
     val hAcc: Double,
     val vAcc: Double,
+    val reserved: Int,
     val hdop: Double,
     val vdop: Double,
 ) {
@@ -93,8 +97,12 @@ private data class GpsExt(
         .put("vn", vn)
         .put("ve", ve)
         .put("vv", vv)
+        .put("speed_acc", speedAcc)
+        .put("track_acc", trackAcc)
+        .put("alt_ellipsoid", altEllipsoid)
         .put("h_acc", hAcc)
         .put("v_acc", vAcc)
+        .put("reserved", reserved)
         .put("hdop", hdop)
         .put("vdop", vdop)
 }
@@ -107,6 +115,9 @@ data class TrackPoint(
     val speed: Double,
     val heading: Double,
     val sats: Int,
+    val fixType: Int?,
+    val fixTypeComputed: Boolean,
+    val telemetry: JSONObject,
 ) {
     fun toJson() = JSONObject()
         .put("t", t)
@@ -116,6 +127,9 @@ data class TrackPoint(
         .put("speed", speed)
         .put("heading", heading)
         .put("sats", sats)
+        .put("fix_type", fixType ?: JSONObject.NULL)
+        .put("fix_type_computed", fixTypeComputed)
+        .put("telemetry", telemetry)
 }
 
 class TelemetryState(initialStore: TrackStore) {
@@ -152,6 +166,7 @@ class TelemetryState(initialStore: TrackStore) {
     companion object {
         private val TRACK_ID = Regex("[A-Za-z0-9_-]{1,80}")
         private const val MAX_TIMES = 4000
+        private const val GPS_EXT_TTL_MS = 5000L
         private val RAD_TO_DEG = 180.0 / Math.PI / 10000.0
     }
 
@@ -185,6 +200,12 @@ class TelemetryState(initialStore: TrackStore) {
     private var last = 0L
 
     private val recording = Recording()
+    @Volatile
+    private var autoRecordOn3d = false
+
+    fun setAutoRecordOn3d(enabled: Boolean) = synchronized(lock) {
+        autoRecordOn3d = enabled
+    }
 
     fun onDatagram(data: ByteArray, length: Int) {
         val now = System.currentTimeMillis()
@@ -249,17 +270,19 @@ class TelemetryState(initialStore: TrackStore) {
                 val alt = u16(data, from + 12)
                 val sats = u(data, from + 14)
                 val nowMono = SystemClock.elapsedRealtime()
-                val freshExt = gpsExt?.let { nowMono - gpsExtAt <= 5000L } == true
-                val ext = gpsExt
-                val fix3d: Boolean
-                val fixPos: Boolean
-                if (freshExt && ext != null) {
-                    fix3d = ext.fixType == 3 && sats >= 4
-                    fixPos = ext.fixType in 2..3 && sats >= 3
-                } else {
-                    fix3d = sats >= 4
-                    fixPos = sats >= 3
+                val ext = gpsExt?.takeIf { nowMono - gpsExtAt <= GPS_EXT_TTL_MS }
+                if (ext == null) gpsExt = null
+                // Betaflight sends 1 = No Fix, 2 = 2D, 3 = 3D in 0x06.
+                // iNav/ArduPilot do not send 0x06 at all: derive a conservative
+                // fallback from satellites (>=4 -> 3D, >=3 -> 2D).
+                val computedFixType = when {
+                    sats >= 4 -> 3
+                    sats >= 3 -> 2
+                    else -> 0
                 }
+                val fixType = ext?.fixType ?: computedFixType
+                val fixTypeComputed = ext == null
+                val was3d = gps?.fixType == 3
                 val fixData = Gps(
                     lat = lat / 1e7,
                     lon = lon / 1e7,
@@ -267,25 +290,29 @@ class TelemetryState(initialStore: TrackStore) {
                     heading = heading / 100.0,
                     alt = (alt - 1000).toDouble(),
                     sats = sats,
-                    fix = fixPos,
-                    fix3d = fix3d,
+                    fixType = fixType,
+                    fixTypeComputed = fixTypeComputed,
                 )
                 gps = fixData
-                if (fixPos) {
-                    gpsLast = fixData
-                    if (fix3d && recording.active) {
-                        recording.points.add(
-                            TrackPoint(
-                                t = (nowMono - recording.startMono) / 1000.0,
-                                lat = fixData.lat,
-                                lon = fixData.lon,
-                                alt = fixData.alt,
-                                speed = fixData.speed,
-                                heading = fixData.heading,
-                                sats = fixData.sats,
-                            ),
-                        )
-                    }
+                if (fixType == 3) gpsLast = fixData
+                if (autoRecordOn3d && fixType == 3 && !was3d && !recording.active) {
+                    startRecording()
+                }
+                if (recording.active) {
+                    recording.points.add(
+                        TrackPoint(
+                            t = (nowMono - recording.startMono).coerceAtLeast(0L) / 1000.0,
+                            lat = fixData.lat,
+                            lon = fixData.lon,
+                            alt = fixData.alt,
+                            speed = fixData.speed,
+                            heading = fixData.heading,
+                            sats = fixData.sats,
+                            fixType = fixType,
+                            fixTypeComputed = fixTypeComputed,
+                            telemetry = buildTrackTelemetry(fixData),
+                        ),
+                    )
                 }
             }
 
@@ -339,8 +366,14 @@ class TelemetryState(initialStore: TrackStore) {
                     vn = s16(data, from + 1) / 100.0,
                     ve = s16(data, from + 3) / 100.0,
                     vv = s16(data, from + 5) / 100.0,
+                    speedAcc = s16(data, from + 7) / 100.0,
+                    // Betaflight: heading accuracy, tenths of a degree.
+                    trackAcc = s16(data, from + 9) / 10.0,
+                    // Betaflight: height above the GPS ellipsoid, metres.
+                    altEllipsoid = s16(data, from + 11).toDouble(),
                     hAcc = s16(data, from + 13) / 100.0,
                     vAcc = s16(data, from + 15) / 100.0,
+                    reserved = u(data, from + 17),
                     hdop = u(data, from + 18) / 10.0,
                     vdop = u(data, from + 19) / 10.0,
                 )
@@ -363,6 +396,18 @@ class TelemetryState(initialStore: TrackStore) {
     fun snapshotJson(): String = synchronized(lock) {
         buildSnapshot().toString()
     }
+
+    private fun buildTrackTelemetry(gpsData: Gps): JSONObject = JSONObject()
+        .put("gps", gpsData.toJson())
+        .put("gps_ext", gpsExt?.toJson() ?: JSONObject.NULL)
+        .put("link", link?.toJson() ?: JSONObject.NULL)
+        .put("battery", battery?.toJson() ?: JSONObject.NULL)
+        .put("attitude", attitude?.toJson() ?: JSONObject.NULL)
+        .put("baro", baro?.toJson() ?: JSONObject.NULL)
+        .put("vario", vario ?: JSONObject.NULL)
+        .put("flight_mode", flightMode ?: JSONObject.NULL)
+        .put("device", device ?: JSONObject.NULL)
+        .put("gps_time", gpsTime ?: JSONObject.NULL)
 
     private fun buildSnapshot(): JSONObject {
         val now = System.currentTimeMillis()

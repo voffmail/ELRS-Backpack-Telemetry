@@ -98,7 +98,10 @@
             color: #0b0f14; font-size: 9px; line-height: 1.15; word-break: break-all;
             display: flex; align-items: center; justify-content: center; }
   .qrCode svg { display: block; width: 100%; height: 100%; }
-  .gpsGrid, .gpsGrid3 { margin-top: 8px; }
+  .gpsGrid, .gpsGrid3, .gpsGrid4 { margin-top: 8px; }
+  .gpsGrid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .gpsNote { margin-top: 8px; padding: 7px 9px; border: 1px solid #30363d; border-radius: 8px;
+             background: rgba(88,166,255,.06); color: #9da7b3; font-size: 11px; line-height: 1.4; }
   .trackPanel { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 7;
                 padding: 0; border: 1px solid #30363d; border-radius: 12px;
                 background: rgba(11,15,20,.88); backdrop-filter: blur(6px); }
@@ -115,7 +118,7 @@
   .trackActions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .trackSelect { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px;
                  padding: 5px 8px; font-size: 12px; max-width: 220px; }
-  #trackSelect { min-width: 0; flex: 1 1 auto; }
+  #trackSelect { min-width: 0; flex: 1 1 auto; width: auto; max-width: none; }
   .trackRange { flex: 1; min-width: 60px; accent-color: #3fb950; }
   .trackStatus { color: #9da7b3; font-size: 12px; font-variant-numeric: tabular-nums; margin-left: auto; }
   .trackTime { color: #9da7b3; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -149,6 +152,11 @@
   .guideList { margin: 0 0 0 18px; padding: 0; color: #c9d1d9; font-size: 13px; line-height: 1.5; }
   .guideList li { margin-bottom: 5px; }
   .guideNote { color: #9da7b3; font-size: 12px; line-height: 1.45; margin-top: 6px; }
+  .guideDetails { margin-top: 10px; padding: 8px 10px; border: 1px solid #1f2630;
+                  border-radius: 10px; background: #0b0f14; }
+  .guideDetails summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #e6edf3; }
+  .guideDetails .guideList { margin-top: 8px; }
+  .guideDetails .guideLink { display: inline-block; margin-top: 8px; }
   .supportCard { grid-column: 1 / -1; padding: 0; }
   .supportLink { display: block; padding: 14px 16px; color: #c9d1d9; text-decoration: none;
                  font-size: 13px; line-height: 1.45; border-radius: 14px; }
@@ -156,18 +164,76 @@
   .supportChannel { color: #3fb950; font-weight: 600; }
   #mapInfo { bottom: 56px; }
   .mapBar { position: absolute; left: 12px; top: 12px; z-index: 5; display: flex; flex-wrap: wrap;
-            align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #30363d;
-            border-radius: 10px; background: rgba(11,15,20,.82); backdrop-filter: blur(6px); }
+            align-items: center; gap: 8px; height: 32px; padding: 0 9px; box-sizing: border-box;
+            border: 1px solid #30363d; border-radius: 10px;
+            background: rgba(11,15,20,.82); backdrop-filter: blur(6px); }
   .mapToggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c9d1d9; }
   .mapBtn { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px;
             padding: 5px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
   .mapBtn:hover { border-color: #3fb950; }
+  .closeCard { grid-column: 1 / -1; padding: 10px; }
+  .closeCard .closeBtn { width: 100%; padding: 12px; font-size: 14px; color: #f85149;
+                         border-color: #6e2c2c; background: rgba(248,81,73,.06); }
+  .closeCard .closeBtn:hover { border-color: #f85149; background: rgba(248,81,73,.12); }
   #mapStatus { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); z-index: 6;
                padding: 6px 12px; border-radius: 999px; border: 1px solid #6e2c2c;
                background: rgba(11,15,20,.9); color: #f85149; font-size: 12px; white-space: nowrap; }
   #mapInfo { position: absolute; left: 12px; bottom: 12px; z-index: 5; padding: 6px 10px;
              border: 1px solid #30363d; border-radius: 10px; background: rgba(11,15,20,.82);
              color: #9da7b3; font-size: 12px; font-variant-numeric: tabular-nums; }
+  #mapSats { position: absolute; right: 58px; top: 12px; z-index: 6; display: flex;
+             align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid #30363d;
+             border-radius: 10px; background: rgba(11,15,20,.86); backdrop-filter: blur(6px);
+             color: #8b949e; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #mapSats svg { width: 18px; height: 18px; display: block; }
+  #mapSats.ok { color: #3fb950; border-color: #238636; }
+  #mapSats.warn { color: #d29922; border-color: #9e6a03; }
+  #mapSats.bad { color: #f85149; border-color: #6e2c2c; }
+  #mapSats.unknown { color: #8b949e; }
+  .trackPopup .maplibregl-popup-content { background: rgba(11,15,20,.96); color: #e6edf3;
+             border: 1px solid #30363d; border-radius: 8px; padding: 5px 9px;
+             font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .trackPopup .maplibregl-popup-tip { border-top-color: rgba(11,15,20,.96); }
+  .helpParam { cursor: help; -webkit-tap-highlight-color: transparent; outline: none; }
+  .firmwareBadge { grid-column: 1 / -1; max-width: 520px; margin: 0 auto 10px; padding: 0;
+                   border: 0; border-radius: 0; background: transparent;
+                   color: #c9d1d9; font-size: 16.5px; line-height: 1.3; letter-spacing: 0;
+                   text-align: center; }
+  .helpOverlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center;
+                 justify-content: center; padding: 20px; background: rgba(4,8,12,.62);
+                 backdrop-filter: blur(3px); }
+  .helpCard { position: relative; width: min(440px, 100%); max-height: 80vh; overflow: auto;
+              padding: 20px 20px 18px; border: 1px solid #30363d; border-radius: 18px;
+              background: linear-gradient(180deg, #141b24, #0f151d);
+              box-shadow: 0 24px 70px rgba(0,0,0,.55); animation: helpIn .16s ease-out; }
+  .helpCard::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px;
+                      border-radius: 18px 18px 0 0;
+                      background: linear-gradient(90deg, #3fb950, #58a6ff); opacity: .8; }
+  .helpKicker { font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+                color: #7d8590; margin: 0 34px 6px 0; }
+  .helpTitle { font-size: 20px; line-height: 1.25; font-weight: 650; color: #e6edf3;
+               margin: 0 34px 9px 0; }
+  .helpText { font-size: 14px; line-height: 1.55; color: #c9d1d9; white-space: pre-line; }
+  .helpClose { position: absolute; top: 10px; right: 12px; width: 30px; height: 30px;
+               border: 1px solid #30363d; border-radius: 9px; background: #11161d;
+               color: #9da7b3; font: 20px/1 system-ui, sans-serif; cursor: pointer; }
+  .helpClose:hover { color: #e6edf3; border-color: #f85149; }
+  @keyframes helpIn { from { opacity: 0; transform: translateY(10px) scale(.98); }
+                      to { opacity: 1; transform: translateY(0) scale(1); } }
+  .pointCard { width: min(620px, 100%); }
+  .pointBody { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .pointSection { padding: 10px 12px; border: 1px solid #26303c; border-radius: 12px;
+                  background: rgba(255,255,255,.015); min-width: 0; }
+  .pointSection h4 { margin: 0 0 7px; font-size: 12px; font-weight: 650; color: #58a6ff;
+                     letter-spacing: .03em; }
+  .pointRow { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+              padding: 3px 0; border-bottom: 1px solid rgba(48,54,61,.55); font-size: 12px; }
+  .pointRow:last-child { border-bottom: 0; }
+  .pointRow > span:first-child { color: #8b949e; min-width: 0; }
+  .pointRow > span:last-child { color: #e6edf3; text-align: right; font-variant-numeric: tabular-nums;
+                                overflow-wrap: anywhere; }
+  @media (max-width: 620px) { .pointBody { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) { .gpsGrid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { header { padding: 5px 8px; gap: 3px; } .brand { font-size: 13px; } .brandSub { font-size: 8px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 4px; border-radius: 5px; } .headRight { gap: 4px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 4px; padding: 0; } .tab { padding: 4.5px 9px; font-size: 15px; border-radius: 9px; } #mapPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
   @media (max-width: 330px) { .tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-top: 2px; } }
 </style>
@@ -189,76 +255,90 @@
   </select>
 </header>
 <main id="telemetryPage">
+  <div id="firmwareBadge" class="firmwareBadge" hidden></div>
   <section class="card">
     <h2 data-i18n="card_link">Link</h2>
-    <div class="row"><span data-i18n="lq_uplink">Uplink LQ</span><span class="lq" id="lqUp">—</span></div>
+    <div class="row helpParam" data-help="lq_uplink"><span data-i18n="lq_uplink">Uplink LQ</span><span class="lq" id="lqUp">—</span></div>
     <div class="track"><div class="fill" id="barUp"></div></div>
     <div class="grid2">
-      <div><small data-i18n="rssi">RSSI</small><div class="val" id="rssiUp">—</div></div>
-      <div><small data-i18n="snr">SNR</small><div class="val" id="snrUp">—</div></div>
+      <div class="helpParam" data-help="rssi"><small data-i18n="rssi">RSSI</small><div class="val" id="rssiUp">—</div></div>
+      <div class="helpParam" data-help="snr"><small data-i18n="snr">SNR</small><div class="val" id="snrUp">—</div></div>
     </div>
-    <div class="row"><span data-i18n="lq_downlink">Downlink LQ</span><span class="lq" id="lqDn">—</span></div>
+    <div class="row helpParam" data-help="lq_downlink"><span data-i18n="lq_downlink">Downlink LQ</span><span class="lq" id="lqDn">—</span></div>
     <div class="track"><div class="fill" id="barDn"></div></div>
     <div class="grid2">
-      <div><small data-i18n="rssi">RSSI</small><div class="val" id="rssiDn">—</div></div>
-      <div><small data-i18n="snr">SNR</small><div class="val" id="snrDn">—</div></div>
+      <div class="helpParam" data-help="rssi"><small data-i18n="rssi">RSSI</small><div class="val" id="rssiDn">—</div></div>
+      <div class="helpParam" data-help="snr"><small data-i18n="snr">SNR</small><div class="val" id="snrDn">—</div></div>
     </div>
     <div class="grid2">
-      <div><small data-i18n="tx_power">TX power</small><div class="val" id="txp">—</div></div>
-      <div><small data-i18n="antenna">Antenna</small><div class="val" id="ant">—</div></div>
+      <div class="helpParam" data-help="tx_power"><small data-i18n="tx_power">TX power</small><div class="val" id="txp">—</div></div>
+      <div class="helpParam" data-help="antenna"><small data-i18n="antenna">Antenna</small><div class="val" id="ant">—</div></div>
     </div>
     <div class="grid2">
-      <div><small data-i18n="band">Band</small><div class="val" id="band">—</div></div>
-      <div><small data-i18n="packet_rate">Packet rate</small><div class="val" id="pktRate">—</div></div>
+      <div class="helpParam" data-help="band"><small data-i18n="band">Band</small><div class="val" id="band">—</div></div>
+      <div class="helpParam" data-help="packet_rate"><small data-i18n="packet_rate">Packet rate</small><div class="val" id="pktRate">—</div></div>
     </div>
-    <div class="row"><span data-i18n="range">Range</span><span class="lq" id="rangePct">—</span></div>
+    <div class="row helpParam" data-help="range"><span data-i18n="range">Range</span><span class="lq" id="rangePct">—</span></div>
     <div class="track"><div class="fill" id="barRange"></div></div>
   </section>
 
   <section class="card">
     <h2 data-i18n="card_battery">Battery</h2>
-    <div class="big"><span id="volt">—</span> <small data-i18n="u_v">V</small></div>
+    <div class="big helpParam" data-help="voltage"><span id="volt">—</span> <small data-i18n="u_v">V</small></div>
     <div class="grid2">
-      <div><small data-i18n="current">Current</small><div class="val" id="curr">—</div></div>
-      <div><small data-i18n="capacity">Capacity</small><div class="val" id="cap">—</div></div>
+      <div class="helpParam" data-help="current"><small data-i18n="current">Current</small><div class="val" id="curr">—</div></div>
+      <div class="helpParam" data-help="capacity"><small data-i18n="capacity">Capacity</small><div class="val" id="cap">—</div></div>
     </div>
-    <div class="row"><span data-i18n="remaining">Remaining</span><span class="lq" id="remTxt">—</span></div>
+    <div class="row helpParam" data-help="remaining"><span data-i18n="remaining">Remaining</span><span class="lq" id="remTxt">—</span></div>
     <div class="track"><div class="fill" id="barRem"></div></div>
   </section>
 
   <section class="card">
     <h2 data-i18n="card_gps">GPS</h2>
     <div class="gpsHead">
-      <div class="gpsSats"><span id="sats">—</span><small data-i18n="satellites">satellites</small></div>
+      <div class="gpsSats helpParam" data-help="satellites"><span id="sats">—</span><small data-i18n="satellites">satellites</small></div>
       <div id="gpsQrWrap" class="qrBox" hidden role="button" tabindex="0"><div id="gpsQr" class="qrCode"></div></div>
     </div>
     <div class="grid2 gpsGrid">
-      <div><small data-i18n="latitude">Latitude</small><div class="val" id="lat">—</div></div>
-      <div><small data-i18n="longitude">Longitude</small><div class="val" id="lon">—</div></div>
-      <div><small data-i18n="altitude">Altitude</small><div class="val" id="alt">—</div></div>
-      <div><small data-i18n="speed">Speed</small><div class="val" id="spd">—</div></div>
+      <div class="helpParam" data-help="latitude"><small data-i18n="latitude">Latitude</small><div class="val" id="lat">—</div></div>
+      <div class="helpParam" data-help="longitude"><small data-i18n="longitude">Longitude</small><div class="val" id="lon">—</div></div>
+      <div class="helpParam" data-help="altitude"><small data-i18n="altitude">Altitude</small><div class="val" id="alt">—</div></div>
+      <div class="helpParam" data-help="speed"><small data-i18n="speed">Speed</small><div class="val" id="spd">—</div></div>
     </div>
     <div class="grid3 gpsGrid3">
-      <div><small data-i18n="heading">Heading</small><div class="val" id="hdg">—</div></div>
-      <div><small data-i18n="fix">Fix</small><div class="val" id="fixType">—</div></div>
-      <div><small data-i18n="hdop">HDOP</small><div class="val" id="hdop">—</div></div>
+      <div class="helpParam" data-help="heading"><small data-i18n="heading">Heading</small><div class="val" id="hdg">—</div></div>
+      <div><small data-i18n="fix_type">fix_type</small><div class="val" id="extFixType">—</div></div>
+      <div class="helpParam" data-help="hdop"><small data-i18n="hdop">HDOP</small><div class="val" id="hdop">—</div></div>
     </div>
+    <div class="grid4 gpsGrid4">
+      <div class="helpParam" data-help="vn"><small data-i18n="vn">Vn</small><div class="val" id="vn">—</div></div>
+      <div class="helpParam" data-help="ve"><small data-i18n="ve">Ve</small><div class="val" id="ve">—</div></div>
+      <div class="helpParam" data-help="vv"><small data-i18n="vv">Vv</small><div class="val" id="vv">—</div></div>
+      <div class="helpParam" data-help="speed_acc"><small data-i18n="speed_acc">Speed accuracy</small><div class="val" id="speedAcc">—</div></div>
+      <div class="helpParam" data-help="track_acc"><small data-i18n="track_acc">Heading accuracy</small><div class="val" id="trackAcc">—</div></div>
+      <div class="helpParam" data-help="alt_ellipsoid"><small data-i18n="alt_ellipsoid">Ellipsoid altitude</small><div class="val" id="altEllipsoid">—</div></div>
+      <div class="helpParam" data-help="h_acc"><small data-i18n="h_acc">H accuracy</small><div class="val" id="hAcc">—</div></div>
+      <div class="helpParam" data-help="v_acc"><small data-i18n="v_acc">V accuracy</small><div class="val" id="vAcc">—</div></div>
+      <div class="helpParam" data-help="reserved"><small data-i18n="reserved">Reserved byte 0x06</small><div class="val" id="extReserved">—</div></div>
+      <div class="helpParam" data-help="vdop"><small data-i18n="vdop">VDOP</small><div class="val" id="vdop">—</div></div>
+    </div>
+    <div id="fixTypeNote" class="gpsNote" hidden></div>
     <div class="row"><button id="showMap" class="mapBtn" style="display:none" data-i18n="show_on_map">Show on map</button></div>
   </section>
 
   <section class="card">
     <h2 data-i18n="card_flight">Flight</h2>
     <div class="modeRow">
-      <div class="big" id="flightMode">—</div>
+      <div class="big helpParam" data-help="flight_mode" id="flightMode">—</div>
       <div class="modeNote" id="flightNote"></div>
     </div>
     <div class="grid2">
-      <div><small data-i18n="baro_alt">Baro altitude</small><div class="val" id="baroAlt">—</div></div>
-      <div><small data-i18n="vario">Vario</small><div class="val" id="vario">—</div></div>
+      <div class="helpParam" data-help="baro_alt"><small id="baroAltLabel" data-i18n="baro_alt">Baro altitude</small><div class="val" id="baroAlt">—</div></div>
+      <div class="helpParam" data-help="vario"><small data-i18n="vario">Vario</small><div class="val" id="vario">—</div></div>
     </div>
-    <div class="grid2">
-      <div><small data-i18n="gps_time">GPS time</small><div class="val" id="gpsTime">—</div></div>
-      <div><small data-i18n="device">Device</small><div class="val" id="device">—</div></div>
+    <div class="grid2" id="flightInfoRow">
+      <div class="helpParam" data-help="gps_time" id="gpsTimeCell"><small data-i18n="gps_time">GPS time</small><div class="val" id="gpsTime">—</div></div>
+      <div class="helpParam" data-help="device" id="deviceCell"><small data-i18n="device">Device</small><div class="val" id="device">—</div></div>
     </div>
   </section>
 
@@ -266,19 +346,19 @@
     <h2 data-i18n="card_attitude">Attitude</h2>
     <div class="horizon"><div class="inner" id="horizon"></div><div class="cross"></div></div>
     <div class="grid3">
-      <div><small data-i18n="pitch">Pitch</small><div class="val" id="pitch">—</div></div>
-      <div><small data-i18n="roll">Roll</small><div class="val" id="roll">—</div></div>
-      <div><small data-i18n="yaw">Yaw</small><div class="val" id="yaw">—</div></div>
+      <div class="helpParam" data-help="pitch"><small data-i18n="pitch">Pitch</small><div class="val" id="pitch">—</div></div>
+      <div class="helpParam" data-help="roll"><small data-i18n="roll">Roll</small><div class="val" id="roll">—</div></div>
+      <div class="helpParam" data-help="yaw"><small data-i18n="yaw">Yaw</small><div class="val" id="yaw">—</div></div>
     </div>
   </section>
 
   <section class="card wide">
     <h2 data-i18n="card_rx">Reception</h2>
     <div class="grid4">
-      <div><small data-i18n="packets_per_sec">Packets/s</small><div class="val" id="pps">—</div></div>
-      <div><small data-i18n="packets_total">Total packets</small><div class="val" id="total">—</div></div>
-      <div><small data-i18n="data_age">Data age</small><div class="val" id="age">—</div></div>
-      <div><small data-i18n="frame_types">Frame types</small><div class="val" id="typesCount">—</div></div>
+      <div class="helpParam" data-help="packets_per_sec"><small data-i18n="packets_per_sec">Packets/s</small><div class="val" id="pps">—</div></div>
+      <div class="helpParam" data-help="packets_total"><small data-i18n="packets_total">Total packets</small><div class="val" id="total">—</div></div>
+      <div class="helpParam" data-help="data_age"><small data-i18n="data_age">Data age</small><div class="val" id="age">—</div></div>
+      <div class="helpParam" data-help="frame_types"><small data-i18n="frame_types">Frame types</small><div class="val" id="typesCount">—</div></div>
     </div>
     <details><summary data-i18n="crsf_frame_types">CRSF frame types</summary>
       <table class="frames">
@@ -310,6 +390,22 @@
       <div class="guideNote" data-i18n="idle_release_note">0 or empty — never release locks.</div>
     </div>
     <div class="settingsGroup">
+      <label class="settingsRow" for="autoRecord3d">
+        <input id="autoRecord3d" type="checkbox">
+        <span data-i18n="auto_record_3d">Auto-record on 3D fix</span>
+      </label>
+      <div class="guideNote" data-i18n="auto_record_3d_note">Start a new track when a 3D fix appears. Off by default.</div>
+    </div>
+    <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="auto_stop_recording">Stop recording when telemetry is lost (s)</div>
+      <div class="settingsRow">
+        <input id="autoStopRecordingSec" type="number" min="0" max="3600" inputmode="numeric" placeholder="10">
+        <button id="autoStopRecordingSave" class="mapBtn" data-i18n="apply">Apply</button>
+        <span id="autoStopRecordingMsg" class="settingsMsg"></span>
+      </div>
+      <div class="guideNote" data-i18n="auto_stop_recording_note">0 — never stop automatically.</div>
+    </div>
+    <div class="settingsGroup">
       <div class="settingsLabel" data-i18n="tracks_location">Track storage</div>
       <div id="tracksLocation" class="settingsValue">—</div>
       <div class="settingsRow">
@@ -336,17 +432,39 @@
     <div class="guideBody">
       <b data-i18n="guide_backpack">ELRS backpack</b>
       <ol class="guideList">
-        <li data-i18n="guide_backpack_1">On the radio open ELRS Lua → Backpack → Telemetry → WiFi (not “WiFi Connectivity”).</li>
-        <li data-i18n="guide_backpack_2">Connect the phone to the same network as the backpack: home Wi-Fi/hotspot or the “ExpressLRS TX Backpack” access point (password expresslrs).</li>
-        <li data-i18n="guide_backpack_3">The backpack must send telemetry to the UDP port shown in Settings (14550 by default).</li>
+        <li data-i18n="guide_backpack_1">You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).</li>
+        <li data-i18n="guide_backpack_2">In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.</li>
+        <li data-i18n="guide_backpack_3">Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.</li>
+        <li data-i18n="guide_backpack_4">Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.</li>
       </ol>
+      <b data-i18n="guide_problems">Possible problems</b>
+      <ul class="guideList">
+        <li data-i18n="guide_problem_nodata_android" data-platform="android">No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.</li>
+        <li data-i18n="guide_problem_nodata_python" data-platform="python">No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.</li>
+        <li data-i18n="guide_problem_port_android" data-platform="android">Port 14550 busy? Change it in Settings → UDP port.</li>
+        <li data-i18n="guide_problem_port_python" data-platform="python">Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port &lt;port&gt;.</li>
+        <li data-i18n="guide_problem_vendor">Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.</li>
+      </ul>
+      <details class="guideDetails">
+        <summary data-i18n="guide_flash_title">Backpack flashing</summary>
+        <ul class="guideList">
+          <li data-i18n="guide_flash_1">Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.</li>
+          <li data-i18n="guide_flash_2">The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.</li>
+          <li data-i18n="guide_flash_3">The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.</li>
+          <li data-i18n="guide_flash_4">Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.</li>
+          <li data-i18n="guide_flash_5">Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.</li>
+        </ul>
+        <a class="guideLink" data-i18n="guide_flash_link" href="https://www.expresslrs.org/hardware/backpack/backpack-tx-setup/" target="_blank" rel="noopener noreferrer">Tx Backpack Setup — ExpressLRS</a>
+      </details>
       <b data-i18n="guide_app">App</b>
       <ol class="guideList">
         <li data-i18n="guide_app_1">Allow notifications and battery exemption — otherwise Android may suspend reception in the background.</li>
         <li data-i18n="guide_app_2">Keep the app running; reception works in a foreground service even with the screen locked.</li>
         <li data-i18n="guide_app_3">Change the UDP port in Settings if needed; the listener restarts automatically.</li>
         <li data-i18n="guide_app_4">Choose a folder for tracks; existing tracks are copied to it.</li>
-        <li data-i18n="guide_app_5">No data? Check the network, UDP port, firewall and that the backpack is in Telemetry WiFi mode.</li>
+        <li data-i18n="guide_app_background" data-platform="android">The app keeps receiving in the background: the Back button only hides the window.</li>
+        <li data-i18n="guide_app_stop_android" data-platform="android">To stop reception completely, press “Stop” in the notification.</li>
+        <li data-i18n="guide_app_stop_python" data-platform="python">To stop the viewer, press Ctrl+C in the terminal.</li>
       </ol>
     </div>
   </details>
@@ -357,7 +475,27 @@
       <span class="supportChannel">Рассказы ветра</span>
     </a>
   </section>
+
+  <section class="card closeCard" data-platform="android">
+    <button id="closeApp" class="mapBtn closeBtn" data-i18n="close_app">Close app</button>
+  </section>
 </main>
+<div id="helpOverlay" class="helpOverlay" hidden>
+  <div class="helpCard" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <button id="helpClose" class="helpClose" type="button" aria-label="Close">×</button>
+    <div class="helpKicker">ELRS Backpack</div>
+    <div id="helpTitle" class="helpTitle"></div>
+    <div id="helpText" class="helpText"></div>
+  </div>
+</div>
+<div id="trackPointOverlay" class="helpOverlay" hidden>
+  <div class="helpCard pointCard" role="dialog" aria-modal="true" aria-labelledby="trackPointTitle">
+    <button id="trackPointClose" class="helpClose" type="button" aria-label="Close">×</button>
+    <div class="helpKicker" data-i18n="track_point">Track point</div>
+    <div id="trackPointTitle" class="helpTitle"></div>
+    <div id="trackPointBody" class="pointBody"></div>
+  </div>
+</div>
 <section id="mapPage" hidden>
   <div class="mapWrap">
     <div id="map"></div>
@@ -365,8 +503,12 @@
       <label class="mapToggle"><input type="checkbox" id="followDrone" checked> <span data-i18n="follow">Follow</span></label>
       <button id="centerMap" class="mapBtn" data-i18n="center">Center</button>
     </div>
-    <div id="mapStatus" hidden data-i18n="no_gps">No GPS fix</div>
+    <div id="mapStatus" hidden data-i18n="no_data">no data</div>
     <div id="mapInfo">—</div>
+    <div id="mapSats" hidden aria-label="satellites">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5a17 17 0 0 1 17-17"/><path d="M3.5 20.5l8.5-8.5"/><circle cx="12" cy="12" r="1.5"/><path d="M17 7l3-3"/></svg>
+      <span id="mapSatsValue">—</span>
+    </div>
     <div id="trackPanel" class="trackPanel collapsed">
       <div class="trackHead">
         <button id="trackToggle" class="trackHeader" aria-expanded="false">
@@ -375,9 +517,9 @@
         </button>
         <button id="recordBtn" class="mapBtn">
           <svg class="recIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>
-          <span id="recordLabel" data-i18n="record">Record</span>
+          <span id="recordLabel" data-i18n="record">Start recording</span>
         </button>
-        <select id="trackSelect" class="trackSelect"></select>
+        <select id="trackSelect" class="trackSelect" hidden></select>
         <span id="recordStatus" class="trackStatus"></span>
       </div>
       <div id="trackBody" class="trackBody">
@@ -439,6 +581,10 @@ function applySettingsData(data) {
   }
   const idle = $("idleReleaseMin");
   if (idle) idle.value = data.idle_release_min ?? "";
+  const autoRecord = $("autoRecord3d");
+  if (autoRecord) autoRecord.checked = !!data.auto_record_3d;
+  const autoStop = $("autoStopRecordingSec");
+  if (autoStop) autoStop.value = data.auto_stop_recording_sec ?? 10;
 }
 
 function setSettingsMsg(id, text, isError) {
@@ -539,8 +685,8 @@ const I18N = {
     tab_map: "Map",
     follow: "Follow",
     track: "Track",
-    record: "Record",
-    stop: "Stop",
+    record: "Start recording",
+    stop: "Stop recording",
     recording: "Recording",
     load: "Load",
     delete: "Delete",
@@ -548,10 +694,22 @@ const I18N = {
     pause: "Pause",
     points: "pts",
     no_tracks: "No tracks",
+    no_track: "No track selected",
     delete_confirm: "Delete this track?",
     center: "Center",
     no_gps: "No GPS fix",
+    firmware_badge_prefix: "FC firmware: ",
     map_load_error: "Failed to load map",
+    voltage: "Battery voltage",
+    flight_mode: "Flight mode",
+    close: "Close",
+    track_point: "Track point",
+    point_time: "Time",
+    rssi_1: "RSSI 1",
+    rssi_2: "RSSI 2",
+    rssi_down: "RSSI downlink",
+    snr_down: "SNR downlink",
+    point_baro_vario: "Baro / Vario",
 
     settings: "Settings",
     udp_port: "UDP listen port",
@@ -561,6 +719,10 @@ const I18N = {
     idle_release_note: "0 or empty — never release locks.",
     idle_release_saved: "Power saving timeout updated",
     idle_release_error: "Could not update timeout",
+    auto_record_3d: "Auto-record on 3D fix",
+    auto_record_3d_note: "Start a new track when a 3D fix appears. Off by default.",
+    auto_stop_recording: "Stop recording when telemetry is lost (s)",
+    auto_stop_recording_note: "0 — never stop automatically.",
     tracks_location: "Track storage",
     choose_folder: "Choose folder",
     reset_folder: "Reset",
@@ -570,6 +732,8 @@ const I18N = {
     app_settings: "App settings",
     permissions_note: "Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.",
     support_text: "You can thank the author for the tokens and time spent on the Rutube channel",
+    close_app: "Close app",
+    close_recording_confirm: "Track recording is in progress. If you close the app, recording will be interrupted and will not be saved. Close?",
     permission_notifications: "Notifications",
     permission_battery: "Unrestricted background (battery)",
     permission_wifi: "Wi-Fi / multicast / wake lock",
@@ -583,15 +747,31 @@ const I18N = {
     udp_port_error: "Could not change port",
     guide_title: "Quick setup guide",
     guide_backpack: "ELRS backpack",
-    guide_backpack_1: "On the radio open ELRS Lua → Backpack → Telemetry → WiFi (not “WiFi Connectivity”).",
-    guide_backpack_2: "Connect the phone to the same network as the backpack: home Wi-Fi/hotspot or the “ExpressLRS TX Backpack” access point (password expresslrs).",
-    guide_backpack_3: "The backpack must send telemetry to the UDP port shown in Settings (14550 by default).",
+    guide_backpack_1: "You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).",
+    guide_backpack_2: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.",
+    guide_backpack_3: "Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.",
+    guide_backpack_4: "Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.",
+    guide_problems: "Possible problems",
+    guide_problem_nodata_android: "No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.",
+    guide_problem_nodata_python: "No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.",
+    guide_problem_port_android: "Port 14550 busy? Change it in Settings → UDP port.",
+    guide_problem_port_python: "Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port <port>.",
+    guide_problem_vendor: "Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.",
+    guide_flash_title: "Backpack flashing",
+    guide_flash_1: "Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.",
+    guide_flash_3: "The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.",
+    guide_flash_4: "Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.",
+    guide_flash_5: "Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.",
+    guide_flash_link: "Tx Backpack Setup — ExpressLRS",
     guide_app: "App",
     guide_app_1: "Allow notifications and battery exemption — otherwise Android may suspend reception in the background.",
     guide_app_2: "Keep the app running; reception works in a foreground service even with the screen locked.",
     guide_app_3: "Change the UDP port in Settings if needed; the listener restarts automatically.",
     guide_app_4: "Choose a folder for tracks; existing tracks are copied to it.",
-    guide_app_5: "No data? Check the network, UDP port, firewall and that the backpack is in Telemetry WiFi mode.",
+    guide_app_background: "The app keeps receiving in the background: the Back button only hides the window.",
+    guide_app_stop_android: "To stop reception and close the app, press “Close app” at the bottom of the Telemetry tab (or “Stop” in the notification).",
+    guide_app_stop_python: "To stop the viewer, press Ctrl+C in the terminal.",
     save: "Save",
     card_battery: "Battery",
     current: "Current",
@@ -607,10 +787,26 @@ const I18N = {
     fix: "Fix",
     hdop: "HDOP",
     show_on_map: "Show on map",
-    fix_none: "none",
-    fix_type: "type {n}",
+    fix_3d: "3D",
+    fix_2d: "2D",
+    fix_inertial: "inertial",
+    fix_none: "no fix",
+    calculated: "calculated",
+    fix_fallback_note: "No 0x06 frame: 3D/2D is computed from satellites (≥4 → 3D, ≥3 → 2D).",
+    fix_type: "fix_type",
+    vn: "Vn",
+    ve: "Ve",
+    vv: "Vv",
+    speed_acc: "Speed accuracy",
+    track_acc: "Heading accuracy",
+    alt_ellipsoid: "Ellipsoid altitude",
+    h_acc: "H accuracy",
+    v_acc: "V accuracy",
+    reserved: "Reserved byte 0x06",
+    vdop: "VDOP",
     card_flight: "Flight",
     baro_alt: "Baro altitude",
+    baro_alt_above_home: "Baro altitude (above home)",
     vario: "Vario",
     gps_time: "GPS time",
     device: "Device",
@@ -687,8 +883,8 @@ const I18N = {
     status_no_server: "нет связи с сервером",
     open_in_maps: "Открыть в приложении навигации",
     card_link: "Линк",
-    lq_uplink: "LQ вверх",
-    lq_downlink: "LQ вниз",
+    lq_uplink: "LQ up",
+    lq_downlink: "LQ down",
     rssi: "RSSI",
     snr: "SNR",
     tx_power: "Мощность TX",
@@ -701,8 +897,8 @@ const I18N = {
     tab_map: "Карта",
     follow: "Следовать",
     track: "Трек",
-    record: "Запись",
-    stop: "Стоп",
+    record: "Начать запись",
+    stop: "Стоп записи",
     recording: "Запись",
     load: "Загрузить",
     delete: "Удалить",
@@ -710,10 +906,22 @@ const I18N = {
     pause: "Пауза",
     points: "точек",
     no_tracks: "Нет треков",
+    no_track: "Трек не выбран",
     delete_confirm: "Удалить этот трек?",
     center: "Центрировать",
     no_gps: "Нет GPS-фикса",
+    firmware_badge_prefix: "Прошивка ПК: ",
     map_load_error: "Не удалось загрузить карту",
+    voltage: "Напряжение",
+    flight_mode: "Режим полёта",
+    close: "Закрыть",
+    track_point: "Точка трека",
+    point_time: "Время",
+    rssi_1: "RSSI 1",
+    rssi_2: "RSSI 2",
+    rssi_down: "RSSI downlink",
+    snr_down: "SNR downlink",
+    point_baro_vario: "Баро / Варио",
 
     settings: "Настройки",
     udp_port: "UDP-порт прослушивания",
@@ -723,6 +931,10 @@ const I18N = {
     idle_release_note: "0 или пусто — никогда не отпускать блокировки.",
     idle_release_saved: "Таймаут энергосбережения обновлён",
     idle_release_error: "Не удалось изменить таймаут",
+    auto_record_3d: "Автозапись при появлении 3D-фикса",
+    auto_record_3d_note: "Начинать новый трек при появлении 3D-фикса. По умолчанию выключено.",
+    auto_stop_recording: "Останавливать запись при потере телеметрии, с",
+    auto_stop_recording_note: "0 — никогда не останавливать автоматически.",
     tracks_location: "Расположение треков",
     choose_folder: "Выбрать папку",
     reset_folder: "Сбросить",
@@ -732,6 +944,8 @@ const I18N = {
     app_settings: "Настройки приложения",
     permissions_note: "Разрешения уровня установки выдаются автоматически; уведомления и исключение из оптимизации батареи запрашиваются при первом запуске.",
     support_text: "Вы можете отблагодарить автора за потраченные токены и время на Rutube-канале",
+    close_app: "Закрыть приложение",
+    close_recording_confirm: "Идёт запись трека. Если закрыть приложение, запись будет прервана и не сохранится. Закрыть?",
     permission_notifications: "Уведомления",
     permission_battery: "Работа в фоне без ограничений (батарея)",
     permission_wifi: "Wi-Fi / multicast / wake lock",
@@ -745,15 +959,31 @@ const I18N = {
     udp_port_error: "Не удалось изменить порт",
     guide_title: "Краткое руководство",
     guide_backpack: "Бэкпак ELRS",
-    guide_backpack_1: "На аппаратуре откройте ELRS Lua → Backpack → Telemetry → WiFi (не «WiFi Connectivity»).",
-    guide_backpack_2: "Подключите телефон к той же сети, что и бэкпак: домашний Wi-Fi/хот-спот или точка «ExpressLRS TX Backpack» (пароль expresslrs).",
-    guide_backpack_3: "Бэкпак должен отправлять телеметрию на UDP-порт из настроек (по умолчанию 14550).",
+    guide_backpack_1: "Нужен TX-бэкпак ELRS с поддержкой Wi-Fi-телеметрии (Backpack 1.5.7+).",
+    guide_backpack_2: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите значение «WiFi». Не используйте пункт «WiFi Connectivity» — это режим настройки передатчика, а не его модуля Backpack.",
+    guide_backpack_3: "Подключите телефон/ПК к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или наоборот — Backpack к мобильной точке доступа смартфона или к той же домашней сети/хот-споту, если бэкпак в неё включён. Цель — чтобы Backpack и приложение оказались в одном сегменте сети. При этом для функциональности карты должен быть доступен интернет.",
+    guide_backpack_4: "Откройте вкладку «Телеметрия» и дождитесь статуса «онлайн · N пак/с» — в «Приёме» должны расти пакеты.",
+    guide_problems: "Возможные проблемы",
+    guide_problem_nodata_android: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, телефон в той же сети, VPN не режет локальный трафик, а порт 14550 не занят другой программой.",
+    guide_problem_nodata_python: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, компьютер в той же сети, firewall не режет UDP, а порт 14550 не занят другой программой.",
+    guide_problem_port_android: "Порт 14550 занят? Смените его в Настройки → UDP-порт.",
+    guide_problem_port_python: "Порт 14550 занят? Запустите вьюер с другим портом: python3 tlm_viewer.py --udp-port <порт>.",
+    guide_problem_vendor: "У некоторых вендоров существует баг нестартующего «ExpressLRS TX Backpack XXXXXX», фикса которого нет в релизах, и нужна прошивка из master.",
+    guide_flash_title: "Прошивка бэкпака",
+    guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi или в меню нет Telemetry → WiFi. Прошивать через ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "Binding Phrase для Wi-Fi-телеметрии не обязательна: вьюер не проверяет UID.",
+    guide_flash_3: "Фраза задаёт UID, который бэкпак использует как адрес ESP-NOW-группы и как суффикс SSID «ExpressLRS TX Backpack XXXXXX». Её указывают для ESP-NOW (VRX/таймер/AAT) и стабильного имени сети; обычно берут ту же фразу, что в ELRS-линке.",
+    guide_flash_4: "Если фразу не задавать, бэкпак возьмёт адрес группы из EEPROM (после бинда от TX-модуля) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs, фраза его не меняет.",
+    guide_flash_5: "При смене фразы меняются UID и SSID — перепрошейте с той же фразой все устройства группы.",
+    guide_flash_link: "Прошивка TX Backpack — ExpressLRS",
     guide_app: "Приложение",
     guide_app_1: "Разрешите уведомления и исключение из оптимизации батареи — иначе Android может приостановить приём в фоне.",
     guide_app_2: "Оставьте приложение запущенным: приём идёт в foreground-сервисе даже при заблокированном экране.",
     guide_app_3: "При необходимости смените UDP-порт в настройках — приём перезапустится автоматически.",
     guide_app_4: "Выберите папку для треков; существующие треки будут скопированы.",
-    guide_app_5: "Нет данных? Проверьте сеть, UDP-порт, firewall и режим Telemetry WiFi на бэкпаке.",
+    guide_app_background: "Приложение принимает данные в фоне: кнопка «Назад» только сворачивает окно.",
+    guide_app_stop_android: "Чтобы остановить приём и закрыть приложение, нажмите «Закрыть приложение» внизу вкладки «Телеметрия» (или «Стоп» в уведомлении).",
+    guide_app_stop_python: "Чтобы завершить вьюер, нажмите Ctrl+C в терминале.",
     save: "Сохранить",
     card_battery: "Батарея",
     current: "Ток",
@@ -769,10 +999,26 @@ const I18N = {
     fix: "Фикс",
     hdop: "HDOP",
     show_on_map: "Показать на карте",
-    fix_none: "нет",
-    fix_type: "тип {n}",
+    fix_3d: "3D",
+    fix_2d: "2D",
+    fix_inertial: "инерционный",
+    fix_none: "нет фикса",
+    calculated: "расчет",
+    fix_fallback_note: "Кадра 0x06 нет: 3D/2D рассчитано по спутникам (≥4 → 3D, ≥3 → 2D).",
+    fix_type: "fix_type",
+    vn: "Vn",
+    ve: "Ve",
+    vv: "Vv",
+    speed_acc: "Точность скорости",
+    track_acc: "Точность курса",
+    alt_ellipsoid: "Высота эллипсоида",
+    h_acc: "H accuracy",
+    v_acc: "V accuracy",
+    reserved: "Резервный байт 0x06",
+    vdop: "VDOP",
     card_flight: "Полёт",
     baro_alt: "Барo высота",
+    baro_alt_above_home: "Барo высота (над точкой взлёта)",
     vario: "Варио",
     gps_time: "GPS время",
     device: "Устройство",
@@ -863,8 +1109,8 @@ const I18N = {
     tab_map: "地图",
     follow: "跟随",
     track: "轨迹",
-    record: "录制",
-    stop: "停止",
+    record: "开始录制",
+    stop: "停止录制",
     recording: "录制中",
     load: "加载",
     delete: "删除",
@@ -872,10 +1118,22 @@ const I18N = {
     pause: "暂停",
     points: "点",
     no_tracks: "暂无轨迹",
+    no_track: "未选择轨迹",
     delete_confirm: "删除此轨迹？",
     center: "居中",
     no_gps: "无 GPS 定位",
+    firmware_badge_prefix: "飞控固件：",
     map_load_error: "地图加载失败",
+    voltage: "电池电压",
+    flight_mode: "飞行模式",
+    close: "关闭",
+    track_point: "轨迹点",
+    point_time: "时间",
+    rssi_1: "RSSI 1",
+    rssi_2: "RSSI 2",
+    rssi_down: "RSSI downlink",
+    snr_down: "SNR downlink",
+    point_baro_vario: "气压 / 升降速度",
 
     settings: "设置",
     udp_port: "UDP 监听端口",
@@ -885,6 +1143,10 @@ const I18N = {
     idle_release_note: "0 或留空 — 永不释放锁。",
     idle_release_saved: "节能超时已更新",
     idle_release_error: "无法更新超时",
+    auto_record_3d: "出现 3D 定位时自动录制",
+    auto_record_3d_note: "出现 3D 定位时开始新轨迹。默认关闭。",
+    auto_stop_recording: "遥测丢失时停止录制（秒）",
+    auto_stop_recording_note: "0 — 永不自动停止。",
     tracks_location: "轨迹存储",
     choose_folder: "选择文件夹",
     reset_folder: "重置",
@@ -894,6 +1156,8 @@ const I18N = {
     app_settings: "应用设置",
     permissions_note: "安装时权限会自动授予；通知和电池优化豁免会在首次启动时请求。",
     support_text: "感谢作者为此花费的 token 和时间，欢迎访问 Rutube 频道",
+    close_app: "关闭应用",
+    close_recording_confirm: "正在录制轨迹。关闭应用将中断录制且不会保存。是否关闭？",
     permission_notifications: "通知",
     permission_battery: "后台无限制（电池）",
     permission_wifi: "Wi-Fi / 多播 / 唤醒锁",
@@ -907,15 +1171,31 @@ const I18N = {
     udp_port_error: "无法更改端口",
     guide_title: "快速设置指南",
     guide_backpack: "ELRS 背包",
-    guide_backpack_1: "在遥控器上打开 ELRS Lua → Backpack → Telemetry → WiFi（不要选“WiFi Connectivity”）。",
-    guide_backpack_2: "将手机连接到与背包相同的网络：家庭 Wi-Fi/热点或“ExpressLRS TX Backpack”接入点（密码 expresslrs）。",
-    guide_backpack_3: "背包必须将遥测发送到设置中的 UDP 端口（默认 14550）。",
+    guide_backpack_1: "需要支持 Wi-Fi 遥测的 ELRS TX 背包（Backpack 1.5.7+）。",
+    guide_backpack_2: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器，而不是它的 Backpack 模块。",
+    guide_backpack_3: "将手机/电脑连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或者反过来把 Backpack 连接到手机的移动热点或同一个家庭网络/热点（如果背包已接入该网络）。目标是让 Backpack 和应用处于同一网段。地图功能需要可用的互联网连接。",
+    guide_backpack_4: "打开“遥测”标签页，等待状态变为“在线 · N 包/秒”——“接收”中的包计数应持续增长。",
+    guide_problems: "可能的问题",
+    guide_problem_nodata_android: "没有数据？检查是否启用了 Telemetry → WiFi，手机是否在同一网络，VPN 是否拦截本地流量，以及 UDP 端口 14550 是否被其他应用占用。",
+    guide_problem_nodata_python: "没有数据？检查是否启用了 Telemetry → WiFi，电脑是否在同一网络，防火墙是否拦截 UDP，以及 UDP 端口 14550 是否被其他程序占用。",
+    guide_problem_port_android: "端口 14550 被占用？在 设置 → UDP 端口 中更改。",
+    guide_problem_port_python: "端口 14550 被占用？使用其他端口启动查看器：python3 tlm_viewer.py --udp-port <端口>。",
+    guide_problem_vendor: "部分厂商存在“ExpressLRS TX Backpack XXXXXX”无法启动的 bug，正式版尚未修复，需要刷写 master 固件。",
+    guide_flash_title: "背包刷写",
+    guide_flash_1: "如果背包无法启动 Wi-Fi 或菜单中没有 Telemetry → WiFi，则需要刷写。通过 ExpressLRS Configurator → Backpack 刷写。",
+    guide_flash_2: "Wi-Fi 遥测不要求 Binding Phrase：查看器不校验 UID。",
+    guide_flash_3: "该短语会生成 UID，背包将其用作 ESP-NOW 组地址和 SSID 后缀“ExpressLRS TX Backpack XXXXXX”。需要 ESP-NOW（VRX/计时器/AAT）和稳定网络名称时设置；通常使用与 ELRS 链路相同的短语。",
+    guide_flash_4: "如果不设置短语，背包会使用 EEPROM 中的组地址（由 TX 模块绑定后写入），否则保持为零；Wi-Fi 遥测仍然可用。热点密码始终是 expresslrs，与短语无关。",
+    guide_flash_5: "更改短语会改变 UID 和 SSID——请用相同短语重新刷写组内所有设备。",
+    guide_flash_link: "TX Backpack 刷写 — ExpressLRS",
     guide_app: "应用",
     guide_app_1: "允许通知和电池优化豁免，否则 Android 可能会在后台暂停接收。",
     guide_app_2: "保持应用运行；即使锁屏，前台服务也会继续接收。",
     guide_app_3: "如有需要，在设置中更改 UDP 端口；监听会自动重启。",
     guide_app_4: "选择轨迹文件夹；现有轨迹会被复制。",
-    guide_app_5: "没有数据？检查网络、UDP 端口、防火墙以及背包是否处于 Telemetry WiFi 模式。",
+    guide_app_background: "应用会在后台继续接收：按“返回”只会隐藏窗口。",
+    guide_app_stop_android: "要停止接收并关闭应用，请按“遥测”标签页底部的“关闭应用”（或通知中的“停止”）。",
+    guide_app_stop_python: "要结束查看器，请在终端中按 Ctrl+C。",
     save: "保存",
     card_battery: "电池",
     current: "电流",
@@ -931,10 +1211,26 @@ const I18N = {
     fix: "定位",
     hdop: "HDOP",
     show_on_map: "在地图上显示",
-    fix_none: "无",
-    fix_type: "类型 {n}",
+    fix_3d: "3D",
+    fix_2d: "2D",
+    fix_inertial: "惯性",
+    fix_none: "无定位",
+    calculated: "计算",
+    fix_fallback_note: "没有 0x06 帧：3D/2D 根据卫星数计算（≥4 → 3D，≥3 → 2D）。",
+    fix_type: "fix_type",
+    vn: "Vn",
+    ve: "Ve",
+    vv: "Vv",
+    speed_acc: "速度精度",
+    track_acc: "航向精度",
+    alt_ellipsoid: "椭球高度",
+    h_acc: "水平精度",
+    v_acc: "垂直精度",
+    reserved: "0x06 保留字节",
+    vdop: "VDOP",
     card_flight: "飞行",
     baro_alt: "气压高度",
+    baro_alt_above_home: "气压高度（相对起飞点）",
     vario: "升降速度",
     gps_time: "GPS 时间",
     device: "设备",
@@ -1001,6 +1297,105 @@ const I18N = {
 };
 
 let LANG = "en";
+
+const HELP = {
+  "en": {
+    "lq_uplink": "LQ is the share of control packets that are successfully received. It is closer to real link reliability than RSSI: it includes interference, noise and CRC failures, while RSSI shows only received power. 100% is ideal; below ~70% control may become unreliable. Use RSSI/SNR to understand why.",
+    "lq_downlink": "LQ is the share of telemetry packets that are successfully received. It shows telemetry reliability, not necessarily control reliability. RSSI alone cannot replace it: a strong signal with interference can still lose packets.",
+    "rssi": "RSSI is raw received signal power in dBm, not a delivery-quality metric. There are no universal thresholds: 2.4 GHz and 900 MHz behave differently. When the link is active, this card shows the explanation for the current band.",
+    "rssi_24": "2.4 GHz: a wide band shared with Wi-Fi and Bluetooth. Free-space loss is higher than at 900 MHz, so the same distance gives a lower RSSI. Roughly -50…-70 dBm is strong; -85…-95 dBm is weak. Walls, water and interference matter more here, so a strong RSSI with interference can still have low LQ. Compare only at the same RF mode, TX power and antennas; watch LQ and SNR.",
+    "rssi_900": "900 MHz covers 868 MHz (EU) and 915 MHz (US); frame 0x14 does not say which one is active. The lower frequency has lower free-space loss and bends around obstacles better than 2.4 GHz, so usable RSSI is often lower.\n\n868 MHz (EU): power and duty cycle are usually limited; roughly -70…-90 dBm is good, -100…-110 dBm is weak.\n\n915 MHz (US): higher power is usually allowed; roughly -60…-85 dBm is good, -100…-112 dBm is weak.\n\nThese are only landmarks: judge the link by LQ and SNR.",
+    "rssi_dual": "Dual 2.4 + 900 MHz: the transmitter uses both bands. RSSI and LQ in frame 0x14 refer to the currently active module. Compare values only when the band and RF mode are the same.",
+    "rssi_all": "RSSI is raw received signal power in dBm, not delivery quality. Use it only as a landmark and compare like with like.\n\n2.4 GHz (most common): a wide band shared with Wi-Fi and Bluetooth. Free-space loss is higher than at 900 MHz, so the same distance gives a lower RSSI. Roughly -50…-70 dBm is strong; -85…-95 dBm is weak. Walls, water and interference matter more here, so a strong RSSI with interference can still have low LQ.\n\n900 MHz (868/915): frame 0x14 does not say which sub-band is active. The lower frequency has lower free-space loss and bends around obstacles better than 2.4 GHz, so usable RSSI is often lower.\n\n• 868 MHz (EU): power and duty cycle are usually limited; roughly -70…-90 dBm is good, -100…-110 dBm is weak.\n\n• 915 MHz (US): higher power is usually allowed; roughly -60…-85 dBm is good, -100…-112 dBm is weak.\n\nDual 2.4 + 900: RSSI and LQ in frame 0x14 refer to the currently active module. Judge the link by LQ and SNR, and use RSSI/SNR to understand why it changes.",
+    "snr": "Signal-to-noise ratio in dB. Above ~10 dB is comfortable; below ~5 dB the link is noisy. Can go negative near the noise floor.",
+    "tx_power": "Transmit power of the TX module. More power gives more range but drains the battery and heats the module.",
+    "antenna": "Active antenna of the transmitter diversity system (1 or 2).",
+    "band": "Frequency band selected by the current RF mode: 2.4 GHz, 868 MHz or 915 MHz.",
+    "packet_rate": "Packet rate of the current RF mode. Lower rates usually give more range; higher rates give lower latency.",
+    "range": "Approximate link margin, not distance. It is scaled from RSSI and the current RF mode; 100% means near the top of the usable range.",
+    "voltage": "Battery voltage. A full LiPo cell is 4.2 V; about 3.5 V per cell under load is low. Check the cell count before judging.",
+    "current": "Current draw reported by the flight controller. High current means the battery will be used up faster.",
+    "capacity": "Consumed capacity in mAh reported by the flight controller. It is more reliable for remaining flight time than voltage alone.",
+    "remaining": "Remaining battery percentage reported by the flight controller. Use together with voltage under load.",
+    "satellites": "Number of satellites used by the GPS solution. Four or more are needed for a 3D fix; more is better.",
+    "latitude": "Last known latitude. The QR code uses the last coordinate with fix_type = 3.",
+    "longitude": "Last known longitude. The QR code uses the last coordinate with fix_type = 3.",
+    "altitude": "GPS altitude above sea level, not height above the home point.",
+    "speed": "Ground speed from the GPS receiver, not airspeed.",
+    "heading": "Course over ground from the GPS. It can differ from where the nose points.",
+    "hdop": "Horizontal dilution of precision. Lower is better; values above ~2 mean poor satellite geometry.",
+    "vn": "North velocity component from 0x06, in m/s.",
+    "ve": "East velocity component from 0x06, in m/s.",
+    "vv": "Vertical velocity component from 0x06, in m/s.",
+    "speed_acc": "Speed accuracy from 0x06. Lower is better.",
+    "track_acc": "Heading accuracy from 0x06, in degrees. Lower is better. This is not the track angle.",
+    "alt_ellipsoid": "GPS altitude above the ellipsoid from 0x06, in metres. It is not the same as altitude above sea level.",
+    "h_acc": "Horizontal position accuracy from 0x06, in metres. Lower is better.",
+    "v_acc": "Vertical position accuracy from 0x06, in metres. Lower is better.",
+    "reserved": "Reserved byte in the GPS Extended (0x06) frame. The app shows it for diagnostics and does not use it.",
+    "vdop": "Vertical dilution of precision. Lower is better.",
+    "flight_mode": "Flight controller mode. Suffixes: !FS! = failsafe, ! = arming blocked, ? = GPS Rescue disabled, * = ready to arm, no suffix = armed.",
+    "baro_alt": "Barometric altitude. It drifts with weather changes but is useful for relative height.",
+    "vario": "Vertical speed: positive is climbing, negative is descending.",
+    "gps_time": "Date and time received from the GPS in frame 0x03.",
+    "device": "Device name reported in the Device Info (0x29) frame.",
+    "pitch": "Pitch attitude in degrees from frame 0x1E.",
+    "roll": "Roll attitude in degrees from frame 0x1E.",
+    "yaw": "Yaw / heading in degrees from frame 0x1E.",
+    "packets_per_sec": "Packets received by the app per second. It shows the current telemetry rate.",
+    "packets_total": "Total packets received since the foreground service started.",
+    "data_age": "Time since the last packet. If it grows, telemetry is not arriving.",
+    "frame_types": "Number of distinct CRSF frame types seen. Open the section below for per-type details."
+  },
+  "ru": {
+    "lq_uplink": "LQ — доля успешно принятых пакетов управления. Это ближе к реальной надёжности линка, чем RSSI: LQ учитывает помехи, шум и ошибки CRC, а RSSI показывает только мощность. 100% — идеально; ниже ~70% возможны потери управления. RSSI/SNR помогают понять причину.",
+    "lq_downlink": "LQ — доля успешно принятых пакетов телеметрии. Он показывает надёжность телеметрии, а не обязательно управления. RSSI его не заменяет: при сильном сигнале и помехах пакеты всё равно могут теряться.",
+    "rssi": "RSSI — это сырая мощность принятого сигнала в dBm, а не качество доставки. Универсальных порогов нет: 2.4 ГГц и 900 МГц ведут себя по-разному. Когда линк активен, эта карточка показывает объяснение для текущего диапазона.",
+    "rssi_24": "2.4 ГГц: широкий диапазон, который делится с Wi-Fi и Bluetooth. Затухание в свободном пространстве выше, чем на 900 МГц, поэтому на том же расстоянии RSSI ниже. Примерно -50…-70 dBm — сильно; -85…-95 dBm — слабо. Стены, вода и помехи здесь влияют сильнее, поэтому при сильном RSSI LQ может падать. Сравнивай только при одинаковых RF-режиме, мощности TX и антеннах; смотри на LQ и SNR.",
+    "rssi_900": "900 МГц — это 868 МГц (ЕС) и 915 МГц (США); по кадру 0x14 приложение не различает, какой из них включён. Ниже частота — меньше затухание и лучше огибание препятствий, чем на 2.4 ГГц, поэтому рабочий RSSI обычно ниже.\n\n868 МГц (ЕС): мощность и duty cycle обычно ограничены; примерно -70…-90 dBm — хорошо, -100…-110 dBm — слабо.\n\n915 МГц (США): обычно разрешена большая мощность; примерно -60…-85 dBm — хорошо, -100…-112 dBm — слабо.\n\nЭто только ориентиры: надёжность оценивай по LQ и SNR.",
+    "rssi_dual": "Dual 2.4 + 900 МГц: передатчик использует оба диапазона. RSSI и LQ в кадре 0x14 относятся к текущему активному модулю. Сравнивай значения только при одинаковом диапазоне и RF-режиме.",
+    "rssi_all": "RSSI — это сырая мощность принятого сигнала в dBm, а не качество доставки. Используй его только как ориентир и сравнивай в одинаковых условиях.\n\n2.4 ГГц (самый распространённый): широкий диапазон, который делится с Wi-Fi и Bluetooth. Затухание в свободном пространстве выше, чем на 900 МГц, поэтому на том же расстоянии RSSI ниже. Примерно -50…-70 dBm — сильно; -85…-95 dBm — слабо. Стены, вода и помехи здесь влияют сильнее, поэтому при сильном RSSI LQ может падать.\n\n900 МГц (868/915): по кадру 0x14 приложение не различает, какой поддиапазон включён. Ниже частота — меньше затухание и лучше огибание препятствий, чем на 2.4 ГГц, поэтому рабочий RSSI обычно ниже.\n\n• 868 МГц (ЕС): мощность и duty cycle обычно ограничены; примерно -70…-90 dBm — хорошо, -100…-110 dBm — слабо.\n\n• 915 МГц (США): обычно разрешена большая мощность; примерно -60…-85 dBm — хорошо, -100…-112 dBm — слабо.\n\nDual 2.4 + 900: RSSI и LQ в кадре 0x14 относятся к текущему активному модулю. Надёжность оценивай по LQ и SNR, а RSSI/SNR помогают понять причину.",
+    "snr": "Отношение сигнал/шум в dB. Выше ~10 dB комфортно; ниже ~5 dB линк шумный. Уровень шума может давать отрицательные значения.",
+    "tx_power": "Мощность передатчика. Больше мощность — больше дальность, но быстрее садится батарея и греется модуль.",
+    "antenna": "Активная антенна системы diversity передатчика (1 или 2).",
+    "band": "Диапазон частот текущего RF-режима: 2.4 ГГц, 868 МГц или 915 МГц.",
+    "packet_rate": "Пакетрейт текущего RF-режима. Ниже пакетрейт — обычно больше дальность, выше — меньше задержка.",
+    "range": "Ориентировочный запас линка, а не расстояние. Считается по RSSI и текущему RF-режиму; 100% — у верхней границы рабочего диапазона.",
+    "voltage": "Напряжение батареи. Полный LiPo-элемент — 4.2 В; около 3.5 В на элемент под нагрузкой — мало. Учитывай количество банок.",
+    "current": "Ток, который сообщает полётный контроллер.",
+    "capacity": "Израсходованная ёмкость в мА·ч от полётного контроллера. Для оценки остатка полёта надёжнее, чем одно напряжение.",
+    "remaining": "Остаток батареи в процентах от полётного контроллера. Смотри вместе с напряжением под нагрузкой.",
+    "satellites": "Число спутников, использованных в решении GPS. Для 3D-фикса нужно 4 и больше; чем больше, тем лучше.",
+    "latitude": "Последняя известная широта. QR-код использует последнюю координату с fix_type = 3.",
+    "longitude": "Последняя известная долгота. QR-код использует последнюю координату с fix_type = 3.",
+    "altitude": "Высота GPS над уровнем моря, а не высота над точкой взлёта.",
+    "speed": "Путевая скорость от GPS-приёмника, а не воздушная скорость.",
+    "heading": "Курс относительно земли от GPS. Может не совпадать с направлением носа.",
+    "hdop": "Горизонтальный фактор снижения точности. Меньше — лучше; больше ~2 — плохая геометрия спутников.",
+    "vn": "Северная составляющая скорости из 0x06, м/с.",
+    "ve": "Восточная составляющая скорости из 0x06, м/с.",
+    "vv": "Вертикальная составляющая скорости из 0x06, м/с.",
+    "speed_acc": "Точность скорости из 0x06. Меньше — лучше.",
+    "track_acc": "Точность курса из 0x06, в градусах. Меньше — лучше. Это не путевой угол.",
+    "alt_ellipsoid": "Высота GPS над эллипсоидом из 0x06, в метрах. Это не высота над уровнем моря.",
+    "h_acc": "Горизонтальная точность позиции из 0x06, метры. Меньше — лучше.",
+    "v_acc": "Вертикальная точность позиции из 0x06, метры. Меньше — лучше.",
+    "reserved": "Резервный байт кадра GPS Extended (0x06). Приложение показывает его для диагностики и не использует.",
+    "vdop": "Вертикальный фактор снижения точности. Меньше — лучше.",
+    "flight_mode": "Режим полётного контроллера. Суффиксы: !FS! — failsafe, ! — арминг заблокирован, ? — GPS Rescue отключён, * — готов к армингу, без суффикса — взведён.",
+    "baro_alt": "Барометрическая высота. Плывёт при смене погоды, но полезна для относительной высоты.",
+    "vario": "Вертикальная скорость: плюс — набор, минус — снижение.",
+    "gps_time": "Дата и время, полученные от GPS в кадре 0x03.",
+    "device": "Имя устройства из кадра Device Info (0x29).",
+    "pitch": "Тангаж в градусах из кадра 0x1E.",
+    "roll": "Крен в градусах из кадра 0x1E.",
+    "yaw": "Рыскание/курс в градусах из кадра 0x1E.",
+    "packets_per_sec": "Пакетов, принятых приложением за секунду. Показывает текущий темп телеметрии.",
+    "packets_total": "Всего пакетов, принятых с момента запуска foreground-сервиса.",
+    "data_age": "Время с последнего пакета. Если растёт — телеметрия не приходит.",
+    "frame_types": "Число различных типов CRSF-кадров. Разверни раздел ниже, чтобы увидеть детали по типам."
+  }
+};
 
 function t(key, vars) {
   const table = I18N[LANG] || I18N.en;
@@ -1073,6 +1468,12 @@ function pickLang() {
   return "en";
 }
 
+function applyPlatformUi() {
+  document.querySelectorAll("[data-platform]").forEach(el => {
+    el.hidden = (el.getAttribute("data-platform") === "android") !== ANDROID_SETTINGS;
+  });
+}
+
 function applyI18n() {
   document.documentElement.lang = LANG;
   document.title = t("page_title");
@@ -1080,6 +1481,7 @@ function applyI18n() {
     el.textContent = t(el.getAttribute("data-i18n"));
   });
   $("lang").value = LANG;
+  applyPlatformUi();
 }
 
 const mapKey = "__MAPTILER_KEY__";
@@ -1090,6 +1492,9 @@ let mapLoading = false;
 let mapResizeObserver = null;
 let mapLastPos = null;
 let mapLastGps = null;
+let mapFixType = null;
+let trackPopup = null;
+let trackPopupTimer = 0;
 let mapFollow = true;
 const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
@@ -1165,7 +1570,7 @@ async function initMap() {
     showMapFailure();
     return;
   }
-  const g = mapLastGps && mapLastGps.fix ? mapLastGps : null;
+  const g = mapLastGps && Number.isFinite(Number(mapLastGps.lat)) && Number.isFinite(Number(mapLastGps.lon)) ? mapLastGps : null;
   const center = g ? [g.lon, g.lat] : [37.618423, 55.751244];
   let style;
   let esriBeforeId = null;
@@ -1226,16 +1631,48 @@ async function initMap() {
     } catch (e) {
     }
     try {
-      mapObj.addSource("track", {
+      mapObj.addSource("track-segments", {
         type: "geojson",
-        data: { type: "Feature", geometry: { type: "LineString", coordinates: [] } }
+        data: { type: "FeatureCollection", features: [] }
       });
       mapObj.addLayer({
         id: "track-line",
         type: "line",
-        source: "track",
-        paint: { "line-color": "#58a6ff", "line-width": 3, "line-opacity": 0.9 }
+        source: "track-segments",
+        paint: {
+          "line-color": ["match", ["get", "fix_type"],
+            3, "#3fb950",
+            2, "#d29922",
+            1, "#f85149",
+            0, "#f85149",
+            "#8b949e"],
+          "line-width": 3,
+          "line-opacity": 0.95
+        }
       }, esriBeforeId || undefined);
+      mapObj.addSource("track-points", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] }
+      });
+      mapObj.addLayer({
+        id: "track-points",
+        type: "circle",
+        source: "track-points",
+        paint: {
+          "circle-radius": 4.5,
+          "circle-color": ["match", ["get", "fix_type"],
+            3, "#3fb950",
+            2, "#d29922",
+            1, "#f85149",
+            0, "#f85149",
+            "#8b949e"],
+          "circle-stroke-color": "#0b0f14",
+          "circle-stroke-width": 1.5
+        }
+      }, esriBeforeId || undefined);
+      mapObj.on("click", "track-points", showTrackPointDetails);
+      mapObj.on("mouseenter", "track-points", () => { mapObj.getCanvas().style.cursor = "pointer"; });
+      mapObj.on("mouseleave", "track-points", () => { mapObj.getCanvas().style.cursor = ""; });
     } catch (e) {
     }
     updateTrackLine();
@@ -1294,25 +1731,32 @@ function refreshMapLayout() {
 function updateMap(gps, force) {
   if (gps) mapLastGps = gps;
   const g = mapLastGps;
-  const hasFix = !!(g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon));
+  const hasGps = !!(g && Number.isFinite(Number(g.lat)) && Number.isFinite(Number(g.lon)));
+  const trackMode = !!currentTrack;
+  if (mapPlacemark) mapPlacemark.getElement().style.display = trackMode ? "none" : "block";
+  if (trackMode) {
+    updateMapSats(null, null);
+  } else if (!playback.playing) {
+    updateMapSats(hasGps ? g.sats : null, mapFixType);
+  }
   if (!mapReady) {
-    setText("mapInfo", hasFix ? g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + " · " + g.sats + " " + t("satellites") : "—");
+    setText("mapInfo", hasGps ? Number(g.lat).toFixed(6) + ", " + Number(g.lon).toFixed(6) + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh") : "—");
     return;
   }
-  if (hasFix) {
-    const pos = [g.lat, g.lon];
+  if (hasGps && !trackMode) {
+    const pos = [Number(g.lat), Number(g.lon)];
     if (force || !mapLastPos || Math.abs(pos[0] - mapLastPos[0]) > 1e-7 || Math.abs(pos[1] - mapLastPos[1]) > 1e-7) {
-      mapPlacemark.setLngLat([g.lon, g.lat]);
+      mapPlacemark.setLngLat([pos[1], pos[0]]);
       mapLastPos = pos;
-      if (mapFollow && mapVisible() && !currentTrack) {
-        mapObj.easeTo({ center: [g.lon, g.lat], duration: 300 });
+      if (mapFollow && mapVisible()) {
+        mapObj.easeTo({ center: [pos[1], pos[0]], duration: 300 });
       }
     }
     $("mapStatus").hidden = true;
-    setText("mapInfo", g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + " · " + g.sats + " " + t("satellites") + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh"));
-  } else {
+    setText("mapInfo", pos[0].toFixed(6) + ", " + pos[1].toFixed(6) + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh"));
+  } else if (!trackMode) {
     $("mapStatus").hidden = false;
-    setText("mapStatus", t("no_gps"));
+    setText("mapStatus", t("no_data"));
     setText("mapInfo", "—");
   }
 }
@@ -1323,14 +1767,12 @@ let lastQrGps = null;
 function updateQr(g, last) {
   const wrap = $("gpsQrWrap");
   const box = $("gpsQr");
-  if (g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon)) {
-    lastQrGps = { lat: g.lat, lon: g.lon };
-  }
-  const src = (g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon)) ? g : (last || lastQrGps);
+  const src = (last && Number.isFinite(Number(last.lat)) && Number.isFinite(Number(last.lon))) ? last : null;
   if (!src) {
     wrap.hidden = true;
     return;
   }
+  lastQrGps = { lat: Number(src.lat), lon: Number(src.lon) };
   const data = "geo:0,0?q=" + src.lat.toFixed(6) + "," + src.lon.toFixed(6);
   if (typeof window.qrcode === "function") {
     if (data !== lastQrData) {
@@ -1367,13 +1809,205 @@ function fmtDur(sec) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
+function fixTypeText(ft, computed) {
+  const n = Number(ft);
+  let text;
+  if (n === 3) text = t("fix_3d");
+  else if (n === 2) text = t("fix_2d");
+  else if (n === 1 || n === 0) text = t("fix_none");
+  else text = "—";
+  if (computed && text !== "—") text += " (" + t("calculated") + ")";
+  return text;
+}
+
+function fixTypeClass(ft) {
+  const n = Number(ft);
+  if (n === 3) return "ok";
+  if (n === 2) return "warn";
+  if (n === 1 || n === 0) return "bad";
+  return "unknown";
+}
+
+function fixTypeLabel(ft) {
+  const n = Number(ft);
+  if (n === 3) return "3d";
+  if (n === 2) return "2d";
+  return "";
+}
+
+function updateMapSats(sats, fixType) {
+  const el = $("mapSats");
+  const val = $("mapSatsValue");
+  if (!el || !val) return;
+  if (sats === null || sats === undefined || !Number.isFinite(Number(sats))) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  val.textContent = String(sats);
+  el.classList.remove("ok", "warn", "bad", "unknown");
+  el.classList.add(fixTypeClass(fixType));
+}
+
+function fmtPoint(v, digits = 1, unit = "") {
+  if (v === null || v === undefined || !Number.isFinite(Number(v))) return "—";
+  return Number(v).toFixed(digits) + unit;
+}
+
+function pointRow(label, value) {
+  return '<div class="pointRow"><span>' + xmlEscape(label) + '</span><span>' + xmlEscape(String(value)) + "</span></div>";
+}
+
+function pointSection(title, rows) {
+  if (!rows.length) return "";
+  return '<section class="pointSection"><h4>' + xmlEscape(title) + "</h4>" + rows.join("") + "</section>";
+}
+
+function openTrackPointDetails(p) {
+  const tel = p.telemetry || {};
+  const ge = tel.gps_ext || null;
+  const link = tel.link || null;
+  const bat = tel.battery || null;
+  const att = tel.attitude || null;
+  const baro = tel.baro || null;
+  const vario = tel.vario != null ? tel.vario : (baro ? baro.vario : null);
+  const sections = [];
+
+  const gpsRows = [
+    pointRow(t("point_time"), fmtDur(Number(p.t) || 0)),
+    pointRow(t("latitude"), fmtPoint(p.lat, 7)),
+    pointRow(t("longitude"), fmtPoint(p.lon, 7)),
+    pointRow(t("altitude"), fmtPoint(p.alt, 1, " " + t("u_m"))),
+    pointRow(t("speed"), fmtPoint(p.speed, 1, " " + t("u_kmh"))),
+    pointRow(t("heading"), fmtPoint(p.heading, 0) + "°"),
+    pointRow(t("satellites"), p.sats != null ? p.sats : "—"),
+    pointRow(t("fix_type"), fixTypeText(p.fix_type, p.fix_type_computed)),
+  ];
+  sections.push(pointSection(t("card_gps"), gpsRows));
+
+  if (ge) {
+    sections.push(pointSection("GPS Extended (0x06)", [
+      pointRow(t("fix_type"), ge.fix_type != null ? ge.fix_type : "—"),
+      pointRow(t("vn"), fmtPoint(ge.vn, 2, " " + t("u_ms"))),
+      pointRow(t("ve"), fmtPoint(ge.ve, 2, " " + t("u_ms"))),
+      pointRow(t("vv"), fmtPoint(ge.vv, 2, " " + t("u_ms"))),
+      pointRow(t("speed_acc"), fmtPoint(ge.speed_acc, 2, " " + t("u_ms"))),
+      pointRow(t("track_acc"), fmtPoint(ge.track_acc, 1) + "°"),
+      pointRow(t("alt_ellipsoid"), fmtPoint(ge.alt_ellipsoid, 1, " " + t("u_m"))),
+      pointRow(t("h_acc"), fmtPoint(ge.h_acc, 2, " " + t("u_m"))),
+      pointRow(t("v_acc"), fmtPoint(ge.v_acc, 2, " " + t("u_m"))),
+      pointRow(t("hdop"), fmtPoint(ge.hdop, 1)),
+      pointRow(t("vdop"), fmtPoint(ge.vdop, 1)),
+      pointRow(t("reserved"), ge.reserved != null ? ge.reserved : "—"),
+    ]));
+  }
+
+  if (link) {
+    const rf = RF_MODES[link.rf_mode] || null;
+    const rows = [
+      pointRow(t("lq_uplink"), fmtPoint(link.lq, 0, "%")),
+      pointRow(t("lq_downlink"), fmtPoint(link.lq_d, 0, "%")),
+      pointRow(t("rssi_1"), fmtPoint(link.rssi1, 0, " dBm")),
+      pointRow(t("rssi_2"), fmtPoint(link.rssi2, 0, " dBm")),
+      pointRow(t("rssi_down"), fmtPoint(link.rssi_d, 0, " dBm")),
+      pointRow(t("snr"), fmtPoint(link.snr, 0, " dB")),
+      pointRow(t("snr_down"), fmtPoint(link.snr_d, 0, " dB")),
+      pointRow(t("antenna"), link.active_ant === 0 ? "1" : link.active_ant === 1 ? "2" : "—"),
+    ];
+    if (rf) {
+      rows.push(pointRow(t("band"), bandText(rf[0])));
+      rows.push(pointRow(t("packet_rate"), rf[1]));
+    }
+    if (TX_POWER_MW[link.tx_power] !== undefined) {
+      rows.push(pointRow(t("tx_power"), TX_POWER_MW[link.tx_power] + " " + t("u_mw")));
+    }
+    sections.push(pointSection(t("card_link"), rows));
+  }
+
+  if (bat) {
+    sections.push(pointSection(t("card_battery"), [
+      pointRow(t("card_battery") + " · " + t("u_v"), fmtPoint(bat.voltage, 1, " " + t("u_v"))),
+      pointRow(t("current"), fmtPoint(bat.current, 1, " " + t("u_a"))),
+      pointRow(t("capacity"), bat.capacity != null ? bat.capacity + " " + t("u_mah") : "—"),
+      pointRow(t("remaining"), fmtPoint(bat.remaining, 0, "%")),
+    ]));
+  }
+
+  if (att) {
+    sections.push(pointSection(t("card_attitude"), [
+      pointRow(t("pitch"), fmtPoint(att.pitch, 1) + "°"),
+      pointRow(t("roll"), fmtPoint(att.roll, 1) + "°"),
+      pointRow(t("yaw"), fmtPoint(att.yaw, 1) + "°"),
+    ]));
+  }
+
+  if (baro || vario != null) {
+    sections.push(pointSection(t("point_baro_vario"), [
+      pointRow(t("baro_alt"), fmtPoint(baro ? baro.alt : null, 1, " " + t("u_m"))),
+      pointRow(t("vario"), fmtPoint(vario, 1, " " + t("u_ms"))),
+    ]));
+  }
+
+  const flightRows = [];
+  if (tel.flight_mode) flightRows.push(pointRow(t("flight_mode"), tel.flight_mode));
+  if (tel.gps_time) flightRows.push(pointRow(t("gps_time"), tel.gps_time));
+  if (tel.device) flightRows.push(pointRow(t("device"), tel.device));
+  if (flightRows.length) sections.push(pointSection(t("card_flight"), flightRows));
+
+  $("trackPointTitle").textContent = t("track_point") + " · " + fmtDur(Number(p.t) || 0);
+  $("trackPointBody").innerHTML = sections.join("");
+  $("trackPointOverlay").hidden = false;
+  setTimeout(() => { const b = $("trackPointClose"); if (b) b.focus(); }, 0);
+}
+
+function closeTrackPointDetails() {
+  const overlay = $("trackPointOverlay");
+  if (overlay) overlay.hidden = true;
+}
+
+function showTrackPointDetails(e) {
+  const f = e.features && e.features[0];
+  if (!f) return;
+  const idx = Number(f.properties && f.properties.idx);
+  const p = Number.isInteger(idx) ? currentTrackPoints[idx] : null;
+  if (p) openTrackPointDetails(p);
+}
+
 function updateTrackLine() {
-  if (!mapObj || !mapObj.getSource("track")) return;
-  try {
-    mapObj.getSource("track").setData({
+  if (!mapObj) return;
+  const indexed = currentTrackPoints
+    .map((p, idx) => ({ p, idx }))
+    .filter(({ p }) => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)));
+  const pts = indexed.map(({ p }) => p);
+  const segments = [];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    segments.push({
       type: "Feature",
-      geometry: { type: "LineString", coordinates: currentTrackPoints.map(p => [p.lon, p.lat]) }
+      properties: {
+        fix_type: a.fix_type !== undefined ? a.fix_type : null,
+        fix_type_computed: !!a.fix_type_computed
+      },
+      geometry: { type: "LineString", coordinates: [[Number(a.lon), Number(a.lat)], [Number(b.lon), Number(b.lat)]] }
     });
+  }
+  const points = indexed.map(({ p, idx }) => ({
+    type: "Feature",
+    properties: {
+      idx,
+      sats: p.sats,
+      fix_type: p.fix_type !== undefined ? p.fix_type : null,
+      fix_type_computed: !!p.fix_type_computed,
+      t: p.t
+    },
+    geometry: { type: "Point", coordinates: [Number(p.lon), Number(p.lat)] }
+  }));
+  try {
+    const segSource = mapObj.getSource("track-segments");
+    if (segSource) segSource.setData({ type: "FeatureCollection", features: segments });
+    const pointSource = mapObj.getSource("track-points");
+    if (pointSource) pointSource.setData({ type: "FeatureCollection", features: points });
   } catch (e) {
   }
 }
@@ -1404,6 +2038,20 @@ function pointAtTime(time) {
   return { lat: a.lat + (b.lat - a.lat) * f, lon: a.lon + (b.lon - a.lon) * f };
 }
 
+function trackPointAtTime(time) {
+  const pts = currentTrackPoints;
+  if (!pts.length) return null;
+  if (time <= pts[0].t) return pts[0];
+  if (time >= pts[pts.length - 1].t) return pts[pts.length - 1];
+  let lo = 0;
+  let hi = pts.length - 1;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (pts[mid].t <= time) lo = mid; else hi = mid;
+  }
+  return pts[lo];
+}
+
 function positionPlaybackMarker(time, follow) {
   const p = pointAtTime(time);
   if (!p || !playbackMarker) return;
@@ -1419,8 +2067,8 @@ function updatePlaybackUI() {
   const loaded = !!currentTrack;
   const selected = !!$("trackSelect").value;
   const active = !!(recordState && recordState.active);
-  $("trackActions").hidden = !selected;
-  $("playRow").hidden = !loaded;
+  $("trackActions").hidden = active || !selected;
+  $("playRow").hidden = active || !loaded;
   $("deleteTrack").disabled = active || !selected;
   $("exportGpx").disabled = active || !loaded;
   $("exportKml").disabled = active || !loaded;
@@ -1500,24 +2148,23 @@ async function refreshTracks() {
   const data = await res.json();
   tracks = data.tracks || [];
   const sel = $("trackSelect");
+  sel.hidden = !tracks.length;
   const prev = sel.value;
   sel.innerHTML = "";
-  if (!tracks.length) {
+  // Explicit "select track" state. It is the default on app start.
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = t("no_track");
+  sel.appendChild(none);
+  for (const tr of tracks) {
     const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = t("no_tracks");
-    opt.disabled = true;
+    opt.value = tr.id;
+    opt.textContent = (tr.started_at || tr.id) + " · " + fmtDur(tr.duration) + " · " + tr.point_count + " " + t("points");
     sel.appendChild(opt);
-  } else {
-    for (const tr of tracks) {
-      const opt = document.createElement("option");
-      opt.value = tr.id;
-      opt.textContent = (tr.started_at || tr.id) + " · " + fmtDur(tr.duration) + " · " + tr.point_count + " " + t("points");
-      sel.appendChild(opt);
-    }
-    if (currentTrack && tracks.some(tr => tr.id === currentTrack.id)) sel.value = currentTrack.id;
-    else if (prev && tracks.some(tr => tr.id === prev)) sel.value = prev;
   }
+  if (currentTrack && tracks.some(tr => tr.id === currentTrack.id)) sel.value = currentTrack.id;
+  else if (prev && tracks.some(tr => tr.id === prev)) sel.value = prev;
+  else sel.value = "";
   updateRecordUi();
   updatePlaybackUI();
   if (!currentTrack && sel.value && !(recordState && recordState.active)) {
@@ -1527,7 +2174,15 @@ async function refreshTracks() {
 
 async function loadSelectedTrack() {
   const id = $("trackSelect").value;
-  if (!id) return;
+  if (!id) {
+    currentTrack = null;
+    currentTrackPoints = [];
+    stopPlayback();
+    updateTrackLine();
+    hidePlaybackMarker();
+    updatePlaybackUI();
+    return;
+  }
   let res;
   try {
     res = await fetch("/api/tracks/" + encodeURIComponent(id));
@@ -1544,6 +2199,11 @@ async function loadSelectedTrack() {
   showPlaybackMarker();
   positionPlaybackMarker(0, false);
   updatePlaybackUI();
+  setTrackCollapsed(false);
+  const last = currentTrackPoints[currentTrackPoints.length - 1];
+  if (last && mapObj) {
+    mapObj.easeTo({ center: [Number(last.lon), Number(last.lat)], duration: 300, zoom: Math.max(mapObj.getZoom(), 15) });
+  }
 }
 
 async function toggleRecord() {
@@ -1591,6 +2251,9 @@ function updateRecordUi() {
   } else {
     setText("recordStatus", "");
   }
+  $("trackSelect").hidden = active || !tracks.length;
+  $("playRow").hidden = active || !currentTrack;
+  $("trackActions").hidden = active || !$("trackSelect").value;
   $("trackSelect").disabled = active;
   updatePlaybackUI();
 }
@@ -1739,15 +2402,34 @@ function render(s) {
     setText("remTxt", t("no_data")); bar("barRem", 0);
   }
 
+  const fw = detectFirmware(s);
+  currentFirmware = fw;
+  const badge = $("firmwareBadge");
+  if (badge) {
+    badge.hidden = !fw;
+    badge.textContent = fw ? t("firmware_badge_prefix") + fw.name + (fw.version ? " " + fw.version : "") : "";
+  }
+  const baroLabel = $("baroAltLabel");
+  if (baroLabel) baroLabel.textContent = t(fw && /^Ardu/.test(fw.name) ? "baro_alt_above_home" : "baro_alt");
+
+  const gpsTimeCell = $("gpsTimeCell");
+  const deviceCell = $("deviceCell");
+  const flightInfoRow = $("flightInfoRow");
+  const hasGpsTime = !!s.gps_time;
+  const hasDevice = !!s.device;
+  if (gpsTimeCell) gpsTimeCell.hidden = !hasGpsTime;
+  if (deviceCell) deviceCell.hidden = !hasDevice;
+  if (flightInfoRow) flightInfoRow.hidden = !hasGpsTime && !hasDevice;
+
   const g = s.gps;
-  const gp = (g && g.fix) ? g : s.gps_last;
-  setText("sats", g ? g.sats : "—");
+  const gp = g || s.gps_last;
+  setText("sats", gp ? gp.sats : "—");
   if (gp) {
-    setText("lat", gp.lat.toFixed(7));
-    setText("lon", gp.lon.toFixed(7));
-    setText("alt", gp.alt.toFixed(1) + " " + t("u_m"));
-    setText("spd", gp.speed.toFixed(1) + " " + t("u_kmh"));
-    setText("hdg", gp.heading.toFixed(0) + "°");
+    setText("lat", Number(gp.lat).toFixed(7));
+    setText("lon", Number(gp.lon).toFixed(7));
+    setText("alt", Number(gp.alt).toFixed(1) + " " + t("u_m"));
+    setText("spd", Number(gp.speed).toFixed(1) + " " + t("u_kmh"));
+    setText("hdg", Number(gp.heading).toFixed(0) + "°");
     $("showMap").style.display = "inline-block";
   } else {
     ["lat","lon","alt","spd","hdg"].forEach(id => setText(id, "—"));
@@ -1755,8 +2437,25 @@ function render(s) {
   }
   updateQr(g, s.gps_last);
   const ge = s.gps_ext;
-  setText("fixType", g ? (g.fix3d ? "3D" : (g.fix ? "2D" : t("fix_none"))) : "—");
-  setText("hdop", ge ? ge.hdop.toFixed(1) : "—");
+  mapFixType = gp ? gp.fix_type : null;
+  const fixComputed = !!(gp && gp.fix_type_computed);
+  setText("extFixType", gp ? fixTypeText(gp.fix_type, fixComputed) : "—");
+  const fixNote = $("fixTypeNote");
+  if (fixNote) {
+    fixNote.hidden = !fixComputed;
+    if (fixComputed) fixNote.textContent = t("fix_fallback_note");
+  }
+  setText("vn", ge ? Number(ge.vn).toFixed(2) + " " + t("u_ms") : "—");
+  setText("ve", ge ? Number(ge.ve).toFixed(2) + " " + t("u_ms") : "—");
+  setText("vv", ge ? Number(ge.vv).toFixed(2) + " " + t("u_ms") : "—");
+  setText("speedAcc", ge ? Number(ge.speed_acc).toFixed(2) + " " + t("u_ms") : "—");
+  setText("trackAcc", ge ? Number(ge.track_acc).toFixed(1) + "°" : "—");
+  setText("altEllipsoid", ge ? Number(ge.alt_ellipsoid).toFixed(1) + " " + t("u_m") : "—");
+  setText("hAcc", ge ? Number(ge.h_acc).toFixed(2) + " " + t("u_m") : "—");
+  setText("vAcc", ge ? Number(ge.v_acc).toFixed(2) + " " + t("u_m") : "—");
+  setText("extReserved", ge ? String(ge.reserved) : "—");
+  setText("hdop", ge ? Number(ge.hdop).toFixed(1) : "—");
+  setText("vdop", ge ? Number(ge.vdop).toFixed(1) : "—");
 
   setText("flightMode", s.flight_mode || "—");
   const mode = s.flight_mode || "";
@@ -1817,6 +2516,87 @@ function render(s) {
   recordState = rec;
   updateRecordUi();
 }
+
+let currentFirmware = null;
+
+function detectFirmware(s) {
+  const dev = String((s && s.device) || "").trim();
+  const frames = (s && s.frames) || {};
+  const has = n => !!frames[String(n)];
+  if (/^Betaflight\b/i.test(dev)) return { name: "Betaflight", version: "" };
+  let m = dev.match(/^INAV\s*([0-9][0-9.]*)?/i);
+  if (m) return { name: "iNav", version: m[1] || "" };
+  m = dev.match(/^(ArduCopter|ArduPlane|ArduRover|ArduSub|ArduPilot)\s*([0-9][0-9.]*)?/i);
+  if (m) return { name: m[1], version: m[2] || "" };
+  if (has(6) || has(3)) return { name: "Betaflight", version: "" };
+  if (has(15)) return { name: "ArduPilot", version: "" };
+  return null;
+}
+
+let helpReturnFocus = null;
+
+function helpEntry(key) {
+  return (HELP[LANG] && HELP[LANG][key]) || HELP.en[key] || null;
+}
+
+function currentRssiHelp(key) {
+  if (key !== "rssi") return { key, title: t(key) };
+  const link = lastState && lastState.link;
+  const rf = link ? RF_MODES[link.rf_mode] : null;
+  const band = rf ? bandText(rf[0]) : "";
+  return { key: "rssi_all", title: t("rssi") + (band ? " · " + band : "") };
+}
+
+function openHelp(key, source) {
+  const target = currentRssiHelp(key);
+  const text = helpEntry(target.key);
+  if (!text) return;
+  helpReturnFocus = source || null;
+  $("helpTitle").textContent = target.title;
+  $("helpText").textContent = text;
+  $("helpOverlay").hidden = false;
+  setTimeout(() => { const btn = $("helpClose"); if (btn) btn.focus(); }, 0);
+}
+
+function closeHelp() {
+  const overlay = $("helpOverlay");
+  if (!overlay || overlay.hidden) return;
+  overlay.hidden = true;
+  if (helpReturnFocus && helpReturnFocus.focus) helpReturnFocus.focus();
+  helpReturnFocus = null;
+}
+
+document.addEventListener("click", e => {
+  const param = e.target.closest && e.target.closest(".helpParam");
+  if (param) {
+    openHelp(param.dataset.help, param);
+    return;
+  }
+  if (e.target && e.target.id === "helpOverlay") closeHelp();
+  if (e.target && e.target.id === "trackPointOverlay") closeTrackPointDetails();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeHelp();
+    closeTrackPointDetails();
+    return;
+  }
+  const param = e.target.closest && e.target.closest(".helpParam");
+  if (param && (e.key === "Enter" || e.key === " ")) {
+    e.preventDefault();
+    openHelp(param.dataset.help, param);
+  }
+});
+
+document.querySelectorAll(".helpParam").forEach(el => {
+  if (!el.hasAttribute("tabindex")) el.tabIndex = 0;
+  if (!el.hasAttribute("role")) el.setAttribute("role", "button");
+});
+const helpCloseBtn = $("helpClose");
+if (helpCloseBtn) helpCloseBtn.addEventListener("click", closeHelp);
+const trackPointCloseBtn = $("trackPointClose");
+if (trackPointCloseBtn) trackPointCloseBtn.addEventListener("click", closeTrackPointDetails);
 
 let lastState = null;
 
@@ -1944,6 +2724,41 @@ $("udpPortSave").addEventListener("click", async () => {
     setSettingsMsg("udpPortMsg", t("udp_port_error"), true);
   }
 });
+$("autoStopRecordingSave").addEventListener("click", async () => {
+  const value = Number($("autoStopRecordingSec").value);
+  if (!Number.isInteger(value) || value < 0 || value > 3600) {
+    setSettingsMsg("autoStopRecordingMsg", "0..3600", true);
+    return;
+  }
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auto_stop_recording_sec: value }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (data.settings) applySettingsData(data.settings);
+      setSettingsMsg("autoStopRecordingMsg", t("save"), false);
+    } else {
+      setSettingsMsg("autoStopRecordingMsg", data.error || t("udp_port_error"), true);
+    }
+  } catch (e) {
+    setSettingsMsg("autoStopRecordingMsg", t("udp_port_error"), true);
+  }
+});
+$("autoRecord3d").addEventListener("change", async (event) => {
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auto_record_3d: event.target.checked }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.settings) applySettingsData(data.settings);
+  } catch (e) {
+  }
+});
 $("idleReleaseSave").addEventListener("click", async () => {
   const raw = $("idleReleaseMin").value.trim();
   const minutes = raw === "" ? 0 : parseInt(raw, 10);
@@ -1978,6 +2793,12 @@ $("resetTracksFolder").addEventListener("click", () => {
 $("refreshPermissions").addEventListener("click", () => loadPermissions());
 $("openAppSettings").addEventListener("click", () => {
   if (ANDROID_SETTINGS) AndroidSettings.openAppSettings();
+});
+$("closeApp").addEventListener("click", () => {
+  if (!ANDROID_SETTINGS || typeof AndroidSettings.closeApp !== "function") return;
+  const recording = !!(lastState && lastState.record && lastState.record.active);
+  if (recording && !confirm(t("close_recording_confirm"))) return;
+  AndroidSettings.closeApp();
 });
 
 setTrackCollapsed(true);

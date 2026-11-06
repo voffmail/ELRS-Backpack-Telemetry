@@ -21,4 +21,7 @@ class AndroidSettingsBridge(private val activity: MainActivity) {
 
     @JavascriptInterface
     fun resetTracksFolder() = activity.resetTracksFolder()
+
+    @JavascriptInterface
+    fun closeApp() = activity.closeApp()
 }

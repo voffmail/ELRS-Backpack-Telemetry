@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="stop_recording">Стоп записи</string>
     <string name="stop_service">Стоп</string>
     <string name="saved_to">Сохранено: %1$s</string>
     <string name="save_failed">Не удалось сохранить %1$s</string>
@@ -19,6 +20,7 @@
     <string name="notif_title_powersave">ELRS Backpack · энергосбережение</string>
     <string name="notif_running">UDP %1$d · %2$d пак/с · всего %3$d</string>
     <string name="notif_waiting">UDP %1$d · ожидание данных</string>
+    <string name="notif_recording">Записывается трек</string>
     <string name="notif_powersave_text">Нет данных %1$d мин · блокировки отпущены</string>
     <string name="alert_title">Телеметрия не приходит</string>
     <string name="alert_text">Нет данных %1$d мин. Блокировки отпущены для экономии батареи.</string>

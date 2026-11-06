@@ -4,8 +4,9 @@
 
 Detailed setup is in `DEVELOP.md`.
 
-- JDK 17+ (tested with 21), Android SDK platform 35, build-tools 35.0.0.
-- Build: `cd android && ./gradlew assembleDebug`
+- Local toolchain (JDK 21, Android SDK, Gradle 8.9 and caches): `bash scripts/setup-toolchain.sh`, then `source .toolchain/env.sh`. It lives in `.toolchain/` (git-ignored) and is reused on every run; do not re-download the toolchain into `/tmp`.
+- JDK 17+ (tested with 21), Android SDK platform 35, build-tools 34.0.0 and 35.0.0.
+- Build: `source .toolchain/env.sh && cd android && ./gradlew assembleDebug` (or use the manual SDK setup from `DEVELOP.md`).
 - APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 - CI: `.github/workflows/android-apk.yml` uploads the artifact `elrs-backpack-debug-apk`.
 - Release: tag `v*` → `.github/workflows/release-apk.yml` (signed APK attached to a GitHub Release).

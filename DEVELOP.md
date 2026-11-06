@@ -7,12 +7,29 @@ This document describes how to build, run and test the project on a development 
 - **JDK 17+** (the project is tested with Temurin 21).
 - **Android SDK**:
   - Android platform `35`
-  - Build-tools `35.0.0`
+  - Build-tools `34.0.0` and `35.0.0` (AGP uses 34 by default; 35 for the current platform)
   - Platform-tools (`adb`)
 - **Gradle** — not installed manually; use the wrapper in `android/` (Gradle 8.9).
 - **Python 3.8+** for the desktop viewer and replay tool. No third-party packages are required.
 - A **MapTiler API key** for the map tab (optional; telemetry works without it). See below.
 - Free ports: UDP `14550` (telemetry) and TCP `8080` (web UI).
+
+## Quick toolchain bootstrap (Linux x86_64)
+
+The recommended setup keeps the whole toolchain inside the project but out of git:
+
+```bash
+bash scripts/setup-toolchain.sh
+source .toolchain/env.sh
+cd android && ./gradlew assembleDebug
+```
+
+The script stores JDK 21, Gradle 8.9, Android SDK and the Gradle cache in `.toolchain/`
+at the repository root. `.toolchain/` is git-ignored; reruns reuse existing downloads
+instead of fetching everything again. It also writes `android/local.properties` and
+`.toolchain/env.sh`.
+
+Use the manual setup below on macOS/Windows or if you prefer Android Studio.
 
 ## Android SDK setup
 
@@ -25,7 +42,7 @@ export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
 sdkmanager --licenses
-sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0" "build-tools;35.0.0"
 ```
 
 Alternatively, install Android Studio and install SDK Platform 35 and Build-Tools 35.0.0 from
@@ -43,6 +60,14 @@ sdk.dir=/path/to/Android/Sdk
 Do not commit `local.properties`.
 
 ## Build the APK
+
+If you used the bootstrap, activate it first:
+
+```bash
+source .toolchain/env.sh
+```
+
+Then build:
 
 ```bash
 cd android
@@ -75,7 +100,7 @@ on pull requests, and manually via **Actions → Build Android APK → Run workf
 
 The workflow:
 
-1. sets up JDK 21 and the Android SDK (platform 35, build-tools 35.0.0);
+1. sets up JDK 21 and the Android SDK (platform 35, build-tools 34.0.0 and 35.0.0);
 2. runs `./gradlew assembleDebug` in `android/`;
 3. uploads `app-debug.apk` as the artifact **elrs-backpack-debug-apk**.
 

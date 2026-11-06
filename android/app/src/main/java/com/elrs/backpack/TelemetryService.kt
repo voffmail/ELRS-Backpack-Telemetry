@@ -7,6 +7,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.net.wifi.WifiManager
@@ -25,17 +31,20 @@ import java.net.InetSocketAddress
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import kotlin.math.sin
 
 class TelemetryService : Service(), SettingsHost {
 
     companion object {
         const val HTTP_PORT = 8080
         const val ACTION_STOP = "com.elrs.backpack.STOP"
+        const val ACTION_STOP_RECORDING = "com.elrs.backpack.STOP_RECORDING"
         const val ACTION_SET_TRACKS = "com.elrs.backpack.SET_TRACKS"
         const val ACTION_SETTINGS_CHANGED = "com.elrs.backpack.SETTINGS_CHANGED"
         const val EXTRA_TRACKS_URI = "tracks_uri"
         private const val CHANNEL_ID = "elrs_telemetry_v2"
         private const val ALERT_CHANNEL_ID = "elrs_alerts"
+        private const val GROUP_ID = "elrs_backpack"
         private const val NOTIFICATION_ID = 14550
         private const val ALERT_NOTIFICATION_ID = 14551
 
@@ -65,6 +74,9 @@ class TelemetryService : Service(), SettingsHost {
 
     private var watchdog: ScheduledExecutorService? = null
     private var serviceStartMono = 0L
+    private var notificationTicker: Runnable? = null
+    private var recordingPulsePhase = 0.0
+    private var largeIconBase: Bitmap? = null
 
     private var wifiLock: WifiManager.WifiLock? = null
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -78,6 +90,7 @@ class TelemetryService : Service(), SettingsHost {
         settings = AppSettings(this)
         currentUdpPort = settings.udpPort
         state = TelemetryState(initialTrackStore())
+        state.setAutoRecordOn3d(settings.autoRecordOn3d)
         createChannel()
         startForegroundCompat(buildNotification())
         acquireLocks()
@@ -90,6 +103,7 @@ class TelemetryService : Service(), SettingsHost {
         }
         startHttp()
         startWatchdog()
+        startNotificationTicker()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -98,6 +112,15 @@ class TelemetryService : Service(), SettingsHost {
             ACTION_STOP -> {
                 stopSelf()
                 return START_NOT_STICKY
+            }
+
+            ACTION_STOP_RECORDING -> {
+                mainHandler.post {
+                    state.stopRecording()
+                    updateNotification()
+                    notifySettingsChanged()
+                }
+                return START_STICKY
             }
 
             ACTION_SET_TRACKS -> {
@@ -115,11 +138,17 @@ class TelemetryService : Service(), SettingsHost {
     override fun onDestroy() {
         running = false
         stopWatchdog()
+        stopNotificationTicker()
         stopUdp()
         http?.stop()
         http = null
         httpReady = false
         releaseLocks()
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            getSystemService(NotificationManager::class.java).cancel(ALERT_NOTIFICATION_ID)
+        } catch (_: Exception) {
+        }
         super.onDestroy()
     }
 
@@ -129,6 +158,8 @@ class TelemetryService : Service(), SettingsHost {
         .put("tracks_uri", settings.tracksUri ?: JSONObject.NULL)
         .put("recording", state.isRecording())
         .put("idle_release_min", settings.idleReleaseMinutes)
+        .put("auto_record_3d", settings.autoRecordOn3d)
+        .put("auto_stop_recording_sec", settings.autoStopRecordingSeconds)
         .toString()
 
     override fun changeUdpPort(port: Int): Pair<Boolean, String> {
@@ -156,6 +187,20 @@ class TelemetryService : Service(), SettingsHost {
         settings.idleReleaseMinutes = minutes
         if (minutes == 0) mainHandler.post { exitPowerSaveNow() }
         mainHandler.post { updateNotification() }
+        notifySettingsChanged()
+        return Pair(true, "")
+    }
+
+    override fun changeAutoRecordOn3d(enabled: Boolean): Pair<Boolean, String> {
+        settings.autoRecordOn3d = enabled
+        state.setAutoRecordOn3d(enabled)
+        notifySettingsChanged()
+        return Pair(true, "")
+    }
+
+    override fun changeAutoStopRecordingSeconds(seconds: Int): Pair<Boolean, String> {
+        if (seconds !in 0..3600) return Pair(false, "auto stop timeout must be 0..3600")
+        settings.autoStopRecordingSeconds = seconds
         notifySettingsChanged()
         return Pair(true, "")
     }
@@ -340,10 +385,11 @@ class TelemetryService : Service(), SettingsHost {
             Intent(this, MainActivity::class.java),
             flags,
         )
+        val recording = state.isRecording()
         val stopIntent = PendingIntent.getService(
             this,
-            1,
-            Intent(this, TelemetryService::class.java).setAction(ACTION_STOP),
+            if (recording) 2 else 1,
+            Intent(this, TelemetryService::class.java).setAction(if (recording) ACTION_STOP_RECORDING else ACTION_STOP),
             flags,
         )
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -358,15 +404,77 @@ class TelemetryService : Service(), SettingsHost {
             .setSmallIcon(R.drawable.ic_stat_elrs)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setGroup(GROUP_ID)
+            .setGroupSummary(true)
             .setContentIntent(openIntent)
             .addAction(
                 Notification.Action.Builder(
                     Icon.createWithResource(this, R.drawable.ic_stat_elrs),
-                    getString(R.string.stop_service),
+                    getString(if (recording) R.string.stop_recording else R.string.stop_service),
                     stopIntent,
                 ).build(),
             )
+        if (recording) {
+            builder.setSubText(getString(R.string.notif_recording))
+            builder.setColor(Color.rgb(248, 81, 73))
+        }
+        notificationLargeIcon(recording)?.let { builder.setLargeIcon(it) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN)
+        }
         return builder.build()
+    }
+
+    private fun startNotificationTicker() {
+        if (notificationTicker != null) return
+        val ticker = object : Runnable {
+            override fun run() {
+                if (!running) return
+                val recording = state.isRecording()
+                if (recording) recordingPulsePhase += 0.16
+                mainHandler.post { if (running) updateNotification() }
+                mainHandler.postDelayed(this, if (recording) 140L else 1000L)
+            }
+        }
+        notificationTicker = ticker
+        mainHandler.post(ticker)
+    }
+
+    private fun stopNotificationTicker() {
+        try {
+            notificationTicker?.let { mainHandler.removeCallbacks(it) }
+        } catch (_: Exception) {
+        }
+        notificationTicker = null
+    }
+
+    private fun notificationLargeIcon(recording: Boolean): Bitmap? {
+        val base = largeIconBase ?: try {
+            val drawable = packageManager.getApplicationIcon(packageName)
+            val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 96
+            val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 96
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
+                val canvas = Canvas(bitmap)
+                drawable.setBounds(0, 0, width, height)
+                drawable.draw(canvas)
+            }.also { largeIconBase = it }
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        if (!recording) return base
+        return try {
+            val tinted = base.copy(Bitmap.Config.ARGB_8888, true)
+            val alpha = (70 + 150 * ((sin(recordingPulsePhase) + 1.0) / 2.0).toFloat()).toInt()
+            val canvas = Canvas(tinted)
+            val paint = Paint().apply {
+                color = Color.argb(alpha, 248, 81, 73)
+                xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+            }
+            canvas.drawRect(0f, 0f, tinted.width.toFloat(), tinted.height.toFloat(), paint)
+            tinted
+        } catch (_: Exception) {
+            base
+        }
     }
 
     private fun startWatchdog() {
@@ -380,6 +488,7 @@ class TelemetryService : Service(), SettingsHost {
                 try {
                     mainHandler.post { if (running) updateNotification() }
                     checkIdleTimeout()
+                    checkRecordingTimeout()
                 } catch (_: Exception) {
                 }
             }
@@ -392,6 +501,17 @@ class TelemetryService : Service(), SettingsHost {
         } catch (_: Exception) {
         }
         watchdog = null
+    }
+
+    private fun checkRecordingTimeout() {
+        if (!state.isRecording()) return
+        val seconds = settings.autoStopRecordingSeconds
+        if (seconds <= 0) return
+        val age = state.lastPacketAgeSeconds() ?: return
+        if (age >= seconds) {
+            state.stopRecording()
+            mainHandler.post { updateNotification() }
+        }
     }
 
     private fun checkIdleTimeout() {
@@ -444,6 +564,7 @@ class TelemetryService : Service(), SettingsHost {
             .setContentText(getString(R.string.alert_text, settings.idleReleaseMinutes))
             .setSmallIcon(R.drawable.ic_stat_elrs)
             .setAutoCancel(true)
+            .setGroup(GROUP_ID)
             .setContentIntent(openIntent)
         try {
             getSystemService(NotificationManager::class.java).notify(ALERT_NOTIFICATION_ID, builder.build())

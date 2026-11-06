@@ -14,6 +14,8 @@ interface SettingsHost {
     fun settingsJson(): String
     fun changeUdpPort(port: Int): Pair<Boolean, String>
     fun changeIdleReleaseMinutes(minutes: Int): Pair<Boolean, String>
+    fun changeAutoRecordOn3d(enabled: Boolean): Pair<Boolean, String>
+    fun changeAutoStopRecordingSeconds(seconds: Int): Pair<Boolean, String>
 }
 
 class HttpServer(
@@ -192,7 +194,8 @@ class HttpServer(
                 }
                 if (data == null) {
                     json(JSONObject().put("ok", false).put("error", "invalid json").toString(), 400)
-                } else if (!data.has("udp_port") && !data.has("idle_release_min")) {
+                } else if (!data.has("udp_port") && !data.has("idle_release_min") &&
+                    !data.has("auto_record_3d") && !data.has("auto_stop_recording_sec")) {
                     json(JSONObject().put("ok", false).put("error", "no settings").toString(), 400)
                 } else {
                     var error: String? = null
@@ -212,6 +215,20 @@ class HttpServer(
                         } else {
                             val (ok, idleError) = host.changeIdleReleaseMinutes(minutes)
                             if (!ok) error = idleError
+                        }
+                    }
+                    if (error == null && data.has("auto_record_3d")) {
+                        val enabled = data.optBoolean("auto_record_3d", false)
+                        val (ok, autoError) = host.changeAutoRecordOn3d(enabled)
+                        if (!ok) error = autoError
+                    }
+                    if (error == null && data.has("auto_stop_recording_sec")) {
+                        val seconds = data.optInt("auto_stop_recording_sec", -1)
+                        if (seconds !in 0..3600) {
+                            error = "auto stop recording timeout must be 0..3600"
+                        } else {
+                            val (ok, autoStopError) = host.changeAutoStopRecordingSeconds(seconds)
+                            if (!ok) error = autoStopError
                         }
                     }
                     if (error == null) {

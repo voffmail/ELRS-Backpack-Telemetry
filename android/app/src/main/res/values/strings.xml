@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ELRS Backpack</string>
+    <string name="stop_recording">Stop recording</string>
     <string name="stop_service">Стоп</string>
     <string name="saved_to">Saved: %1$s</string>
     <string name="save_failed">Could not save %1$s</string>
@@ -20,6 +21,7 @@
     <string name="notif_title_powersave">ELRS Backpack · power saving</string>
     <string name="notif_running">UDP %1$d · %2$d pkt/s · total %3$d</string>
     <string name="notif_waiting">UDP %1$d · waiting for data</string>
+    <string name="notif_recording">Recording track</string>
     <string name="notif_powersave_text">No data for %1$d min · locks released</string>
     <string name="alert_title">Telemetry is not arriving</string>
     <string name="alert_text">No data for %1$d min. Locks released to save battery.</string>
