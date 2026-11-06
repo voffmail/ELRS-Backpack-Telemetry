@@ -91,6 +91,7 @@ class TelemetryService : Service(), SettingsHost {
         currentUdpPort = settings.udpPort
         state = TelemetryState(initialTrackStore())
         state.setAutoRecordOn3d(settings.autoRecordOn3d)
+        state.setKeepTracks(settings.keepTracks)
         createChannel()
         startForegroundCompat(buildNotification())
         acquireLocks()
@@ -160,6 +161,7 @@ class TelemetryService : Service(), SettingsHost {
         .put("idle_release_min", settings.idleReleaseMinutes)
         .put("auto_record_3d", settings.autoRecordOn3d)
         .put("auto_stop_recording_sec", settings.autoStopRecordingSeconds)
+        .put("keep_tracks", settings.keepTracks ?: JSONObject.NULL)
         .toString()
 
     override fun changeUdpPort(port: Int): Pair<Boolean, String> {
@@ -201,6 +203,14 @@ class TelemetryService : Service(), SettingsHost {
     override fun changeAutoStopRecordingSeconds(seconds: Int): Pair<Boolean, String> {
         if (seconds !in 0..3600) return Pair(false, "auto stop timeout must be 0..3600")
         settings.autoStopRecordingSeconds = seconds
+        notifySettingsChanged()
+        return Pair(true, "")
+    }
+
+    override fun changeKeepTracks(count: Int?): Pair<Boolean, String> {
+        if (count != null && count <= 0) return Pair(false, "keep tracks must be greater than 0")
+        settings.keepTracks = count
+        state.setKeepTracks(count)
         notifySettingsChanged()
         return Pair(true, "")
     }

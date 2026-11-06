@@ -416,6 +416,15 @@
       <div class="guideNote" data-i18n="tracks_note">Existing tracks are copied to the new folder.</div>
     </div>
     <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="keep_tracks">Keep tracks</div>
+      <div class="settingsRow">
+        <input id="keepTracksInput" type="number" min="1" step="1" inputmode="numeric" placeholder="10">
+        <button id="keepTracksSave" class="mapBtn" data-i18n="apply">Apply</button>
+        <span id="keepTracksMsg" class="settingsMsg"></span>
+      </div>
+      <div class="guideNote" data-i18n="keep_tracks_note">Old tracks are deleted when a new one is saved. Empty — unlimited; 0 is not allowed.</div>
+    </div>
+    <div class="settingsGroup">
       <div class="settingsLabel" data-i18n="permissions">Permissions</div>
       <ul id="permissionList" class="permList"></ul>
       <div class="settingsRow">
@@ -585,6 +594,8 @@ function applySettingsData(data) {
   if (autoRecord) autoRecord.checked = !!data.auto_record_3d;
   const autoStop = $("autoStopRecordingSec");
   if (autoStop) autoStop.value = data.auto_stop_recording_sec ?? 10;
+  const keep = $("keepTracksInput");
+  if (keep) keep.value = data.keep_tracks ?? "";
 }
 
 function setSettingsMsg(id, text, isError) {
@@ -723,6 +734,9 @@ const I18N = {
     auto_record_3d_note: "Start a new track when a 3D fix appears. Off by default.",
     auto_stop_recording: "Stop recording when telemetry is lost (s)",
     auto_stop_recording_note: "0 — never stop automatically.",
+    keep_tracks: "Keep tracks",
+    keep_tracks_note: "Old tracks are deleted when a new one is saved. Empty — unlimited; 0 is not allowed.",
+    keep_tracks_error: "Enter a whole number greater than 0 or leave the field empty",
     tracks_location: "Track storage",
     choose_folder: "Choose folder",
     reset_folder: "Reset",
@@ -935,6 +949,9 @@ const I18N = {
     auto_record_3d_note: "Начинать новый трек при появлении 3D-фикса. По умолчанию выключено.",
     auto_stop_recording: "Останавливать запись при потере телеметрии, с",
     auto_stop_recording_note: "0 — никогда не останавливать автоматически.",
+    keep_tracks: "Хранить треков",
+    keep_tracks_note: "Старые треки удаляются при сохранении нового. Пусто — без ограничения; 0 недопустим.",
+    keep_tracks_error: "Введите целое число больше 0 или оставьте поле пустым",
     tracks_location: "Расположение треков",
     choose_folder: "Выбрать папку",
     reset_folder: "Сбросить",
@@ -1147,6 +1164,9 @@ const I18N = {
     auto_record_3d_note: "出现 3D 定位时开始新轨迹。默认关闭。",
     auto_stop_recording: "遥测丢失时停止录制（秒）",
     auto_stop_recording_note: "0 — 永不自动停止。",
+    keep_tracks: "保留轨迹数",
+    keep_tracks_note: "保存新轨迹时会删除旧轨迹。留空表示不限制；0 不允许。",
+    keep_tracks_error: "请输入大于 0 的整数或留空",
     tracks_location: "轨迹存储",
     choose_folder: "选择文件夹",
     reset_folder: "重置",
@@ -2757,6 +2777,33 @@ $("autoRecord3d").addEventListener("change", async (event) => {
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.settings) applySettingsData(data.settings);
   } catch (e) {
+  }
+});
+$("keepTracksSave").addEventListener("click", async () => {
+  const raw = $("keepTracksInput").value.trim();
+  let value = null;
+  if (raw !== "") {
+    value = Number(raw);
+    if (!Number.isInteger(value) || value <= 0) {
+      setSettingsMsg("keepTracksMsg", t("keep_tracks_error"), true);
+      return;
+    }
+  }
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keep_tracks: value }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (data.settings) applySettingsData(data.settings);
+      setSettingsMsg("keepTracksMsg", t("save"), false);
+    } else {
+      setSettingsMsg("keepTracksMsg", data.error || t("keep_tracks_error"), true);
+    }
+  } catch (e) {
+    setSettingsMsg("keepTracksMsg", t("keep_tracks_error"), true);
   }
 });
 $("idleReleaseSave").addEventListener("click", async () => {

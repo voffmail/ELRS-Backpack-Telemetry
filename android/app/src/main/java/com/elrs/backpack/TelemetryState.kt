@@ -203,8 +203,15 @@ class TelemetryState(initialStore: TrackStore) {
     @Volatile
     private var autoRecordOn3d = false
 
+    @Volatile
+    private var keepTracks: Int? = null
+
     fun setAutoRecordOn3d(enabled: Boolean) = synchronized(lock) {
         autoRecordOn3d = enabled
+    }
+
+    fun setKeepTracks(count: Int?) = synchronized(lock) {
+        keepTracks = count
     }
 
     fun onDatagram(data: ByteArray, length: Int) {
@@ -497,7 +504,18 @@ class TelemetryState(initialStore: TrackStore) {
         if (!storeToUse.write(savedId, meta.toString())) {
             return Pair(null, "failed to save track")
         }
+        keepTracks?.let { limit -> trimTracks(storeToUse, savedId, limit) }
         return Pair(meta.toJsonMeta(), "")
+    }
+
+    private fun trimTracks(store: TrackStore, savedId: String, limit: Int) {
+        val ids = store.listIds()
+        if (ids.size <= limit) return
+        var total = ids.size
+        for (id in ids.filter { it != savedId }.sorted()) {
+            if (total <= limit) break
+            if (store.delete(id)) total -= 1
+        }
     }
 
     fun recordSnapshotJson(since: Int): String = synchronized(lock) {

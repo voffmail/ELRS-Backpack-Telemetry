@@ -16,6 +16,7 @@ interface SettingsHost {
     fun changeIdleReleaseMinutes(minutes: Int): Pair<Boolean, String>
     fun changeAutoRecordOn3d(enabled: Boolean): Pair<Boolean, String>
     fun changeAutoStopRecordingSeconds(seconds: Int): Pair<Boolean, String>
+    fun changeKeepTracks(count: Int?): Pair<Boolean, String>
 }
 
 class HttpServer(
@@ -195,7 +196,8 @@ class HttpServer(
                 if (data == null) {
                     json(JSONObject().put("ok", false).put("error", "invalid json").toString(), 400)
                 } else if (!data.has("udp_port") && !data.has("idle_release_min") &&
-                    !data.has("auto_record_3d") && !data.has("auto_stop_recording_sec")) {
+                    !data.has("auto_record_3d") && !data.has("auto_stop_recording_sec") &&
+                    !data.has("keep_tracks")) {
                     json(JSONObject().put("ok", false).put("error", "no settings").toString(), 400)
                 } else {
                     var error: String? = null
@@ -229,6 +231,16 @@ class HttpServer(
                         } else {
                             val (ok, autoStopError) = host.changeAutoStopRecordingSeconds(seconds)
                             if (!ok) error = autoStopError
+                        }
+                    }
+                    if (error == null && data.has("keep_tracks")) {
+                        val raw = if (data.isNull("keep_tracks")) null else data.optInt("keep_tracks", 0)
+                        val count = raw?.takeIf { it > 0 }
+                        if (raw != null && count == null) {
+                            error = "keep tracks must be greater than 0"
+                        } else {
+                            val (ok, keepError) = host.changeKeepTracks(count)
+                            if (!ok) error = keepError
                         }
                     }
                     if (error == null) {

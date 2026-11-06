@@ -26,14 +26,24 @@ class AppSettings(context: Context) {
         get() = prefs.getInt(KEY_AUTO_STOP_RECORDING_SEC, DEFAULT_AUTO_STOP_RECORDING_SEC)
         set(value) = prefs.edit().putInt(KEY_AUTO_STOP_RECORDING_SEC, value).apply()
 
+    var keepTracks: Int?
+        get() {
+            if (!prefs.contains(KEY_KEEP_TRACKS)) return DEFAULT_KEEP_TRACKS
+            return prefs.getInt(KEY_KEEP_TRACKS, UNLIMITED_KEEP_TRACKS).takeIf { it > 0 }
+        }
+        set(value) = prefs.edit().putInt(KEY_KEEP_TRACKS, value?.takeIf { it > 0 } ?: UNLIMITED_KEEP_TRACKS).apply()
+
     companion object {
         const val DEFAULT_UDP_PORT = 14550
         const val DEFAULT_IDLE_RELEASE_MIN = 5
         const val DEFAULT_AUTO_STOP_RECORDING_SEC = 10
+        const val DEFAULT_KEEP_TRACKS = 10
+        private const val UNLIMITED_KEEP_TRACKS = -1
         private const val KEY_UDP_PORT = "udp_port"
         private const val KEY_TRACKS_URI = "tracks_uri"
         private const val KEY_IDLE_RELEASE_MIN = "idle_release_min"
         private const val KEY_AUTO_RECORD_3D = "auto_record_on_3d"
         private const val KEY_AUTO_STOP_RECORDING_SEC = "auto_stop_recording_sec"
+        private const val KEY_KEEP_TRACKS = "keep_tracks"
     }
 }
