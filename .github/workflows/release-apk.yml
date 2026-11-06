@@ -63,7 +63,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk "ELRS-Backpack-${RELEASE_TAG}.apk"
-          gh release create "$RELEASE_TAG" "ELRS-Backpack-${RELEASE_TAG}.apk" \
-            --title "ELRS Backpack ${RELEASE_TAG}" \
+          cp android/app/build/outputs/apk/release/app-release.apk "ELRS-Backpack-Telemetry-${RELEASE_TAG}.apk"
+          gh release create "$RELEASE_TAG" "ELRS-Backpack-Telemetry-${RELEASE_TAG}.apk" \
+            --title "ELRS Backpack Telemetry ${RELEASE_TAG}" \
             --generate-notes

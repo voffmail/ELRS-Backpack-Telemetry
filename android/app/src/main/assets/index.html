@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ELRS Backpack telemetry</title>
+<title>ELRS Backpack Telemetry</title>
 <link rel="stylesheet" href="https://cdn.maptiler.com/maptiler-sdk-js/v4.2.0/maptiler-sdk.css">
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
@@ -14,16 +14,18 @@
   header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
            padding: 7px 16px; border-bottom: 1px solid #1f2630; position: sticky; top: 0;
            background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 2; }
-  .brand { display: flex; flex-direction: column; gap: 3px; font-size: 15px;
+  .brand { display: flex; flex-direction: column; gap: 1px; font-size: 15px;
            letter-spacing: .2px; line-height: 1.1; }
   .brand b { color: #3fb950; }
-  .brandSub { color: #7d8590; font-size: 9px; letter-spacing: .03em; }
-  .brand > .pill { align-self: flex-start; }
+  .brandName { white-space: nowrap; }
+  .brandSub { color: #f0883e; font-size: inherit; letter-spacing: .2px; white-space: nowrap;
+              text-decoration: none; align-self: flex-start; }
+  .brandSub:hover { text-decoration: underline; }
   .pill { font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid #30363d;
           color: #7d8590; white-space: nowrap; }
   .pill.on { color: #3fb950; border-color: #238636; background: rgba(63,185,80,.1); }
   .pill.off { color: #f85149; border-color: #6e2c2c; background: rgba(248,81,73,.08); }
-  .headRight { display: flex; align-items: center; gap: 8px; }
+  .headRight { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; flex: 0 0 auto; }
   .lang { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px;
           padding: 3px 6px; font-size: 11px; outline: none; }
   .lang:focus { border-color: #3fb950; }
@@ -234,25 +236,28 @@
                                 overflow-wrap: anywhere; }
   @media (max-width: 620px) { .pointBody { grid-template-columns: 1fr; } }
   @media (max-width: 720px) { .gpsGrid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 520px) { header { padding: 5px 8px; gap: 3px; } .brand { font-size: 13px; } .brandSub { font-size: 8px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 4px; border-radius: 5px; } .headRight { gap: 4px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 4px; padding: 0; } .tab { padding: 4.5px 9px; font-size: 15px; border-radius: 9px; } #mapPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
+  @media (max-width: 520px) { header { padding: 5px 8px; gap: 2px; } .brand { font-size: 12px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 3px; border-radius: 5px; } .headRight { gap: 3px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 2px; padding: 0; min-width: 0; } .tab { padding: 4px 7px; font-size: 14px; border-radius: 9px; } #mapPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
   @media (max-width: 330px) { .tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-top: 2px; } }
 </style>
 </head>
 <body>
 <header>
   <div class="brand">
-    <div><b>ELRS</b> Backpack</div>
-    <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
+    <div class="brandName"><b>ELRS</b> Backpack</div>
+    <a class="brandSub" href="https://github.com/voffmail/ELRS-Backpack-Telemetry" target="_blank" rel="noopener noreferrer">Telemetry</a>
   </div>
   <nav class="tabs">
     <button class="tab active" data-tab="telemetry" data-i18n="tab_telemetry">Telemetry</button>
     <button class="tab" data-tab="map" data-i18n="tab_map">Map</button>
   </nav>
-  <select id="lang" class="lang" aria-label="Language">
-    <option value="en">EN</option>
-    <option value="ru">RU</option>
-    <option value="zh">中文</option>
-  </select>
+  <div class="headRight">
+    <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
+    <select id="lang" class="lang" aria-label="Language">
+      <option value="en">EN</option>
+      <option value="ru">RU</option>
+      <option value="zh">中文</option>
+    </select>
+  </div>
 </header>
 <main id="telemetryPage">
   <div id="firmwareBadge" class="firmwareBadge" hidden></div>
@@ -492,7 +497,7 @@
 <div id="helpOverlay" class="helpOverlay" hidden>
   <div class="helpCard" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
     <button id="helpClose" class="helpClose" type="button" aria-label="Close">×</button>
-    <div class="helpKicker">ELRS Backpack</div>
+    <div class="helpKicker">ELRS Backpack Telemetry</div>
     <div id="helpTitle" class="helpTitle"></div>
     <div id="helpText" class="helpText"></div>
   </div>
@@ -670,7 +675,7 @@ window.onNativeSettingsChanged = function () {
 
 const I18N = {
   en: {
-    page_title: "ELRS Backpack telemetry",
+    page_title: "ELRS Backpack Telemetry",
     brand_sub: "Wi-Fi telemetry",
     status_wait: "waiting for data",
     status_online: "online · {pps} pkt/s",
@@ -885,7 +890,7 @@ const I18N = {
     }
   },
   ru: {
-    page_title: "Телеметрия ELRS Backpack",
+    page_title: "ELRS Backpack Telemetry",
     brand_sub: "телеметрия по Wi-Fi",
     status_wait: "нет данных",
     status_online: "онлайн · {pps} пак/с",
@@ -1100,7 +1105,7 @@ const I18N = {
     }
   },
   zh: {
-    page_title: "ELRS Backpack 遥测",
+    page_title: "ELRS Backpack Telemetry",
     brand_sub: "Wi-Fi 遥测",
     status_wait: "等待数据",
     status_online: "在线 · {pps} 包/秒",
@@ -2301,7 +2306,7 @@ function exportTrack(format) {
   let text;
   if (format === "gpx") {
     text = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="ELRS Backpack Telemetry Viewer" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${xmlEscape(name)}</name><trkseg>
+<gpx version="1.1" creator="ELRS Backpack Telemetry" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${xmlEscape(name)}</name><trkseg>
 `;
     for (const p of points) {
       text += `<trkpt lat="${Number(p.lat).toFixed(7)}" lon="${Number(p.lon).toFixed(7)}">`;

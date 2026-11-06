@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ELRSBackpack"
+rootProject.name = "ELRS-Backpack-Telemetry"
 include(":app")

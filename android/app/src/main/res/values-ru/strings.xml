@@ -16,8 +16,8 @@
     <string name="tracks_location_changed">Треки: %1$s</string>
     <string name="notif_channel_name">Сервис телеметрии</string>
     <string name="alert_channel_name">Оповещения телеметрии</string>
-    <string name="notif_title">ELRS Backpack · приём телеметрии</string>
-    <string name="notif_title_powersave">ELRS Backpack · энергосбережение</string>
+    <string name="notif_title">ELRS Backpack Telemetry</string>
+    <string name="notif_title_powersave">ELRS Backpack Telemetry · энергосбережение</string>
     <string name="notif_running">UDP %1$d · %2$d пак/с · всего %3$d</string>
     <string name="notif_waiting">UDP %1$d · ожидание данных</string>
     <string name="notif_recording">Записывается трек</string>

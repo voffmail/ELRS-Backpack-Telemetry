@@ -40,7 +40,7 @@ class AndroidExport(private val context: Context) {
     }
 
     private fun saveToDownloads(name: String, mime: String, content: String): String? {
-        val relative = Environment.DIRECTORY_DOWNLOADS + "/ELRS Backpack"
+        val relative = Environment.DIRECTORY_DOWNLOADS + "/ELRS Backpack Telemetry"
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name)
             put(MediaStore.Downloads.MIME_TYPE, mime)
