@@ -2,6 +2,9 @@
 
 This document describes how to build, run and test the project on a development machine.
 
+User-facing overview and installation: [README.md](README.md). Technical reference
+(API, CRSF frames, Range, map details, troubleshooting): [docs/REFERENCE.md](docs/REFERENCE.md).
+
 ## Requirements
 
 - **JDK 17+** (the project is tested with Temurin 21).
@@ -123,8 +126,8 @@ Create a release:
 - run **Actions → Release APK → Run workflow** with a tag.
 
 `.github/workflows/release-apk.yml` builds `assembleRelease`, verifies the signature, and attaches
-`ELRS-Backpack-<tag>.apk` to the GitHub Release. The debug APK workflow remains available for test
-artifacts.
+`ELRS-Backpack-Telemetry-<tag>.apk` to the GitHub Release. The debug APK workflow remains available
+for test artifacts.
 
 ## Desktop viewer and replay
 
