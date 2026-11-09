@@ -42,7 +42,7 @@ ESP-NOW:  Дрон / FC ──► ELRS RX ──► TX-модуль ──► Ba
 
 ### ESP-NOW по USB (рекомендуется)
 
-1. Прошейте USB-донгл ESP32-C3 с native USB — через Web Flasher или PlatformIO (см. ниже).
+1. Прошейте USB-донгл ESP32-C3 с native USB — через [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) или PlatformIO (см. ниже).
 2. На аппаратуре задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.
 3. Подключите донгл к телефону через OTG и разрешите доступ к USB.
 4. Откройте настройки (шестерёнка в шапке), выберите источник **«ESP-NOW по USB»**.
@@ -52,7 +52,7 @@ ESP-NOW:  Дрон / FC ──► ELRS RX ──► TX-модуль ──► Ba
 кадры `0x14` с `LQ=0`, приложение покажет «нет связи с дроном», а уведомление —
 «нет связи с дроном» или «нет связи с аппаратурой» в зависимости от ситуации.
 
-## Прошивка USB-донгла и Web Flasher
+## Прошивка USB-донгла и [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/)
 
 ![ESP32-C3 Super Mini](docs/esp32c3.png)
 
@@ -68,7 +68,7 @@ ESP-NOW:  Дрон / FC ──► ELRS RX ──► TX-модуль ──► Ba
 Прошивка: `firmware/.pio/build/esp32-c3-usb/firmware.bin`. Используется только
 native-USB ESP32-C3 (например, Super Mini).
 
-Web Flasher собирается из merged-образа (`build/firmware-merged.bin`) скриптом `scripts/make_webflasher.py`; workflow `.github/workflows/webflasher.yml` публикует сайт на GitHub Pages. Для публикации один раз включите **Settings → Pages → Source: GitHub Actions**.
+[Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) собирается из merged-образа (`build/firmware-merged.bin`) скриптом `scripts/make_webflasher.py`; workflow `.github/workflows/webflasher.yml` публикует сайт на GitHub Pages. Для публикации один раз включите **Settings → Pages → Source: GitHub Actions**.
 
 Android-приложение и прошивка используют общий `.toolchain/`: Android ставится через `bash scripts/setup-toolchain.sh`, прошивка — через `./init.sh`.
 
@@ -129,7 +129,7 @@ ESP-NOW:  Drone / FC ──► ELRS RX ──► TX module ──► Backpack �
 
 #### ESP-NOW via USB (recommended)
 
-1. Flash the ESP32-C3 native-USB dongle via the web flasher or PlatformIO (see below).
+1. Flash the ESP32-C3 native-USB dongle via the [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) or PlatformIO (see below).
 2. On the radio, set: ELRS Lua → Backpack → Telemetry → ESP-NOW.
 3. Connect the dongle to the phone over OTG and allow USB access.
 4. Open Settings (gear icon in the header) and select **“ESP-NOW via USB”**.
@@ -139,7 +139,7 @@ The app indicator is green while the drone link is alive. If only `0x14` frames
 with `LQ=0` arrive, the app shows “no drone link”, and the notification says
 “no drone link” or “no backpack link” depending on the situation.
 
-### Dongle firmware and Web Flasher
+### Dongle firmware and [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/)
 
 ![ESP32-C3 Super Mini](docs/esp32c3.png)
 
@@ -155,7 +155,7 @@ Build the firmware (PlatformIO is installed locally into `.toolchain/venv`):
 Firmware: `firmware/.pio/build/esp32-c3-usb/firmware.bin`. Only native-USB
 ESP32-C3 boards (e.g. Super Mini) are supported.
 
-The Web Flasher is built from the merged image (`build/firmware-merged.bin`) with `scripts/make_webflasher.py`; `.github/workflows/webflasher.yml` publishes the site to GitHub Pages. Enable **Settings → Pages → Source: GitHub Actions** once.
+The [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) is built from the merged image (`build/firmware-merged.bin`) with `scripts/make_webflasher.py`; `.github/workflows/webflasher.yml` publishes the site to GitHub Pages. Enable **Settings → Pages → Source: GitHub Actions** once.
 
 The Android app and the firmware share `.toolchain/`: set up Android with `bash scripts/setup-toolchain.sh`, and the firmware with `./init.sh`.
 
