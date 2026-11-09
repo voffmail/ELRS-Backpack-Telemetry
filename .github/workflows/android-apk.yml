@@ -36,8 +36,6 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        env:
-          MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
         run: ./gradlew --no-daemon assembleDebug
 
       - name: Upload APK

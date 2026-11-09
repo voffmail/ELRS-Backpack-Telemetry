@@ -47,7 +47,6 @@ jobs:
       - name: Build release APK
         working-directory: android
         env:
-          MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
           ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/android/keystore/elrs-release.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}

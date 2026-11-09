@@ -17,6 +17,9 @@ android/keystore.properties
 *.iml
 .idea/
 
+# Optional offline map extracts
+tiles/*.pmtiles
+
 # Build artifacts / OS
 *.apk
 .DS_Store

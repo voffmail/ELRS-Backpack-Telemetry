@@ -14,14 +14,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
 LOCK = threading.Lock()
-TRACKS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tracks")
-MAPTILER_KEY_DEFAULT = os.environ.get("MAPTILER_KEY", "").strip()
-if not MAPTILER_KEY_DEFAULT:
-    try:
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "maptiler.key"), encoding="utf-8") as _key_file:
-            MAPTILER_KEY_DEFAULT = _key_file.read().strip()
-    except OSError:
-        pass
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TRACKS_DIR = os.path.join(BASE_DIR, "tracks")
+STATIC_DIR = os.path.join(BASE_DIR, "web", "static")
+TILES_DIR = os.path.join(BASE_DIR, "tiles")
 RECORD = {
     "active": False,
     "id": None,
@@ -355,7 +351,10 @@ PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ELRS Backpack Telemetry</title>
-<link rel="stylesheet" href="https://cdn.maptiler.com/maptiler-sdk-js/v4.2.0/maptiler-sdk.css">
+<link rel="stylesheet" href="/static/maplibre-gl.css?v=4">
+<script src="/static/maplibre-gl.js?v=4"></script>
+<script src="/static/pmtiles.js?v=4"></script>
+<script src="/static/elrs-map.js?v=4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
   :root { color-scheme: dark; }
@@ -747,7 +746,7 @@ PAGE = """<!doctype html>
       <ol class="guideList">
         <li data-i18n="guide_viewer_1">Open http://localhost:8080 (or the computer IP) in a browser.</li>
         <li data-i18n="guide_viewer_2">Stop the viewer and the bridge with Ctrl+C in their terminals.</li>
-        <li data-i18n="guide_viewer_3">The map requires internet and a MapTiler key.</li>
+        <li data-i18n="guide_viewer_3">The map requires internet access. Map tiles come from OpenStreetMap, OpenFreeMap, Esri and Sentinel-2; no API key is needed.</li>
       </ol>
     </div>
   </details>
@@ -1021,7 +1020,7 @@ const I18N = {
     guide_viewer: "Viewer",
     guide_viewer_1: "Open http://localhost:8080 (or the computer IP) in a browser.",
     guide_viewer_2: "Stop the viewer and the bridge with Ctrl+C in their terminals.",
-    guide_viewer_3: "The map requires internet and a MapTiler key.",
+    guide_viewer_3: "The map requires internet access. Map tiles come from OpenStreetMap, OpenFreeMap, Esri and Sentinel-2; no API key is needed.",
     save: "Save",
     card_battery: "Battery",
     current: "Current",
@@ -1208,7 +1207,7 @@ const I18N = {
     guide_viewer: "Вьюер",
     guide_viewer_1: "Откройте http://localhost:8080 (или IP компьютера) в браузере.",
     guide_viewer_2: "Остановите вьюер и мост через Ctrl+C в их терминалах.",
-    guide_viewer_3: "Для карты нужны интернет и ключ MapTiler.",
+    guide_viewer_3: "Для карты нужен интернет. Тайлы берутся из OpenStreetMap, OpenFreeMap, Esri и Sentinel-2; ключ не нужен.",
     save: "Сохранить",
     card_battery: "Батарея",
     current: "Ток",
@@ -1395,7 +1394,7 @@ const I18N = {
     guide_viewer: "查看器",
     guide_viewer_1: "在浏览器中打开 http://localhost:8080（或电脑 IP）。",
     guide_viewer_2: "在各自终端中按 Ctrl+C 停止查看器和桥接。",
-    guide_viewer_3: "地图需要互联网和 MapTiler 密钥。",
+    guide_viewer_3: "地图需要互联网。瓦片来自 OpenStreetMap、OpenFreeMap、Esri 和 Sentinel-2，无需密钥。",
     save: "保存",
     card_battery: "电池",
     current: "电流",
@@ -1569,7 +1568,6 @@ function applyI18n() {
   applyPlatformUi();
 }
 
-const mapKey = "__MAPTILER_KEY__";
 let mapObj = null;
 let mapPlacemark = null;
 let mapReady = false;
@@ -1578,7 +1576,6 @@ let mapResizeObserver = null;
 let mapLastPos = null;
 let mapLastGps = null;
 let mapFollow = true;
-const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 let tracks = [];
 let recordState = {};
@@ -1618,28 +1615,19 @@ function ensureMap() {
     return;
   }
   if (mapLoading) return;
-  if (window.maptilersdk && window.maptilersdk.Map) {
-    mapLoading = true;
-    initMap();
+  if (!window.maplibregl || !window.ELRS_MAP) {
+    showMapFailure();
     return;
   }
   mapLoading = true;
-  const script = document.createElement("script");
-  script.src = "https://cdn.maptiler.com/maptiler-sdk-js/v4.2.0/maptiler-sdk.umd.min.js";
-  script.onload = () => {
-    initMap();
-  };
-  script.onerror = () => {
-    mapLoading = false;
-    showMapFailure();
-  };
-  document.head.appendChild(script);
-  setTimeout(() => {
-    if (!mapObj) {
-      mapLoading = false;
-      showMapFailure();
-    }
-  }, 20000);
+  initMap();
+}
+
+function firstSymbolLayerId() {
+  if (!mapObj) return undefined;
+  const layers = mapObj.getStyle().layers || [];
+  const symbol = layers.find(layer => layer.type === "symbol");
+  return symbol ? symbol.id : undefined;
 }
 
 async function initMap() {
@@ -1647,7 +1635,7 @@ async function initMap() {
     mapLoading = false;
     return;
   }
-  if (!window.maptilersdk) {
+  if (!window.maplibregl || !window.ELRS_MAP) {
     mapLoading = false;
     showMapFailure();
     return;
@@ -1655,39 +1643,19 @@ async function initMap() {
   const g = mapLastGps && mapLastGps.fix ? mapLastGps : null;
   const center = g ? [g.lon, g.lat] : [37.618423, 55.751244];
   let style;
-  let esriBeforeId = null;
   try {
-    const res = await fetch("https://api.maptiler.com/maps/hybrid/style.json?key=" + encodeURIComponent(mapKey));
-    if (!res.ok) {
-      mapLoading = false;
-      showMapFailure();
-      return;
-    }
-    const spec = await res.json();
-    const sat = spec.sources && spec.sources.satellite;
-    if (sat && sat.url) {
-      sat.url = sat.url.replace("/tiles/satellite-v2/", "/tiles/satellite-mediumres/");
-    }
-    if (spec.layers) {
-      const satIndex = spec.layers.findIndex(l => l.type === "raster" && l.source === "satellite");
-      if (satIndex >= 0 && satIndex + 1 < spec.layers.length) {
-        esriBeforeId = spec.layers[satIndex + 1].id;
-      }
-    }
-    style = spec;
+    style = await window.ELRS_MAP.loadStyle(LANG);
   } catch (e) {
     mapLoading = false;
     showMapFailure();
     return;
   }
   try {
-    maptilersdk.config.apiKey = mapKey;
-    mapObj = new maptilersdk.Map({
+    mapObj = new maplibregl.Map({
       container: "map",
       style: style,
       center: center,
-      zoom: g ? 15 : 4,
-      language: LANG
+      zoom: g ? 15 : 4
     });
   } catch (e) {
     mapLoading = false;
@@ -1695,23 +1663,6 @@ async function initMap() {
     return;
   }
   mapObj.on("load", () => {
-    try {
-      mapObj.addSource("esri", {
-        type: "raster",
-        tiles: [ESRI_TILES],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: "Esri, Maxar, Earthstar Geographics"
-      });
-      mapObj.addLayer({
-        id: "esri-imagery",
-        type: "raster",
-        source: "esri",
-        minzoom: 12,
-        layout: { visibility: "visible" }
-      }, esriBeforeId || undefined);
-    } catch (e) {
-    }
     try {
       mapObj.addSource("track", {
         type: "geojson",
@@ -1722,7 +1673,7 @@ async function initMap() {
         type: "line",
         source: "track",
         paint: { "line-color": "#58a6ff", "line-width": 3, "line-opacity": 0.9 }
-      }, esriBeforeId || undefined);
+      }, firstSymbolLayerId());
     } catch (e) {
     }
     updateTrackLine();
@@ -1734,14 +1685,14 @@ async function initMap() {
   const icon = document.createElement("div");
   icon.className = "droneMarker";
   icon.innerHTML = DRONE_SVG;
-  mapPlacemark = new maptilersdk.Marker({ element: icon, anchor: "center" })
+  mapPlacemark = new maplibregl.Marker({ element: icon, anchor: "center" })
     .setLngLat(center)
     .addTo(mapObj);
   const pIcon = document.createElement("div");
   pIcon.className = "playbackMarker";
   pIcon.innerHTML = PLAYBACK_SVG;
   pIcon.style.display = "none";
-  playbackMarker = new maptilersdk.Marker({ element: pIcon, anchor: "center" })
+  playbackMarker = new maplibregl.Marker({ element: pIcon, anchor: "center" })
     .setLngLat(center)
     .addTo(mapObj);
   mapReady = true;
@@ -2498,17 +2449,110 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    @staticmethod
+    def _content_type(name):
+        if name.endswith(".js"):
+            return "application/javascript; charset=utf-8"
+        if name.endswith(".css"):
+            return "text/css; charset=utf-8"
+        if name.endswith(".json"):
+            return "application/json; charset=utf-8"
+        if name.endswith(".pmtiles"):
+            return "application/vnd.pmtiles"
+        if name.endswith(".png"):
+            return "image/png"
+        if name.endswith((".jpg", ".jpeg")):
+            return "image/jpeg"
+        if name.endswith(".svg"):
+            return "image/svg+xml"
+        if name.endswith(".woff2"):
+            return "font/woff2"
+        return "application/octet-stream"
+
+    @staticmethod
+    def _parse_range(header, size):
+        if size <= 0:
+            return None
+        value = (header or "").strip()
+        if not value.lower().startswith("bytes="):
+            return None
+        spec = value.split("=", 1)[1].split(",", 1)[0].strip()
+        if "-" not in spec:
+            return None
+        start_text, end_text = spec.split("-", 1)
+        try:
+            if not start_text:
+                suffix = int(end_text)
+                if suffix <= 0:
+                    return None
+                start = max(0, size - suffix)
+                end = size - 1
+            else:
+                start = int(start_text)
+                end = int(end_text) if end_text else size - 1
+        except ValueError:
+            return None
+        if start < 0 or start >= size or end < start:
+            return None
+        return start, min(end, size - 1)
+
+    def _serve_file(self, root, relative, cache_control):
+        name = unquote(relative)
+        if not name or name.startswith("/") or ".." in name.split("/"):
+            self.send_error(404)
+            return
+        root_real = os.path.realpath(root)
+        full = os.path.realpath(os.path.join(root_real, name))
+        if not full.startswith(root_real + os.sep) or not os.path.isfile(full):
+            self.send_error(404)
+            return
+        size = os.path.getsize(full)
+        status = 200
+        start, end = 0, size - 1
+        range_header = self.headers.get("Range")
+        if range_header:
+            parsed = self._parse_range(range_header, size)
+            if parsed is None:
+                self.send_response(416)
+                self.send_header("Content-Range", "bytes */" + str(size))
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            start, end = parsed
+            status = 206
+        length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", self._content_type(name))
+        self.send_header("Cache-Control", cache_control)
+        self.send_header("Accept-Ranges", "bytes")
+        if status == 206:
+            self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, size))
+        self.send_header("Content-Length", str(length))
+        self.end_headers()
+        with open(full, "rb") as handle:
+            handle.seek(start)
+            remaining = length
+            while remaining > 0:
+                chunk = handle.read(min(65536, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
         if path in ("/", "/index.html"):
-            page = PAGE.replace('"__MAPTILER_KEY__"', json.dumps(MAPTILER_KEY_DEFAULT))
-            body = page.encode("utf-8")
+            body = PAGE.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif path.startswith("/static/"):
+            self._serve_file(STATIC_DIR, path[len("/static/"):], "no-store")
+        elif path.startswith("/tiles/"):
+            self._serve_file(TILES_DIR, path[len("/tiles/"):], "public, max-age=3600")
         elif path == "/api/state":
             self._json(snapshot())
         elif path == "/api/record":

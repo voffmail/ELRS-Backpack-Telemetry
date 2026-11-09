@@ -25,7 +25,7 @@ ESP-NOW:  TX backpack ──ESP-NOW──► ESP32-C3 донгл ──USB──
   - после `./init.sh` активируйте окружение: `source .toolchain/pio-env.sh`;
   - либо установите вручную: `python3 -m pip install pyserial`.
 - Свободные порты: UDP `14550` и TCP `8080`.
-- Для карты — интернет и ключ MapTiler (см. [REFERENCE.md](REFERENCE.md)).
+- Для карты — интернет; ключ не нужен (см. [REFERENCE.md](REFERENCE.md)).
 
 ## Вариант 1. Wi-Fi/UDP (по умолчанию)
 
@@ -174,7 +174,7 @@ binding phrase / UID.
 | Порт занят | остановите мост перед `dongle_config.py` (или наоборот) |
 | Донгл не найден | native-USB ESP32-C3, прошивка `esp32-c3-usb`, USB-разрешение/OTG |
 | Счётчики растут, связи с дроном нет | `0x14` с `LQ=0`: дрон/RX выключен или не совпадает phrase/UID |
-| Карта не загружается | ключ MapTiler и интернет |
+| Карта не загружается | интернет и доступность OpenFreeMap/Esri/Sentinel; смотрите консоль браузера |
 
 ## Связанные документы
 

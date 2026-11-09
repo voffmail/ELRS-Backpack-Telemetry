@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ELRS Backpack Telemetry</title>
-<link rel="stylesheet" href="https://cdn.maptiler.com/maptiler-sdk-js/v4.2.0/maptiler-sdk.css">
+<link rel="stylesheet" href="/static/maplibre-gl.css?v=4">
+<script src="/static/maplibre-gl.js?v=4"></script>
+<script src="/static/pmtiles.js?v=4"></script>
+<script src="/static/elrs-map.js?v=4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
   :root { color-scheme: dark; }
@@ -1899,7 +1902,6 @@ function applyI18n() {
   applyPlatformUi();
 }
 
-const mapKey = "__MAPTILER_KEY__";
 let mapObj = null;
 let mapPlacemark = null;
 let mapReady = false;
@@ -1911,7 +1913,6 @@ let mapFixType = null;
 let trackPopup = null;
 let trackPopupTimer = 0;
 let mapFollow = true;
-const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 let tracks = [];
 let recordState = {};
@@ -1951,28 +1952,19 @@ function ensureMap() {
     return;
   }
   if (mapLoading) return;
-  if (window.maptilersdk && window.maptilersdk.Map) {
-    mapLoading = true;
-    initMap();
+  if (!window.maplibregl || !window.ELRS_MAP) {
+    showMapFailure();
     return;
   }
   mapLoading = true;
-  const script = document.createElement("script");
-  script.src = "https://cdn.maptiler.com/maptiler-sdk-js/v4.2.0/maptiler-sdk.umd.min.js";
-  script.onload = () => {
-    initMap();
-  };
-  script.onerror = () => {
-    mapLoading = false;
-    showMapFailure();
-  };
-  document.head.appendChild(script);
-  setTimeout(() => {
-    if (!mapObj) {
-      mapLoading = false;
-      showMapFailure();
-    }
-  }, 20000);
+  initMap();
+}
+
+function firstSymbolLayerId() {
+  if (!mapObj) return undefined;
+  const layers = mapObj.getStyle().layers || [];
+  const symbol = layers.find(layer => layer.type === "symbol");
+  return symbol ? symbol.id : undefined;
 }
 
 async function initMap() {
@@ -1980,7 +1972,7 @@ async function initMap() {
     mapLoading = false;
     return;
   }
-  if (!window.maptilersdk) {
+  if (!window.maplibregl || !window.ELRS_MAP) {
     mapLoading = false;
     showMapFailure();
     return;
@@ -1988,39 +1980,19 @@ async function initMap() {
   const g = mapLastGps && Number.isFinite(Number(mapLastGps.lat)) && Number.isFinite(Number(mapLastGps.lon)) ? mapLastGps : null;
   const center = g ? [g.lon, g.lat] : [37.618423, 55.751244];
   let style;
-  let esriBeforeId = null;
   try {
-    const res = await fetch("https://api.maptiler.com/maps/hybrid/style.json?key=" + encodeURIComponent(mapKey));
-    if (!res.ok) {
-      mapLoading = false;
-      showMapFailure();
-      return;
-    }
-    const spec = await res.json();
-    const sat = spec.sources && spec.sources.satellite;
-    if (sat && sat.url) {
-      sat.url = sat.url.replace("/tiles/satellite-v2/", "/tiles/satellite-mediumres/");
-    }
-    if (spec.layers) {
-      const satIndex = spec.layers.findIndex(l => l.type === "raster" && l.source === "satellite");
-      if (satIndex >= 0 && satIndex + 1 < spec.layers.length) {
-        esriBeforeId = spec.layers[satIndex + 1].id;
-      }
-    }
-    style = spec;
+    style = await window.ELRS_MAP.loadStyle(LANG);
   } catch (e) {
     mapLoading = false;
     showMapFailure();
     return;
   }
   try {
-    maptilersdk.config.apiKey = mapKey;
-    mapObj = new maptilersdk.Map({
+    mapObj = new maplibregl.Map({
       container: "map",
       style: style,
       center: center,
-      zoom: g ? 15 : 4,
-      language: LANG
+      zoom: g ? 15 : 4
     });
   } catch (e) {
     mapLoading = false;
@@ -2028,23 +2000,6 @@ async function initMap() {
     return;
   }
   mapObj.on("load", () => {
-    try {
-      mapObj.addSource("esri", {
-        type: "raster",
-        tiles: [ESRI_TILES],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: "Esri, Maxar, Earthstar Geographics"
-      });
-      mapObj.addLayer({
-        id: "esri-imagery",
-        type: "raster",
-        source: "esri",
-        minzoom: 12,
-        layout: { visibility: "visible" }
-      }, esriBeforeId || undefined);
-    } catch (e) {
-    }
     try {
       mapObj.addSource("track-segments", {
         type: "geojson",
@@ -2064,7 +2019,7 @@ async function initMap() {
           "line-width": 3,
           "line-opacity": 0.95
         }
-      }, esriBeforeId || undefined);
+      }, firstSymbolLayerId());
       mapObj.addSource("track-points", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] }
@@ -2084,7 +2039,7 @@ async function initMap() {
           "circle-stroke-color": "#0b0f14",
           "circle-stroke-width": 1.5
         }
-      }, esriBeforeId || undefined);
+      }, firstSymbolLayerId());
       mapObj.on("click", "track-points", showTrackPointDetails);
       mapObj.on("mouseenter", "track-points", () => { mapObj.getCanvas().style.cursor = "pointer"; });
       mapObj.on("mouseleave", "track-points", () => { mapObj.getCanvas().style.cursor = ""; });
@@ -2099,14 +2054,14 @@ async function initMap() {
   const icon = document.createElement("div");
   icon.className = "droneMarker";
   icon.innerHTML = DRONE_SVG;
-  mapPlacemark = new maptilersdk.Marker({ element: icon, anchor: "center" })
+  mapPlacemark = new maplibregl.Marker({ element: icon, anchor: "center" })
     .setLngLat(center)
     .addTo(mapObj);
   const pIcon = document.createElement("div");
   pIcon.className = "playbackMarker";
   pIcon.innerHTML = PLAYBACK_SVG;
   pIcon.style.display = "none";
-  playbackMarker = new maptilersdk.Marker({ element: pIcon, anchor: "center" })
+  playbackMarker = new maplibregl.Marker({ element: pIcon, anchor: "center" })
     .setLngLat(center)
     .addTo(mapObj);
   mapReady = true;

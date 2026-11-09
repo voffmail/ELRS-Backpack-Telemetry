@@ -5,24 +5,6 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-fun readMapTilerKey(): String {
-    System.getenv("MAPTILER_KEY")?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
-    val keyFile = rootProject.file("../maptiler.key")
-    if (keyFile.isFile) {
-        keyFile.readText().trim().takeIf { it.isNotEmpty() }?.let { return it }
-    }
-    val localFile = rootProject.file("local.properties")
-    if (localFile.isFile) {
-        val properties = Properties()
-        localFile.inputStream().use { properties.load(it) }
-        properties.getProperty("MAPTILER_KEY", "").trim().takeIf { it.isNotEmpty() }?.let { return it }
-    }
-    return ""
-}
-
-fun jsString(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 if (keystorePropertiesFile.isFile) {
@@ -45,9 +27,14 @@ android {
         applicationId = "com.elrs.backpack"
         minSdk = 24
         targetSdk = 35
-        versionCode = 8
-        versionName = "2.1.1"
-        buildConfigField("String", "MAPTILER_KEY", jsString(readMapTilerKey()))
+        versionCode = 9
+        versionName = "2.2.0"
+    }
+
+    sourceSets {
+        getByName("main") {
+            assets.srcDir("../../web")
+        }
     }
 
     buildFeatures {

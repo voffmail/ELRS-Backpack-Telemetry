@@ -446,8 +446,7 @@ class TelemetryService : Service(), SettingsHost {
         } catch (_: Exception) {
             "<!doctype html><meta charset=\"utf-8\"><body style=\"background:#0b0f14;color:#e6edf3;font-family:sans-serif;padding:24px\">index.html not found</body>"
         }
-        val rendered = page.replace("\"__MAPTILER_KEY__\"", JSONObject.quote(BuildConfig.MAPTILER_KEY))
-        val server = HttpServer(state, rendered, HTTP_PORT, this)
+        val server = HttpServer(state, page, HTTP_PORT, this, assets, File(filesDir, "tiles"))
         http = server
         httpReady = server.start()
         if (!httpReady) {

@@ -82,7 +82,7 @@ Android-приложение и прошивка используют общий
 
 ## Разработчикам
 
-Сборка, toolchain, CI, релизы, ключ MapTiler и команды проверки — в [DEVELOP.md](DEVELOP.md).
+Сборка, toolchain, CI, релизы, карта без ключа и команды проверки — в [DEVELOP.md](DEVELOP.md).
 
 Для ПК есть Python-вьюер (Wi-Fi/UDP) — удобен для разработки и запуска на ноутбуке в поле. Для USB-донгла на ПК используется `tools/serial_bridge.py`.
 
@@ -169,7 +169,7 @@ The Android app and the firmware share `.toolchain/`: set up Android with `bash 
 
 ### For developers
 
-Build, toolchain, CI, releases, MapTiler key and regression checks are described in [DEVELOP.md](DEVELOP.md).
+Build, toolchain, CI, releases, keyless maps and regression checks are described in [DEVELOP.md](DEVELOP.md).
 
 A Python viewer (Wi-Fi/UDP) is available for PC. For the USB dongle on a PC use `tools/serial_bridge.py`.
 

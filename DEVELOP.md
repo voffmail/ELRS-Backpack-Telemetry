@@ -30,7 +30,7 @@ The firmware and web flasher in this repository are for the USB path only.
 - **Gradle** — not installed manually; use the wrapper in `android/` (Gradle 8.9).
 - **Python 3.8+** for the desktop viewer and replay tool. No third-party packages are required.
 - **Python 3.11+ with `venv`** for the PlatformIO firmware toolchain (`./init.sh`).
-- A **MapTiler API key** for the map tab (optional; telemetry works without it). See below.
+- No map API key is required. The map uses MapLibre GL JS, OpenFreeMap vector tiles, Esri World Imagery and Sentinel-2 fallback.
 - Free ports: UDP `14550` (telemetry) and TCP `8080` (web UI).
 
 ## Quick toolchain bootstrap (Linux x86_64)
@@ -274,31 +274,26 @@ curl -s http://127.0.0.1:18081/api/state
 curl -s http://127.0.0.1:18081/api/settings
 ```
 
-## MapTiler key
+## Map tiles
 
-The key is **not stored in git**. The pages contain `const mapKey = "__MAPTILER_KEY__";` and the
-key is injected at build/run time.
+The map is keyless. The pages use MapLibre GL JS and load a style from OpenFreeMap
+(`https://tiles.openfreemap.org/styles/liberty`), then add satellite raster layers:
 
-Local development:
-- put the key in `maptiler.key` at the repo root (copy `maptiler.key.example`; git-ignored); or
-- set `MAPTILER_KEY=...` in the environment; or
-- add `MAPTILER_KEY=...` to `android/local.properties` for Android builds.
+- **Esri World Imagery** — the primary high-resolution satellite layer;
+- **Sentinel-2 cloudless** (EOX) — an always-on fallback underneath Esri.
 
-The Python viewer reads `MAPTILER_KEY` or `maptiler.key`. The Android build reads the environment,
-the root file, or `local.properties`, writes `BuildConfig.MAPTILER_KEY`, and the app replaces the
-placeholder when serving the page.
+Vector labels and roads remain from OpenFreeMap/OpenStreetMap. The shared map code lives in
+`web/static/elrs-map.js`; MapLibre and PMTiles are vendored in `web/static/` and packaged into
+the Android APK through a Gradle assets source set. No runtime key injection is used.
 
-GitHub Actions:
-- add the repository secret `MAPTILER_KEY`
-  (**Settings → Secrets and variables → Actions → New repository secret**);
-- the workflow passes it to Gradle and GitHub masks it in logs;
-- if the secret is not set, the build still succeeds but the map is disabled.
+`/static/*` is served by both the Python viewer and the Android local HTTP server. `/tiles/*` is
+also served with HTTP Range support (and is currently empty in the Python viewer; Android reads it
+from `filesDir/tiles`). This is the hook for optional offline PMTiles maps: put a regional
+`.pmtiles` extract there and point `ELRS_MAP.setOfflineTilesUrl("pmtiles://http://127.0.0.1:8080/tiles/<name>.pmtiles")`
+before the map is created. No server or protocol changes are needed for the vector tiles. Full offline labels would also need a cached style JSON and local glyphs/sprites; that is a later step, not a server-side blocker.
 
-Third-party developers can create their own free key at `https://cloud.maptiler.com/`, put it in
-`maptiler.key`, and restrict it by HTTP origin (`localhost`, `127.0.0.1`).
-
-The key is embedded in the built APK. If the APK/artifact is public, it can be extracted; restrict
-the key and/or keep the repository/artifact private if this matters.
+Attribution is shown on the map: OpenStreetMap/OpenFreeMap, Esri and EOX. Esri availability and
+terms of use should be checked for the target region; Sentinel-2 is the fallback.
 
 ## Known issues
 
@@ -309,8 +304,7 @@ the key and/or keep the repository/artifact private if this matters.
 
 ## Notes
 
-- `maptiler.key`, `android/local.properties`, build outputs, `__pycache__`, backups and APKs are
-  git-ignored. PlatformIO build outputs (`firmware/.pio/`, `sim/.pio/`), `build/`, `site/` and
+- `android/local.properties`, build outputs, `__pycache__`, backups and APKs are git-ignored. PlatformIO build outputs (`firmware/.pio/`, `sim/.pio/`), `build/`, `site/` and
   `firmware/include/secrets.h` are git-ignored too.
 - Android runtime permissions: install-time permissions are granted automatically. Notifications
   and the battery-optimization exemption are requested on first launch and can be managed from the

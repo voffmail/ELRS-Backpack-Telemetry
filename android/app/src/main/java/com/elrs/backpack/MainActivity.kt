@@ -77,6 +77,7 @@ class MainActivity : Activity() {
         startTelemetryService()
 
         webView = WebView(this)
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
         webView.setBackgroundColor(0xFF0B0F14.toInt())
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
