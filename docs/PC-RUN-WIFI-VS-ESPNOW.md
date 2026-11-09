@@ -5,13 +5,13 @@
 
 - **Wi-Fi/UDP (по умолчанию)** — вьюер сам слушает UDP-порт, дополнительное
   железо не нужно.
-- **ESP-NOW через USB-донгл (рекомендуется)** — донгл принимает ESP-NOW и отдаёт
+- **ESP-NOW через USB-приемник (рекомендуется)** — приемник ESP-NOW принимает ESP-NOW и отдаёт
   CRSF по USB, а `tools/serial_bridge.py` превращает USB-поток в UDP для
-  вьюера. Меньше засорения эфира, но нужен донгл и кабель.
+  вьюера. Меньше засорения эфира, но нужен приемник ESP-NOW и кабель.
 
 ```text
 Wi-Fi:    TX backpack ──Wi-Fi/UDP──► tlm_viewer.py
-ESP-NOW:  TX backpack ──ESP-NOW──► ESP32-C3 донгл ──USB──► serial_bridge.py ──UDP──► tlm_viewer.py
+ESP-NOW:  TX backpack ──ESP-NOW──► ESP32-C3 приемник ESP-NOW ──USB──► serial_bridge.py ──UDP──► tlm_viewer.py
 ```
 
 `tlm_viewer.py` **не открывает serial-порт сам**. ESP-NOW на ПК работает только
@@ -54,9 +54,9 @@ python3 tlm_viewer.py --udp-port 14550 --http-host 0.0.0.0 --http-port 8080
 | `--http-host` | `0.0.0.0` | Адрес веб-сервера (`0.0.0.0` — доступен в сети) |
 | `--http-port` | `8080` | Порт веб-интерфейса |
 
-## Вариант 2. ESP-NOW через USB-донгл (рекомендуется)
+## Вариант 2. ESP-NOW через USB-приемник (рекомендуется)
 
-### 1. Прошейте донгл
+### 1. Прошейте приемник ESP-NOW
 
 Нужен ESP32-C3 с native USB (например, Super Mini) и прошивка `esp32-c3-usb`.
 Прошить можно:
@@ -70,7 +70,7 @@ python3 tlm_viewer.py --udp-port 14550 --http-host 0.0.0.0 --http-port 8080
 
 На аппаратуре: `ELRS Lua → Backpack → Telemetry → ESP-NOW`.
 
-### 3. Найдите serial-порт донгла
+### 3. Найдите serial-порт приемника ESP-NOW
 
 - Linux: `/dev/ttyACM0`, `/dev/ttyACM1`, … (native USB CDC);
 - macOS: `/dev/tty.usbmodem*`;
@@ -113,16 +113,16 @@ python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14551
 
 | Параметр | По умолчанию | Назначение |
 |---|---|---|
-| `--serial` | обязателен | serial-порт донгла |
+| `--serial` | обязателен | serial-порт приемника ESP-NOW |
 | `--baud` | `115200` | скорость; для native USB CDC обычно не важна |
 | `--udp` | `127.0.0.1:14550` | адрес вьюера |
 | `--broadcast` | выкл. | разрешить broadcast |
 | `--stats-every` | `2.0` | период лога статистики, с (`0` — выкл.) |
-| `--device-stats-every` | `10.0` | период `GET_STATS` у донгла, с (`0` — выкл.) |
+| `--device-stats-every` | `10.0` | период `GET_STATS` у приемника ESP-NOW, с (`0` — выкл.) |
 | `--reconnect` | `1.0` | пауза перед переоткрытием порта, с |
 
 Мост печатает статистику в stderr: число кадров, CRC-ошибки, потери
-последовательности, ответы донгла на `GET_STATS`.
+последовательности, ответы приемника ESP-NOW на `GET_STATS`.
 
 ### 5. Настройте phrase/UID
 
@@ -146,11 +146,11 @@ python3 tools/dongle_config.py --port /dev/ttyACM0 --uid AA:BB:CC:DD:EE:FE
 python3 tools/dongle_config.py --port /dev/ttyACM0 --reset
 ```
 
-Фраза/UID сохраняются в NVS донгла и переживают перезагрузку. На диск
+Фраза/UID сохраняются в NVS приемника ESP-NOW и переживают перезагрузку. На диск
 компьютера `dongle_config.py` их не пишет. Подробности — в
-[REFERENCE.md](REFERENCE.md#usb-донгл-esp-now).
+[REFERENCE.md](REFERENCE.md#usb-приемник-esp-now).
 
-Можно настроить донгл и из Android-приложения: шестерёнка → «ESP-NOW по USB» →
+Можно настроить приемник ESP-NOW и из Android-приложения: шестерёнка → «ESP-NOW по USB» →
 binding phrase / UID.
 
 ## Что выбрать
@@ -162,7 +162,7 @@ binding phrase / UID.
 | Засорение 2.4 ГГц | AP/beacons/DHCP + трафик ПК | только короткие ESP-NOW-кадры |
 | MAVLink/QGC | да, `Link Mode = MAVLink` | нет, только CRSF |
 | ПК без Wi-Fi | нет | да |
-| Быстрый старт | да | после прошивки донгла |
+| Быстрый старт | да | после прошивки приемника ESP-NOW |
 
 ## Диагностика
 
@@ -172,7 +172,7 @@ binding phrase / UID.
 | `serial open failed` | правильный порт, data-кабель, права `dialout` (Linux), порт не занят |
 | Мост работает, вьюер пуст | `--udp` моста совпадает с `--udp-port` вьюера; вьюер запущен |
 | Порт занят | остановите мост перед `dongle_config.py` (или наоборот) |
-| Донгл не найден | native-USB ESP32-C3, прошивка `esp32-c3-usb`, USB-разрешение/OTG |
+| Приемник ESP-NOW не найден | native-USB ESP32-C3, прошивка `esp32-c3-usb`, USB-разрешение/OTG |
 | Счётчики растут, связи с дроном нет | `0x14` с `LQ=0`: дрон/RX выключен или не совпадает phrase/UID |
 | Карта не загружается | интернет и доступность OpenFreeMap/Esri/Sentinel; смотрите консоль браузера |
 
@@ -181,5 +181,5 @@ binding phrase / UID.
 - [README](../README.md) — установка и быстрый старт.
 - [REFERENCE.md](REFERENCE.md) — API, кадры, карта, диагностика.
 - [BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md](BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md) — что выбрать.
-- [DESIGN.md](DESIGN.md) — архитектура USB-донгла.
+- [DESIGN.md](DESIGN.md) — архитектура USB-приемника ESP-NOW.
 - [DEVELOP.md](../DEVELOP.md) — сборка прошивки, web-flasher, CI.

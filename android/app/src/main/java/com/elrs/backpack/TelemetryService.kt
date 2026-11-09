@@ -38,8 +38,10 @@ class TelemetryService : Service(), SettingsHost {
         const val ACTION_STOP = "com.elrs.backpack.STOP"
         const val ACTION_STOP_RECORDING = "com.elrs.backpack.STOP_RECORDING"
         const val ACTION_SET_TRACKS = "com.elrs.backpack.SET_TRACKS"
+        const val ACTION_IMPORT_OFFLINE = "com.elrs.backpack.IMPORT_OFFLINE"
         const val ACTION_SETTINGS_CHANGED = "com.elrs.backpack.SETTINGS_CHANGED"
         const val EXTRA_TRACKS_URI = "tracks_uri"
+        const val EXTRA_OFFLINE_URI = "offline_uri"
         private const val CHANNEL_ID = "elrs_telemetry_v2"
         private const val POWERSAVE_CHANNEL_ID = "elrs_powersave"
         private const val LEGACY_ALERT_CHANNEL_ID = "elrs_alerts"
@@ -57,6 +59,7 @@ class TelemetryService : Service(), SettingsHost {
 
     private lateinit var state: TelemetryState
     private lateinit var settings: AppSettings
+    private lateinit var offline: OfflineManager
     private var udpSocket: DatagramSocket? = null
     private var udpThread: Thread? = null
     private var http: HttpServer? = null
@@ -98,6 +101,12 @@ class TelemetryService : Service(), SettingsHost {
         httpReady = false
         serviceStartMono = SystemClock.elapsedRealtime()
         settings = AppSettings(this)
+        offline = OfflineManager(this, settings) {
+            mainHandler.post {
+                notifySettingsChanged()
+                updateNotification()
+            }
+        }
         currentUdpPort = settings.udpPort
         currentSource = settings.source
         state = TelemetryState(initialTrackStore())
@@ -140,6 +149,12 @@ class TelemetryService : Service(), SettingsHost {
                 mainHandler.post { exitPowerSaveNow() }
             }
 
+            ACTION_IMPORT_OFFLINE -> {
+                val uri = intent.getStringExtra(EXTRA_OFFLINE_URI)
+                if (uri != null) offline.importPmtiles(Uri.parse(uri))
+                mainHandler.post { exitPowerSaveNow() }
+            }
+
             else -> mainHandler.post { exitPowerSaveNow() }
         }
         return START_STICKY
@@ -177,6 +192,8 @@ class TelemetryService : Service(), SettingsHost {
         .put("auto_record_3d", settings.autoRecordOn3d)
         .put("auto_stop_recording_sec", settings.autoStopRecordingSeconds)
         .put("keep_tracks", settings.keepTracks ?: JSONObject.NULL)
+        .put("offline_mode", settings.offlineMode)
+        .put("offline_pack", settings.offlinePack ?: JSONObject.NULL)
         .toString()
 
     override fun changeSource(source: String): Pair<Boolean, String> {
@@ -196,6 +213,22 @@ class TelemetryService : Service(), SettingsHost {
             startSource()
         }
         updateNotification()
+        notifySettingsChanged()
+        return Pair(true, "")
+    }
+
+    override fun changeOfflineMode(mode: String): Pair<Boolean, String> {
+        if (mode != AppSettings.OFFLINE_ONLINE && mode != AppSettings.OFFLINE_AUTO && mode != AppSettings.OFFLINE_OFFLINE) {
+            return Pair(false, "unknown offline mode")
+        }
+        settings.offlineMode = mode
+        notifySettingsChanged()
+        return Pair(true, "")
+    }
+
+    override fun changeOfflinePack(id: String?): Pair<Boolean, String> {
+        if (id != null && !offline.findPack(id)) return Pair(false, "offline pack not found")
+        settings.offlinePack = id
         notifySettingsChanged()
         return Pair(true, "")
     }
@@ -446,7 +479,7 @@ class TelemetryService : Service(), SettingsHost {
         } catch (_: Exception) {
             "<!doctype html><meta charset=\"utf-8\"><body style=\"background:#0b0f14;color:#e6edf3;font-family:sans-serif;padding:24px\">index.html not found</body>"
         }
-        val server = HttpServer(state, page, HTTP_PORT, this, assets, File(filesDir, "tiles"))
+        val server = HttpServer(state, page, HTTP_PORT, this, assets, offline.pmtilesDir, offline)
         http = server
         httpReady = server.start()
         if (!httpReady) {

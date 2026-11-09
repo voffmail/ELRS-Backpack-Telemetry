@@ -40,6 +40,13 @@ class AppSettings(context: Context) {
             return prefs.getInt(KEY_KEEP_TRACKS, UNLIMITED_KEEP_TRACKS).takeIf { it > 0 }
         }
         set(value) = prefs.edit().putInt(KEY_KEEP_TRACKS, value?.takeIf { it > 0 } ?: UNLIMITED_KEEP_TRACKS).apply()
+    var offlineMode: String
+        get() = prefs.getString(KEY_OFFLINE_MODE, OFFLINE_ONLINE) ?: OFFLINE_ONLINE
+        set(value) = prefs.edit().putString(KEY_OFFLINE_MODE, value).apply()
+
+    var offlinePack: String?
+        get() = prefs.getString(KEY_OFFLINE_PACK, null)
+        set(value) = prefs.edit().putString(KEY_OFFLINE_PACK, value).apply()
 
     companion object {
         const val DEFAULT_UDP_PORT = 14550
@@ -48,6 +55,9 @@ class AppSettings(context: Context) {
         const val DEFAULT_KEEP_TRACKS = 10
         const val SOURCE_NETWORK = "network"
         const val SOURCE_USB = "usb"
+        const val OFFLINE_ONLINE = "online"
+        const val OFFLINE_AUTO = "auto"
+        const val OFFLINE_OFFLINE = "offline"
         private const val UNLIMITED_KEEP_TRACKS = -1
         private const val KEY_UDP_PORT = "udp_port"
         private const val KEY_SOURCE = "source"
@@ -57,5 +67,7 @@ class AppSettings(context: Context) {
         private const val KEY_AUTO_RECORD_3D = "auto_record_on_3d"
         private const val KEY_AUTO_STOP_RECORDING_SEC = "auto_stop_recording_sec"
         private const val KEY_KEEP_TRACKS = "keep_tracks"
+        private const val KEY_OFFLINE_MODE = "offline_mode"
+        private const val KEY_OFFLINE_PACK = "offline_pack"
     }
 }

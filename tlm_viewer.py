@@ -354,7 +354,7 @@ PAGE = """<!doctype html>
 <link rel="stylesheet" href="/static/maplibre-gl.css?v=4">
 <script src="/static/maplibre-gl.js?v=4"></script>
 <script src="/static/pmtiles.js?v=4"></script>
-<script src="/static/elrs-map.js?v=4"></script>
+<script src="/static/elrs-map.js?v=9"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
   :root { color-scheme: dark; }
@@ -441,6 +441,7 @@ PAGE = """<!doctype html>
   #map { position: absolute; inset: 0; }
   .droneMarker { width: 48px; height: 48px; pointer-events: none; }
   .droneMarker svg { display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+  .droneMarker.stale { opacity: .55; }
   .gpsHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .gpsSats { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
   .gpsSats #sats { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
@@ -531,6 +532,23 @@ PAGE = """<!doctype html>
              color: #9da7b3; font-size: 12px; font-variant-numeric: tabular-nums; }
   @media (max-width: 520px) { header { padding: 5px 8px; gap: 2px; } .brand { font-size: 12px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 3px; border-radius: 5px; } .headRight { gap: 3px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 2px; padding: 0; min-width: 0; } .tab { padding: 4px 7px; font-size: 14px; border-radius: 9px; } #mapPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
   @media (max-width: 330px) { .tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-top: 2px; } }
+
+  #telemetryPage .card { background: #151c25; border-color: #2d3742; }
+  #telemetryPage h2 { color: #b1bac4; }
+  #telemetryPage small { color: #b1bac4; }
+  #telemetryPage .val, #telemetryPage .lq, #telemetryPage .big,
+  #telemetryPage .gpsSats #sats { color: #56d364; font-weight: 600; }
+  #telemetryPage .val { font-size: 18px; color: #56d364; }
+  #telemetryPage .val, #telemetryPage .lq { text-shadow: 0 0 10px rgba(86,211,100,.18); }
+  #telemetryPage .lq.mid { color: #d29922; text-shadow: 0 0 10px rgba(210,153,34,.2); }
+  #telemetryPage .lq.low { color: #f85149; text-shadow: 0 0 10px rgba(248,81,73,.22); }
+  #telemetryPage .big { text-shadow: 0 0 14px rgba(86,211,100,.22); }
+  #telemetryPage .big small { color: #b1bac4; font-weight: 400; text-shadow: none; }
+  #telemetryPage .track { background: #26303c; }
+  #telemetryPage .modeNote, #telemetryPage .muted { color: #b1bac4; }
+  #telemetryPage table.frames th { color: #b1bac4; }
+  #telemetryPage table.frames td { color: #e6edf3; }
+  #telemetryPage table.frames td:last-child { color: #b1bac4; }
 </style>
 </head>
 <body>
@@ -809,19 +827,28 @@ PAGE = """<!doctype html>
 const $ = (id) => document.getElementById(id);
 const val = (v, unit = "", digits = 0) => v === null || v === undefined ? "—" : Number(v).toFixed(digits) + unit;
 const setText = (id, text) => { const e = $(id); if (e) e.textContent = text; };
-const bar = (id, pct) => {
-  const e = $(id); if (!e) return;
-  pct = Math.max(0, Math.min(100, pct || 0));
-  e.style.width = pct + "%";
-  e.classList.toggle("mid", pct < 70 && pct >= 35);
-  e.classList.toggle("low", pct < 35);
+const setLevel = (e, level) => {
+  if (!e) return;
+  e.classList.toggle("mid", level === "mid");
+  e.classList.toggle("low", level === "low");
 };
-const rangeBar = (id, pct) => {
+const bar = (id, pct, textId) => {
   const e = $(id); if (!e) return;
-  pct = Math.max(0, Math.min(100, pct || 0));
+  const has = pct !== null && pct !== undefined && isFinite(pct);
+  pct = has ? Math.max(0, Math.min(100, pct)) : 0;
   e.style.width = pct + "%";
-  e.classList.toggle("mid", pct > 40 && pct <= 80);
-  e.classList.toggle("low", pct > 80);
+  const level = !has ? "" : pct < 35 ? "low" : pct < 70 ? "mid" : "";
+  setLevel(e, level);
+  if (textId) setLevel($(textId), level);
+};
+const rangeBar = (id, pct, textId) => {
+  const e = $(id); if (!e) return;
+  const has = pct !== null && pct !== undefined && isFinite(pct);
+  pct = has ? Math.max(0, Math.min(100, pct)) : 0;
+  e.style.width = pct + "%";
+  const level = !has ? "" : pct > 80 ? "low" : pct > 40 ? "mid" : "";
+  setLevel(e, level);
+  if (textId) setLevel($(textId), level);
 };
 function rssi(v) { return v === null || v === undefined || v === 0 ? "—" : v + " dBm"; }
 function snr(v) { return v === null || v === undefined ? "—" : v + " dB"; }
@@ -1061,6 +1088,7 @@ const I18N = {
     unknown_frame: "Unknown",
     not_described: "frame not described in the viewer",
     no_data: "no data",
+    last_known: "last known",
     mode_failsafe: "failsafe",
     mode_blocked: "arming blocked",
     mode_gps_rescue_off: "arming possible, but GPS Rescue is disabled",
@@ -1179,7 +1207,7 @@ const I18N = {
     guide_title: "Краткое руководство",
     guide_methods: "Два способа получения телеметрии",
     guide_method_wifi: "Wi-Fi — по умолчанию. Дополнительное железо не нужно: бэкпак поднимает точку доступа или подключается к вашей сети.",
-    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен донгл ESP32-C3 с native USB и serial-мост.",
+    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен приемник ESP-NOW на ESP32-C3 с native USB и serial-мост.",
     guide_wifi: "Настройка Wi-Fi",
     guide_wifi_1: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите «WiFi». Не используйте «WiFi Connectivity» — это режим настройки передатчика.",
     guide_wifi_2: "Подключите компьютер к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или к той же сети, что и бэкпак.",
@@ -1188,7 +1216,7 @@ const I18N = {
     guide_espnow: "Настройка ESP-NOW по USB",
     guide_espnow_1: "Прошейте ESP32-C3 с native USB прошивкой esp32-c3-usb через Web Flasher или PlatformIO.",
     guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
-    guide_espnow_3: "Подключите донгл к компьютеру и найдите его serial-порт (/dev/ttyACM0, COMx, …).",
+    guide_espnow_3: "Подключите приемник ESP-NOW к компьютеру и найдите его serial-порт (/dev/ttyACM0, COMx, …).",
     guide_espnow_4: "Запустите вьюер и мост: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
     guide_espnow_5: "Для phrase/UID остановите мост и используйте tools/dongle_config.py --port <port> --show или --phrase/--uid.",
     guide_problems: "Возможные проблемы",
@@ -1200,7 +1228,7 @@ const I18N = {
     guide_flash_title: "Прошивка бэкпака",
     guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi/ESP-NOW или в меню нет нужного пункта. Прошивать через ExpressLRS Configurator → Backpack.",
     guide_flash_2: "Для Wi-Fi-телеметрии binding phrase не обязательна: вьюер не проверяет UID.",
-    guide_flash_3: "Для ESP-NOW фраза задаёт UID и адрес ESP-NOW-группы; используйте ту же фразу, что в ELRS-линии, либо задайте UID вручную в настройках донгла.",
+    guide_flash_3: "Для ESP-NOW фраза задаёт UID и адрес ESP-NOW-группы; используйте ту же фразу, что в ELRS-линии, либо задайте UID вручную в настройках приемника ESP-NOW.",
     guide_flash_4: "Без фразы бэкпак возьмёт адрес из EEPROM (после бинда) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs.",
     guide_flash_5: "При смене фразы меняются UID и SSID — перепрошейте с той же фразой все устройства группы.",
     guide_flash_link: "Прошивка TX Backpack — ExpressLRS",
@@ -1248,6 +1276,7 @@ const I18N = {
     unknown_frame: "Неизвестный",
     not_described: "кадр не описан в просмотрщике",
     no_data: "нет данных",
+    last_known: "последняя известная",
     mode_failsafe: "failsafe",
     mode_blocked: "арминг заблокирован",
     mode_gps_rescue_off: "арминг возможен, но GPS Rescue отключён",
@@ -1435,6 +1464,7 @@ const I18N = {
     unknown_frame: "未知",
     not_described: "查看器未描述该帧",
     no_data: "无数据",
+    last_known: "最后已知",
     mode_failsafe: "失控保护",
     mode_blocked: "解锁被阻止",
     mode_gps_rescue_off: "可以解锁，但 GPS 救援已禁用",
@@ -1576,6 +1606,8 @@ let mapResizeObserver = null;
 let mapLastPos = null;
 let mapLastGps = null;
 let mapFollow = true;
+let mapGpsLive = false;
+let lastState = null;
 
 let tracks = [];
 let recordState = {};
@@ -1685,8 +1717,9 @@ async function initMap() {
   const icon = document.createElement("div");
   icon.className = "droneMarker";
   icon.innerHTML = DRONE_SVG;
+  icon.style.display = g ? "block" : "none";
   mapPlacemark = new maplibregl.Marker({ element: icon, anchor: "center" })
-    .setLngLat(center)
+    .setLngLat(g ? [g.lon, g.lat] : center)
     .addTo(mapObj);
   const pIcon = document.createElement("div");
   pIcon.className = "playbackMarker";
@@ -1730,11 +1763,17 @@ function refreshMapLayout() {
 }
 
 function updateMap(gps, force) {
-  if (gps) mapLastGps = gps;
+  if (gps && gps.fix) mapLastGps = gps;
   const g = mapLastGps;
   const hasFix = !!(g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon));
+  const stale = hasFix && !(mapGpsLive && gps && gps.fix);
+  if (mapPlacemark) {
+    const el = mapPlacemark.getElement();
+    el.style.display = (hasFix && !currentTrack) ? "block" : "none";
+    el.classList.toggle("stale", stale);
+  }
   if (!mapReady) {
-    setText("mapInfo", hasFix ? g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + " · " + g.sats + " " + t("satellites") : "—");
+    setText("mapInfo", hasFix ? g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + (stale ? " · " + t("last_known") : "") : "—");
     return;
   }
   if (hasFix) {
@@ -1746,8 +1785,9 @@ function updateMap(gps, force) {
         mapObj.easeTo({ center: [g.lon, g.lat], duration: 300 });
       }
     }
-    $("mapStatus").hidden = true;
-    setText("mapInfo", g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + " · " + g.sats + " " + t("satellites") + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh"));
+    $("mapStatus").hidden = !stale;
+    if (stale) setText("mapStatus", t("last_known"));
+    setText("mapInfo", g.lat.toFixed(6) + ", " + g.lon.toFixed(6) + " · " + g.sats + " " + t("satellites") + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh") + (stale ? " · " + t("last_known") : ""));
   } else {
     $("mapStatus").hidden = false;
     setText("mapStatus", t("no_gps"));
@@ -1986,6 +2026,10 @@ async function loadSelectedTrack() {
 
 async function toggleRecord() {
   const active = !!(recordState && recordState.active);
+  if (!active && !(lastState && lastState.gps && lastState.gps.fix)) {
+    setText("recordStatus", t("no_gps"));
+    return;
+  }
   const action = active ? "stop" : "start";
   let res;
   try {
@@ -2022,10 +2066,16 @@ async function toggleRecord() {
 
 function updateRecordUi() {
   const active = !!(recordState && recordState.active);
-  $("recordBtn").classList.toggle("recording", active);
+  const canStart = !!(lastState && lastState.gps && lastState.gps.fix);
+  const btn = $("recordBtn");
+  btn.classList.toggle("recording", active);
+  btn.disabled = !active && !canStart;
+  btn.title = (!active && !canStart) ? t("no_gps") : "";
   $("recordLabel").textContent = active ? t("stop") : t("record");
   if (active) {
     setText("recordStatus", t("recording") + " · " + fmtDur(recordState.duration) + " · " + Number(recordState.point_count || 0) + " " + t("points"));
+  } else if (!canStart) {
+    setText("recordStatus", t("no_gps"));
   } else {
     setText("recordStatus", "");
   }
@@ -2132,8 +2182,8 @@ function render(s) {
 
   const l = s.link;
   if (l) {
-    setText("lqUp", l.lq + "%");   bar("barUp", l.lq);
-    setText("lqDn", l.lq_d + "%"); bar("barDn", l.lq_d);
+    setText("lqUp", l.lq + "%");   bar("barUp", l.lq, "lqUp");
+    setText("lqDn", l.lq_d + "%"); bar("barDn", l.lq_d, "lqDn");
     setText("rssiUp", rssi(l.rssi1)); setText("rssiDn", rssi(l.rssi_d));
     setText("snrUp", snr(l.snr));     setText("snrDn", snr(l.snr_d));
     setText("txp", TX_POWER_MW[l.tx_power] !== undefined ? TX_POWER_MW[l.tx_power] + " " + t("u_mw") : "—");
@@ -2154,19 +2204,19 @@ function render(s) {
           rangeSmooth = Math.round(rangeSmooth * 0.6 + target * 0.4);
         }
         setText("rangePct", rangeSmooth + "%");
-        rangeBar("barRange", rangeSmooth);
+        rangeBar("barRange", rangeSmooth, "rangePct");
       } else {
         setText("rangePct", "—");
-        rangeBar("barRange", 0);
+        rangeBar("barRange", null, "rangePct");
       }
     } else {
       setText("band", "—"); setText("pktRate", "—");
-      setText("rangePct", "—"); rangeBar("barRange", 0);
+      setText("rangePct", "—"); rangeBar("barRange", null, "rangePct");
       rangeSmooth = null; rangeMode = null;
     }
   } else {
     ["lqUp","lqDn","rssiUp","rssiDn","snrUp","snrDn","txp","ant","band","pktRate","rangePct"].forEach(id => setText(id, "—"));
-    bar("barUp", 0); bar("barDn", 0); rangeBar("barRange", 0);
+    bar("barUp", null, "lqUp"); bar("barDn", null, "lqDn"); rangeBar("barRange", null, "rangePct");
     rangeSmooth = null; rangeMode = null;
   }
 
@@ -2248,8 +2298,11 @@ function render(s) {
     ? rows.join("")
     : '<tr><td colspan="4" class="muted">' + t("no_frames") + "</td></tr>";
 
-  if (s.gps) mapLastGps = s.gps;
-  updateMap(s.gps, false);
+  const currentGps = (s.gps && s.gps.fix) ? s.gps : null;
+  mapGpsLive = !!currentGps;
+  if (currentGps) mapLastGps = currentGps;
+  else if (!mapLastGps && s.gps_last && s.gps_last.fix) mapLastGps = s.gps_last;
+  updateMap(currentGps, false);
   const rec = s.record || {};
   if (rec.active && !(recordState && recordState.active)) {
     currentTrackPoints = [];
@@ -2259,8 +2312,6 @@ function render(s) {
   recordState = rec;
   updateRecordUi();
 }
-
-let lastState = null;
 
 async function tick() {
   try {
@@ -2457,6 +2508,8 @@ class Handler(BaseHTTPRequestHandler):
             return "text/css; charset=utf-8"
         if name.endswith(".json"):
             return "application/json; charset=utf-8"
+        if name.endswith(".pbf"):
+            return "application/x-protobuf"
         if name.endswith(".pmtiles"):
             return "application/vnd.pmtiles"
         if name.endswith(".png"):

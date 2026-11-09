@@ -2,16 +2,16 @@
 
 [English follow Russian](#english)
 
-Android-приложение для телеметрии ExpressLRS: показывает данные в двух вкладках — «Телеметрия» и «Карта». Карта работает при наличии интернета. Трек вместе с телеметрией можно записать вручную или автоматически и воспроизвести на карте позже.
+Android-приложение для телеметрии ExpressLRS: показывает данные в двух вкладках — «Телеметрия» и «Карта». Карта работает онлайн и офлайн (Android): район можно скачать заранее или импортировать PMTiles. Трек вместе с телеметрией можно записать вручную или автоматически и воспроизвести на карте позже.
 
 Есть два способа получить телеметрию:
 
 - **Wi-Fi (по умолчанию)** — не требует дополнительного железа. Подходит, чтобы быстро начать.
-- **ESP-NOW по USB (рекомендуется)** — меньше засоряет радиоэфир: нет Wi-Fi AP/beacons и трафика телефона в 2.4 ГГц. Нужен USB-донгл на ESP32-C3 с native USB, OTG и кабель.
+- **ESP-NOW по USB (рекомендуется)** — меньше засоряет радиоэфир: нет Wi-Fi AP/beacons и трафика телефона в 2.4 ГГц. Нужен USB-приемник ESP-NOW на ESP32-C3 с native USB, OTG и кабель.
 
 ```text
 Wi-Fi:    Дрон / FC ──► ELRS RX ──► TX-модуль ──► Backpack ──Wi-Fi/UDP──► приложение
-ESP-NOW:  Дрон / FC ──► ELRS RX ──► TX-модуль ──► Backpack ──ESP-NOW──► USB-донгл ──USB──► приложение
+ESP-NOW:  Дрон / FC ──► ELRS RX ──► TX-модуль ──► Backpack ──ESP-NOW──► USB-приемник ESP-NOW ──USB──► приложение
 ```
 
 <table>
@@ -42,9 +42,9 @@ ESP-NOW:  Дрон / FC ──► ELRS RX ──► TX-модуль ──► Ba
 
 ### ESP-NOW по USB (рекомендуется)
 
-1. Прошейте USB-донгл ESP32-C3 с native USB — через [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) или PlatformIO (см. ниже).
+1. Прошейте USB-приемник ESP-NOW на ESP32-C3 с native USB — через [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) или PlatformIO (см. ниже).
 2. На аппаратуре задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.
-3. Подключите донгл к телефону через OTG и разрешите доступ к USB.
+3. Подключите приемник ESP-NOW к телефону через OTG и разрешите доступ к USB.
 4. Откройте настройки (шестерёнка в шапке), выберите источник **«ESP-NOW по USB»**.
 5. Укажите binding phrase или ручной UID, совпадающие с бэкпаком.
 
@@ -52,11 +52,32 @@ ESP-NOW:  Дрон / FC ──► ELRS RX ──► TX-модуль ──► Ba
 кадры `0x14` с `LQ=0`, приложение покажет «нет связи с дроном», а уведомление —
 «нет связи с дроном» или «нет связи с аппаратурой» в зависимости от ситуации.
 
-## Прошивка USB-донгла и [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/)
+## Офлайн-карты (Android)
+
+Перед выездом можно явно подготовить карту:
+
+1. Откройте вкладку «Карта» и приблизьте её до **z10 или выше**. Кнопка скачивания
+   появляется только тогда, когда видимая область вместе со спутником помещается
+   в бюджет 45 МБ (50 МБ с запасом 10%).
+2. Нажмите иконку загрузки рядом с выбором режима. Скачивается **видимая область
+   карты + 5% padding** на максимальном офлайн-зуме **z14**. Никакого диалога
+   радиуса и зума нет — только прогресс и отмена.
+3. Спутник Sentinel-2 (10 м) включается всегда: EOxCloudless 2025,
+   CC BY-NC-SA 4.0, только некоммерческое использование.
+4. Выберите режим **Оффлайн** или **Авто**. Для больших областей используйте
+   **Импорт .pmtiles**.
+
+Офлайн-пак хранится во внутренней памяти приложения и его можно удалить в настройках.
+Python-вьюер пока работает в онлайн-режиме.
+
+Офлайн-пак хранится во внутренней памяти приложения и его можно удалить в настройках.
+Python-вьюер пока работает в онлайн-режиме.
+
+## Прошивка USB-приемника ESP-NOW и [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/)
 
 ![ESP32-C3 Super Mini](docs/esp32c3.png)
 
-В репозитории есть прошивка ESP32-C3 для USB-донгла (ESP-NOW → CRSF по USB), симулятор бэкпака и генератор web-flasher.
+В репозитории есть прошивка ESP32-C3 для USB-приемника ESP-NOW (ESP-NOW → CRSF по USB), симулятор бэкпака и генератор web-flasher.
 
 Сборка прошивки (PlatformIO ставится локально в `.toolchain/venv`):
 
@@ -74,9 +95,9 @@ Android-приложение и прошивка используют общий
 
 ## Документация
 
-- [Запуск на компьютере: Wi-Fi и ESP-NOW](docs/PC-RUN-WIFI-VS-ESPNOW.md) — два способа запуска `tlm_viewer.py`, мост для USB-донгла и настройка.
+- [Запуск на компьютере: Wi-Fi и ESP-NOW](docs/PC-RUN-WIFI-VS-ESPNOW.md) — два способа запуска `tlm_viewer.py`, мост для USB-приемника ESP-NOW и настройка.
 - [Wi-Fi vs ESP-NOW](docs/BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md) — что выбрать, требования и ограничения.
-- [DESIGN.md](docs/DESIGN.md) — архитектура и протоколы USB-донгла.
+- [DESIGN.md](docs/DESIGN.md) — архитектура и протоколы USB-приемника ESP-NOW.
 - [REFERENCE.md](docs/REFERENCE.md) — API, CRSF-кадры, Range, карта, диагностика.
 - [ELRS Rate & Telemetry Cheat Sheet](docs/ELRS-RATE-TELEMETRY-CHEATSHEET.md) — packet rate и telemetry ratio.
 
@@ -84,7 +105,7 @@ Android-приложение и прошивка используют общий
 
 Сборка, toolchain, CI, релизы, карта без ключа и команды проверки — в [DEVELOP.md](DEVELOP.md).
 
-Для ПК есть Python-вьюер (Wi-Fi/UDP) — удобен для разработки и запуска на ноутбуке в поле. Для USB-донгла на ПК используется `tools/serial_bridge.py`.
+Для ПК есть Python-вьюер (Wi-Fi/UDP) — удобен для разработки и запуска на ноутбуке в поле. Для USB-приемника ESP-NOW на ПК используется `tools/serial_bridge.py`.
 
 Исходный код: [github.com/voffmail/ELRS-Backpack-Telemetry](https://github.com/voffmail/ELRS-Backpack-Telemetry).
 
@@ -100,7 +121,7 @@ MIT. См. [LICENSE](LICENSE).
 
 ## English
 
-**ELRS Backpack Telemetry** is an Android app for ExpressLRS telemetry: it shows data in two tabs, Telemetry and Map. The map requires internet access. Tracks can be recorded together with telemetry, manually or automatically, and played back on the map later.
+**ELRS Backpack Telemetry** is an Android app for ExpressLRS telemetry: it shows data in two tabs, Telemetry and Map. The map works online and offline (Android): download an area in advance or import a PMTiles pack. Tracks can be recorded together with telemetry, manually or automatically, and played back on the map later.
 
 There are two ways to receive telemetry:
 
@@ -138,6 +159,23 @@ ESP-NOW:  Drone / FC ──► ELRS RX ──► TX module ──► Backpack �
 The app indicator is green while the drone link is alive. If only `0x14` frames
 with `LQ=0` arrive, the app shows “no drone link”, and the notification says
 “no drone link” or “no backpack link” depending on the situation.
+
+### Offline maps (Android)
+
+Before going to the field:
+
+1. Open the Map tab and zoom to **z10 or higher**. The download button appears only
+   when the visible area, including satellite, fits the 45 MB budget (50 MB with a
+   10% reserve).
+2. Tap the download icon next to the mode selector. It downloads the **visible map
+   area + 5% padding** at max offline zoom **z14**. There is no radius/zoom dialog,
+   only progress and cancel.
+3. Sentinel-2 (10 m) is always included: EOxCloudless 2025, CC BY-NC-SA 4.0,
+   non-commercial use only.
+4. Select **Offline** or **Auto**. Use **Import .pmtiles** for larger areas.
+
+Packs are stored in the app's internal storage and can be deleted in Settings. The
+Python viewer currently stays online-only.
 
 ### Dongle firmware and [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/)
 

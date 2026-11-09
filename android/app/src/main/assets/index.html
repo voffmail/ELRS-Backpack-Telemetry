@@ -7,7 +7,8 @@
 <link rel="stylesheet" href="/static/maplibre-gl.css?v=4">
 <script src="/static/maplibre-gl.js?v=4"></script>
 <script src="/static/pmtiles.js?v=4"></script>
-<script src="/static/elrs-map.js?v=4"></script>
+<script src="/static/elrs-map.js?v=9"></script>
+<script src="/static/offline-ui.js?v=18"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
   :root { color-scheme: dark; }
@@ -101,6 +102,7 @@
   #map { position: absolute; inset: 0; }
   .droneMarker { width: 48px; height: 48px; pointer-events: none; }
   .droneMarker svg { display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+  .droneMarker.stale { opacity: .55; }
   .gpsHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .gpsSats { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
   .gpsSats #sats { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
@@ -145,11 +147,24 @@
   .settingsGroup { margin-bottom: 12px; }
   .settingsGroup:last-child { margin-bottom: 0; }
   .settingsLabel { font-size: 12px; color: #9da7b3; margin-bottom: 4px; }
+  .settingsLabelInline { margin-bottom: 0; }
   .settingsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .settingsRow input[type=number], .settingsRow input[type=text], .settingsRow input[type=password] { padding: 6px 8px; border-radius: 8px;
       border: 1px solid #30363d; background: #0b0f14; color: #e6edf3; font: inherit; font-size: 13px; }
   .settingsRow input[type=number] { width: 110px; }
+  .settingsRow select { background: #11161d; color: #e6edf3; border: 1px solid #30363d;
+                        border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: 12px; }
   .settingsRow input[type=text], .settingsRow input[type=password] { width: 100%; max-width: 320px; }
+  .passwordWrap { position: relative; flex: 1 1 220px; max-width: 320px; }
+  .passwordWrap input { width: 100%; max-width: none; padding-right: 40px; }
+  .passwordToggle { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px;
+                    display: inline-flex; align-items: center; justify-content: center; padding: 0;
+                    background: transparent; border: 0; color: #9da7b3; cursor: pointer; }
+  .passwordToggle:hover { color: #e6edf3; }
+  .passwordToggle svg { width: 19px; height: 19px; display: block; }
+  .passwordToggle .eyeOpen { display: none; }
+  .passwordToggle.visible .eyeClosed { display: none; }
+  .passwordToggle.visible .eyeOpen { display: block; }
   .sourceToggle { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid #30363d;
                   border-radius: 10px; background: #0b0f14; }
   .sourceBtn { background: transparent; color: #7d8590; border: 0; border-radius: 8px;
@@ -186,10 +201,16 @@
   .supportChannel { color: #3fb950; font-weight: 600; }
   #mapInfo { bottom: 56px; }
   .mapBar { position: absolute; left: 12px; top: 12px; z-index: 5; display: flex; flex-wrap: wrap;
-            align-items: center; gap: 8px; height: 32px; padding: 0 9px; box-sizing: border-box;
+            align-items: center; gap: 4px; min-height: 32px; padding: 2px 6px; box-sizing: border-box;
             border: 1px solid #30363d; border-radius: 10px;
             background: rgba(11,15,20,.82); backdrop-filter: blur(6px); }
   .mapToggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c9d1d9; }
+  .mapModeQuick { padding: 3px 4px; font-size: 10px; width: 92px; min-width: 92px; }
+  .mapIconBtn { width: 28px; min-width: 28px; height: 26px; padding: 0; display: inline-flex;
+                align-items: center; justify-content: center; }
+  .zoomRange { width: 120px; max-width: 40vw; accent-color: #3fb950; }
+  .zoomValue { min-width: 20px; text-align: center; color: #e6edf3; font-size: 12px;
+               font-variant-numeric: tabular-nums; }
   .mapBtn { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 8px;
             padding: 5px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
   .mapBtn:hover { border-color: #3fb950; }
@@ -212,6 +233,21 @@
   #mapSats.warn { color: #d29922; border-color: #9e6a03; }
   #mapSats.bad { color: #f85149; border-color: #6e2c2c; }
   #mapSats.unknown { color: #8b949e; }
+  .mapOfflineBadge { position: absolute; left: 12px; top: 52px; z-index: 5; padding: 5px 9px;
+                     border: 1px solid #238636; border-radius: 999px; background: rgba(11,15,20,.86);
+                     color: #3fb950; font-size: 11px; backdrop-filter: blur(6px); max-width: 70%;
+                     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mapOfflineBadge.bad { color: #f85149; border-color: #6e2c2c; }
+  .mapOfflinePanel { position: absolute; left: 12px; top: 92px; z-index: 9; width: min(360px, calc(100% - 24px));
+                     padding: 10px; border: 1px solid #30363d; border-radius: 12px;
+                     background: rgba(11,15,20,.96); backdrop-filter: blur(8px);
+                     box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+  .mapOfflinePanel .settingsRow { margin-bottom: 6px; }
+  .mapOfflinePanel .guideNote { margin: 4px 0; }
+  .offlinePanelHead { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                      margin-bottom: 6px; }
+  .offlineClose { background: transparent; color: #9da7b3; border: 0; font-size: 22px; line-height: 1;
+                  cursor: pointer; padding: 0 4px; }
   .trackPopup .maplibregl-popup-content { background: rgba(11,15,20,.96); color: #e6edf3;
              border: 1px solid #30363d; border-radius: 8px; padding: 5px 9px;
              font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -258,6 +294,59 @@
   @media (max-width: 720px) { .gpsGrid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { header { padding: 5px 8px; gap: 2px; } .brand { font-size: 12px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 3px; border-radius: 5px; } .headRight { gap: 3px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 2px; padding: 0; min-width: 0; } .tab { padding: 4px 7px; font-size: 14px; border-radius: 9px; } #mapPage { padding: 12px; } #settingsPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
   @media (max-width: 330px) { .tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-top: 2px; } }
+
+  /* Readability: settings and guides */
+  .settingsCard h2 { font-size: 18px; letter-spacing: .06em; }
+  .settingsLabel { font-size: 14px; color: #c9d1d9; margin-bottom: 6px; }
+  .settingsLabelInline { margin-bottom: 0; }
+  .settingsValue { font-size: 14px; line-height: 1.45; }
+  .settingsMsg { font-size: 13px; }
+  .settingsRow { gap: 10px; }
+  .settingsRow input[type=number], .settingsRow input[type=text], .settingsRow input[type=password] {
+    font-size: 15px; padding: 8px 10px; }
+  .settingsRow select { font-size: 14px; padding: 8px 10px; }
+  .settingsCard .mapBtn { font-size: 14px; padding: 7px 12px; }
+  .sourceBtn { font-size: 15px; padding: 8px 16px; }
+  .settingsSectionTitle { font-size: 16px; color: #c9d1d9; }
+  .guideCard summary, .settingsCard summary { font-size: 17px; }
+  .guideBody b { font-size: 15px; }
+  .guideList { font-size: 15px; line-height: 1.6; color: #d0d7de; }
+  .guideNote { font-size: 14px; line-height: 1.55; color: #b1bac4; }
+  .guideDetails summary { font-size: 14px; }
+  .guideDetails .guideLink { font-size: 14px; }
+  .permList li { font-size: 15px; }
+  .permState { font-size: 12px; }
+  .permBtn { font-size: 12px !important; }
+  .helpKicker { font-size: 12px; }
+  .helpTitle { font-size: 22px; }
+  .helpText { font-size: 18px; line-height: 1.5; }
+
+  .settingsGroup.settingsAccordion { margin-bottom: 8px; padding-top: 4px; border-top: 1px solid #1f2630; }
+  .settingsAccordionHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                             width: 100%; padding: 8px 0; cursor: pointer; color: #e6edf3; }
+  .settingsAccordionHeader .settingsLabel { margin: 0; font-size: 16px; font-weight: 600; color: #e6edf3; }
+  .settingsAccordionHeader::after { content: "▸"; color: #9da7b3; font-size: 14px; transition: transform .15s; }
+  .settingsGroup.settingsAccordion.open .settingsAccordionHeader::after { transform: rotate(90deg); }
+  .settingsAccordionBody { display: none; padding-top: 8px; }
+  .settingsGroup.settingsAccordion.open .settingsAccordionBody { display: block; }
+
+  #telemetryPage .card { background: #151c25; border-color: #2d3742; }
+  #telemetryPage h2 { color: #b1bac4; }
+  #telemetryPage small { color: #b1bac4; }
+  #telemetryPage .firmwareBadge { color: #d0d7de; }
+  #telemetryPage .val, #telemetryPage .lq, #telemetryPage .big,
+  #telemetryPage .gpsSats #sats { color: #56d364; font-weight: 600; }
+  #telemetryPage .val { font-size: 18px; color: #56d364; }
+  #telemetryPage .val, #telemetryPage .lq { text-shadow: 0 0 10px rgba(86,211,100,.18); }
+  #telemetryPage .lq.mid { color: #d29922; text-shadow: 0 0 10px rgba(210,153,34,.2); }
+  #telemetryPage .lq.low { color: #f85149; text-shadow: 0 0 10px rgba(248,81,73,.22); }
+  #telemetryPage .big { text-shadow: 0 0 14px rgba(86,211,100,.22); }
+  #telemetryPage .big small { color: #b1bac4; font-weight: 400; text-shadow: none; }
+  #telemetryPage .track { background: #26303c; }
+  #telemetryPage .modeNote, #telemetryPage .gpsNote, #telemetryPage .muted { color: #b1bac4; }
+  #telemetryPage table.frames th { color: #b1bac4; }
+  #telemetryPage table.frames td { color: #e6edf3; }
+  #telemetryPage table.frames td:last-child { color: #b1bac4; }
 </style>
 </head>
 <body>
@@ -472,8 +561,10 @@
   <div class="card settingsCard" id="settingsCard">
     <h2 data-i18n="settings">Settings</h2>
     <div class="settingsBody">
-    <div class="settingsGroup">
-      <div class="settingsLabel" data-i18n="source_label">Signal source</div>
+    <div class="settingsGroup" id="sectionSignal">
+      <div class="settingsLabel" data-i18n="source_label">Источник сигнала</div>
+      <div class="settingsAccordionBody">
+<div class="settingsGroup">
       <div class="sourceToggle" id="sourceToggle">
         <button type="button" class="sourceBtn" data-source="network" data-i18n="source_network">Network</button>
         <button type="button" class="sourceBtn" data-source="usb" data-i18n="source_espnow_usb">ESP-NOW via USB</button>
@@ -505,13 +596,18 @@
       <div id="dongleInfo" class="settingsValue">—</div>
       <label class="settingsRow" for="dongleManualUid">
         <input id="dongleManualUid" type="checkbox">
-        <span data-i18n="dongle_manual_uid">Manual UID</span>
+        <span data-i18n="dongle_manual_uid">Set UID manually</span>
       </label>
       <div id="donglePhraseRow">
         <div class="settingsLabel" data-i18n="dongle_phrase">Binding phrase</div>
         <div class="settingsRow">
-          <input id="donglePhrase" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="expresslrs">
-          <button id="donglePhraseToggle" class="mapBtn" type="button">Show</button>
+          <div class="passwordWrap">
+            <input id="donglePhrase" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="expresslrs">
+            <button id="donglePhraseToggle" class="passwordToggle" type="button" aria-label="Show binding phrase" aria-pressed="false" title="Show binding phrase">
+              <svg class="eyeClosed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5 0 9 4 10 7a13 13 0 0 1-3.1 4.3"/><path d="M6.6 6.6A13 13 0 0 0 2 12c1 3 5 7 10 7 1.5 0 3-.3 4.3-.9"/></svg>
+              <svg class="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
         </div>
       </div>
       <div id="dongleUidRow" hidden>
@@ -526,8 +622,12 @@
       <div class="guideNote" data-i18n="dongle_note">Use the same bind phrase you flashed the ELRS backpack with, or set the UID manually.</div>
     </div>
     </div>
-    <div class="settingsSectionTitle" data-i18n="settings_common">Common settings</div>
-    <div class="settingsGroup">
+          </div>
+    </div>
+    <div class="settingsGroup" id="sectionGeneral">
+      <div class="settingsLabel" data-i18n="settings_common">Общие настройки</div>
+      <div class="settingsAccordionBody">
+<div class="settingsGroup">
       <div class="settingsLabel" data-i18n="idle_release">Power saving when idle (min)</div>
       <div class="settingsRow">
         <input id="idleReleaseMin" type="number" min="0" max="1440" inputmode="numeric" placeholder="5">
@@ -537,6 +637,7 @@
       <div class="guideNote" data-i18n="idle_release_note">When idle, the app switches to power saving. 0 or empty — keep it off.</div>
     </div>
     <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="auto_record_section">Auto-record</div>
       <label class="settingsRow" for="autoRecord3d">
         <input id="autoRecord3d" type="checkbox">
         <span data-i18n="auto_record_3d">Auto-record on 3D fix</span>
@@ -571,15 +672,47 @@
       </div>
       <div class="guideNote" data-i18n="keep_tracks_note">Old tracks are deleted when a new one is saved. Empty — unlimited; 0 is not allowed.</div>
     </div>
-    <div class="settingsGroup">
-      <div class="settingsLabel" data-i18n="permissions">Permissions</div>
+          </div>
+    </div>
+    <div class="settingsGroup" id="sectionMap" data-platform="android">
+      <div class="settingsLabel" data-i18n="offline_section">Карта</div>
+      <div class="settingsAccordionBody">
+<div class="settingsGroup">
+      <div class="settingsRow">
+        <span class="settingsLabel settingsLabelInline" data-i18n="map_type">Тип карты</span>
+        <select id="offlineMode">
+          <option value="online" data-i18n="offline_mode_online">Online</option>
+          <option value="auto" data-i18n="offline_mode_auto">Auto</option>
+          <option value="offline" data-i18n="offline_mode_offline">Offline</option>
+        </select>
+      </div>
+      <div class="guideNote" id="offlineModeDesc"></div>
+      <div id="offlinePacksSummary" class="settingsValue">—</div>
+      <div id="offlineStorage" class="settingsValue">—</div>
+      <div class="settingsRow">
+        <button id="offlineImport" class="mapBtn" data-i18n="offline_import">Import .pmtiles</button>
+        <button id="offlineClear" class="mapBtn" data-i18n="offline_clear">Очистить оффлайн карты</button>
+      </div>
+      <div class="guideNote" data-i18n="offline_visible_hint">Скачивание видимой области — кнопкой на карте, при зуме не меньше z10.</div>
+      <div class="guideNote" data-i18n="offline_satellite_note">Satellite: EOxCloudless 2025, CC BY-NC-SA 4.0 (non-commercial)</div>
+      <div class="guideNote" data-i18n="offline_import_hint">Import a .pmtiles file prepared for OpenFreeMap/OpenMapTiles.</div>
+      <span id="offlineMsg" class="settingsMsg"></span>
+    </div>
+          </div>
+    </div>
+    <div class="settingsGroup" id="sectionPermissions">
+      <div class="settingsLabel" data-i18n="permissions">Разрешения</div>
+      <div class="settingsAccordionBody">
+<div class="settingsGroup">
       <ul id="permissionList" class="permList"></ul>
       <div class="settingsRow">
         <button id="refreshPermissions" class="mapBtn" data-i18n="check_again">Check again</button>
         <button id="openAppSettings" class="mapBtn" data-i18n="app_settings">App settings</button>
       </div>
       <div class="guideNote" data-i18n="permissions_note">Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.</div>
+    </div>      </div>
     </div>
+
     </div>
   </div>
 </section>
@@ -605,12 +738,33 @@
     <div class="mapBar">
       <label class="mapToggle"><input type="checkbox" id="followDrone" checked> <span data-i18n="follow">Follow</span></label>
       <button id="centerMap" class="mapBtn" data-i18n="center">Center</button>
+      <select id="mapModeQuick" class="mapBtn mapModeQuick" aria-label="Map mode">
+        <option value="online" data-i18n="offline_mode_online">Online</option>
+        <option value="auto" data-i18n="offline_mode_auto">Auto</option>
+        <option value="offline" data-i18n="offline_mode_offline">Offline</option>
+      </select>
+      <button id="mapOfflineBtn" class="mapBtn mapIconBtn" type="button" hidden title="Download offline area" aria-label="Download offline area">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+      </button>
     </div>
     <div id="mapStatus" hidden data-i18n="no_data">no data</div>
+    <div id="mapOfflineBadge" hidden></div>
     <div id="mapInfo">—</div>
     <div id="mapSats" hidden aria-label="satellites">
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5a17 17 0 0 1 17-17"/><path d="M3.5 20.5l8.5-8.5"/><circle cx="12" cy="12" r="1.5"/><path d="M17 7l3-3"/></svg>
       <span id="mapSatsValue">—</span>
+    </div>
+    <div id="mapOfflinePanel" class="mapOfflinePanel" hidden>
+      <div class="offlinePanelHead">
+        <b data-i18n="offline_download_title">Download offline area</b>
+        <button id="mapOfflineClose" class="offlineClose" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="guideNote" data-i18n="offline_visible_hint">Скачивание видимой области — кнопкой на карте, при зуме не меньше z10.</div>
+      <div class="settingsRow">
+        <button id="mapOfflineCancel" class="mapBtn" data-i18n="offline_cancel" hidden>Cancel</button>
+      </div>
+      <div class="guideNote" data-i18n="offline_satellite_note">Satellite: EOxCloudless 2025, CC BY-NC-SA 4.0 (non-commercial)</div>
+      <span id="mapOfflineMsg" class="settingsMsg"></span>
     </div>
     <div id="trackPanel" class="trackPanel collapsed">
       <div class="trackHead">
@@ -650,19 +804,28 @@
 const $ = (id) => document.getElementById(id);
 const val = (v, unit = "", digits = 0) => v === null || v === undefined ? "—" : Number(v).toFixed(digits) + unit;
 const setText = (id, text) => { const e = $(id); if (e) e.textContent = text; };
-const bar = (id, pct) => {
-  const e = $(id); if (!e) return;
-  pct = Math.max(0, Math.min(100, pct || 0));
-  e.style.width = pct + "%";
-  e.classList.toggle("mid", pct < 70 && pct >= 35);
-  e.classList.toggle("low", pct < 35);
+const setLevel = (e, level) => {
+  if (!e) return;
+  e.classList.toggle("mid", level === "mid");
+  e.classList.toggle("low", level === "low");
 };
-const rangeBar = (id, pct) => {
+const bar = (id, pct, textId) => {
   const e = $(id); if (!e) return;
-  pct = Math.max(0, Math.min(100, pct || 0));
+  const has = pct !== null && pct !== undefined && isFinite(pct);
+  pct = has ? Math.max(0, Math.min(100, pct)) : 0;
   e.style.width = pct + "%";
-  e.classList.toggle("mid", pct > 40 && pct <= 80);
-  e.classList.toggle("low", pct > 80);
+  const level = !has ? "" : pct < 35 ? "low" : pct < 70 ? "mid" : "";
+  setLevel(e, level);
+  if (textId) setLevel($(textId), level);
+};
+const rangeBar = (id, pct, textId) => {
+  const e = $(id); if (!e) return;
+  const has = pct !== null && pct !== undefined && isFinite(pct);
+  pct = has ? Math.max(0, Math.min(100, pct)) : 0;
+  e.style.width = pct + "%";
+  const level = !has ? "" : pct > 80 ? "low" : pct > 40 ? "mid" : "";
+  setLevel(e, level);
+  if (textId) setLevel($(textId), level);
 };
 function rssi(v) { return v === null || v === undefined || v === 0 ? "—" : v + " dBm"; }
 function snr(v) { return v === null || v === undefined ? "—" : v + " dB"; }
@@ -721,6 +884,7 @@ function applySettingsData(data) {
   applySettingValue("autoStopRecordingSec", data.auto_stop_recording_sec ?? 10);
   applySettingValue("keepTracksInput", data.keep_tracks ?? "");
   applyUsbStatus(data.usb);
+  if (typeof applyOfflineData === "function") applyOfflineData(data);
 }
 
 function applyUsbStatus(usb) {
@@ -808,7 +972,10 @@ function setPhraseVisible(visible) {
   const btn = $("donglePhraseToggle");
   if (!input || !btn) return;
   input.type = visible ? "text" : "password";
-  btn.textContent = t(visible ? "hide_phrase" : "show_phrase");
+  btn.classList.toggle("visible", visible);
+  const label = t(visible ? "hide_phrase" : "show_phrase");
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
   btn.setAttribute("aria-pressed", visible ? "true" : "false");
 }
 
@@ -1007,7 +1174,7 @@ const I18N = {
     usb_state_error: "USB error: {error}",
     usb_connected: "Connected · {device} · {frames} CRSF · {crc} CRC errors",
     dongle_config: "Dongle setup",
-    dongle_manual_uid: "Manual UID",
+    dongle_manual_uid: "Set UID manually",
     dongle_mode_phrase: "phrase",
     dongle_mode_uid: "manual UID",
     dongle_phrase: "Binding phrase",
@@ -1021,8 +1188,8 @@ const I18N = {
     dongle_saved: "Command sent",
     dongle_error: "Could not send the command",
     dongle_bad_uid: "UID must be 12 hex digits",
-    show_phrase: "Show",
-    hide_phrase: "Hide",
+    show_phrase: "Show binding phrase",
+    hide_phrase: "Hide binding phrase",
     udp_port: "UDP listen port",
     apply: "Apply",
     udp_port_note: "The backpack must send telemetry to this port.",
@@ -1030,6 +1197,7 @@ const I18N = {
     idle_release_note: "When idle, the app switches to power saving. 0 or empty — keep it off.",
     idle_release_saved: "Power saving setting updated",
     idle_release_error: "Could not update power saving",
+    auto_record_section: "Auto-record",
     auto_record_3d: "Auto-record on 3D fix",
     auto_record_3d_note: "Start a new track when a 3D fix appears. Off by default.",
     auto_stop_recording: "Stop recording when telemetry is lost (s)",
@@ -1152,6 +1320,7 @@ const I18N = {
     unknown_frame: "Unknown",
     not_described: "frame not described in the viewer",
     no_data: "no data",
+    last_known: "last known",
     mode_failsafe: "failsafe",
     mode_blocked: "arming blocked",
     mode_gps_rescue_off: "arming possible, but GPS Rescue is disabled",
@@ -1255,18 +1424,18 @@ const I18N = {
     source_network: "Сеть",
     source_espnow_usb: "ESP-NOW по USB",
     source_network_note: "По умолчанию. Телеметрия по Wi-Fi/UDP от TX-бэкпака; дополнительное железо не нужно.",
-    source_espnow_usb_note: "Рекомендуется. Меньше засорения эфира; нужен USB-донгл ESP32-C3 с native USB, OTG и data-кабель.",
+    source_espnow_usb_note: "Рекомендуется. Меньше засорения эфира; нужен приемник ESP-NOW на ESP32-C3 с native USB, OTG и data-кабель.",
     source_error: "Не удалось переключить источник",
-    usb_section: "USB-донгл",
+    usb_section: "Приемник ESP-NOW",
     usb_allow: "Разрешить USB",
-    usb_note: "Подключите донгл по USB OTG и разрешите доступ. Приложение читает CRSF-поток напрямую.",
+    usb_note: "Подключите приемник ESP-NOW по USB OTG и разрешите доступ. Приложение читает CRSF-поток напрямую.",
     usb_state_idle: "Не запущено",
-    usb_state_no_device: "Донгл не найден",
+    usb_state_no_device: "Приемник ESP-NOW не найден",
     usb_state_permission: "Доступ к USB не выдан",
     usb_state_error: "Ошибка USB: {error}",
     usb_connected: "Подключён · {device} · {frames} CRSF · ошибок CRC: {crc}",
-    dongle_config: "Настройка донгла",
-    dongle_manual_uid: "Ручной UID",
+    dongle_config: "Настройка приемника ESP-NOW",
+    dongle_manual_uid: "Задать UID вручную",
     dongle_mode_phrase: "фраза",
     dongle_mode_uid: "ручной UID",
     dongle_phrase: "Binding phrase",
@@ -1276,12 +1445,12 @@ const I18N = {
     dongle_note: "Укажите ту же бинд-фразу, которую использовали при прошивке ELRS-backpack, либо задайте UID вручную. При успешном соединении светодиод загорится ровным синим цветом. При живых датчиках с дрона - будет мигать быстро. При разрыве соединения/неправильной бинд-фразе/UID - погаснет",
     dongle_state: "Прошивка {version} · {mode}",
     dongle_reading: "Чтение конфигурации…",
-    dongle_unavailable: "Донгл не подключён",
+    dongle_unavailable: "Приемник ESP-NOW не подключён",
     dongle_saved: "Команда отправлена",
     dongle_error: "Не удалось отправить команду",
     dongle_bad_uid: "UID должен состоять из 12 hex-цифр",
-    show_phrase: "Показать",
-    hide_phrase: "Скрыть",
+    show_phrase: "Показать биндфразу",
+    hide_phrase: "Скрыть биндфразу",
     udp_port: "UDP-порт прослушивания",
     apply: "Применить",
     udp_port_note: "Бэкпак должен отправлять телеметрию на этот порт.",
@@ -1289,6 +1458,7 @@ const I18N = {
     idle_release_note: "При простое приложение переходит в энергосбережение. 0 или пусто — не включать.",
     idle_release_saved: "Настройка энергосбережения обновлена",
     idle_release_error: "Не удалось изменить энергосбережение",
+    auto_record_section: "Автозапись",
     auto_record_3d: "Автозапись при появлении 3D-фикса",
     auto_record_3d_note: "Начинать новый трек при появлении 3D-фикса. По умолчанию выключено.",
     auto_stop_recording: "Останавливать запись при потере телеметрии, с",
@@ -1322,7 +1492,7 @@ const I18N = {
     guide_github: "Проект на GitHub",
     guide_methods: "Два способа получения телеметрии",
     guide_method_wifi: "Wi-Fi — по умолчанию. Дополнительное железо не нужно: бэкпак поднимает точку доступа или подключается к вашей сети.",
-    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен донгл ESP32-C3 с native USB, OTG и data-кабель.",
+    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен приемник ESP-NOW на ESP32-C3 с native USB, OTG и data-кабель.",
     guide_wifi: "Настройка Wi-Fi",
     guide_wifi_1: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите «WiFi». Не используйте «WiFi Connectivity» — это режим настройки передатчика.",
     guide_wifi_2: "Подключите телефон к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или к той же сети, что и бэкпак.",
@@ -1331,20 +1501,20 @@ const I18N = {
     guide_espnow: "Настройка ESP-NOW по USB",
     guide_espnow_1: "Прошейте ESP32-C3 с native USB прошивкой esp32-c3-usb через Web Flasher или PlatformIO.",
     guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
-    guide_espnow_3: "Подключите донгл к телефону через OTG (data-кабель) и разрешите доступ к USB.",
+    guide_espnow_3: "Подключите приемник ESP-NOW к телефону через OTG (data-кабель) и разрешите доступ к USB.",
     guide_espnow_4: "Откройте настройки (шестерёнка в шапке) и выберите источник «ESP-NOW по USB».",
     guide_espnow_5: "Укажите binding phrase или ручной UID, совпадающие с бэкпаком.",
-    guide_espnow_6: "Проверьте синий LED донгла: после верной бинд-фразы/UID он горит ровно — значит, донгл получает кадры от бэкпака. Если есть линк с дроном, LED мигает. Если донгл не видит приложение или фраза/UID неверны, LED не горит.",
+    guide_espnow_6: "Проверьте синий LED приемника ESP-NOW: после верной бинд-фразы/UID он горит ровно — значит, приемник получает кадры от бэкпака. Если есть линк с дроном, LED мигает. Если приемник не видит приложение или фраза/UID неверны, LED не горит.",
     guide_problems: "Возможные проблемы",
     guide_problem_nodata_android: "Нет данных по Wi-Fi? Проверьте Telemetry → WiFi, общую сеть, VPN и что UDP-порт 14550 не занят другой программой.",
-    guide_problem_no_dongle: "В USB-режиме донгл не найден? Нужен ESP32-C3 с native USB, OTG-адаптер и data-кабель; проверьте разрешение USB.",
+    guide_problem_no_dongle: "В USB-режиме приемник ESP-NOW не найден? Нужен ESP32-C3 с native USB, OTG-адаптер и data-кабель; проверьте разрешение USB.",
     guide_problem_no_link: "Счётчики растут, но статус «нет связи с дроном»? Проверьте питание RX/дрона и совпадение binding phrase или UID.",
     guide_problem_port_android: "Порт 14550 занят? Смените его в настройках (шестерёнка → UDP-порт).",
     guide_problem_vendor: "У некоторых вендоров не стартует точка «ExpressLRS TX Backpack XXXXXX»; иногда помогает прошивка бэкпака из master.",
     guide_flash_title: "Прошивка бэкпака",
     guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi/ESP-NOW или в меню нет нужного пункта. Прошивать через ExpressLRS Configurator → Backpack.",
     guide_flash_2: "Для Wi-Fi-телеметрии binding phrase не обязательна: приложение не проверяет UID.",
-    guide_flash_3: "Для ESP-NOW фраза задаёт UID и адрес ESP-NOW-группы; используйте ту же фразу, что в ELRS-линии, либо задайте UID вручную в настройках донгла.",
+    guide_flash_3: "Для ESP-NOW фраза задаёт UID и адрес ESP-NOW-группы; используйте ту же фразу, что в ELRS-линии, либо задайте UID вручную в настройках приемника ESP-NOW.",
     guide_flash_4: "Без фразы бэкпак возьмёт адрес из EEPROM (после бинда) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs.",
     guide_flash_5: "При смене фразы меняются UID и SSID — перепрошейте с той же фразой все устройства группы.",
     guide_flash_link: "Прошивка TX Backpack — ExpressLRS",
@@ -1411,6 +1581,7 @@ const I18N = {
     unknown_frame: "Неизвестный",
     not_described: "кадр не описан в просмотрщике",
     no_data: "нет данных",
+    last_known: "последняя известная",
     mode_failsafe: "failsafe",
     mode_blocked: "арминг заблокирован",
     mode_gps_rescue_off: "арминг возможен, но GPS Rescue отключён",
@@ -1525,7 +1696,7 @@ const I18N = {
     usb_state_error: "USB 错误：{error}",
     usb_connected: "已连接 · {device} · {frames} CRSF · CRC 错误 {crc}",
     dongle_config: "适配器设置",
-    dongle_manual_uid: "手动 UID",
+    dongle_manual_uid: "手动设置 UID",
     dongle_mode_phrase: "短语",
     dongle_mode_uid: "手动 UID",
     dongle_phrase: "绑定短语",
@@ -1539,8 +1710,8 @@ const I18N = {
     dongle_saved: "命令已发送",
     dongle_error: "无法发送命令",
     dongle_bad_uid: "UID 必须是 12 位十六进制数",
-    show_phrase: "显示",
-    hide_phrase: "隐藏",
+    show_phrase: "显示绑定短语",
+    hide_phrase: "隐藏绑定短语",
     udp_port: "UDP 监听端口",
     apply: "应用",
     udp_port_note: "背包必须将遥测发送到此端口。",
@@ -1548,6 +1719,7 @@ const I18N = {
     idle_release_note: "空闲时应用会进入节能模式。0 或留空 — 不启用。",
     idle_release_saved: "节能设置已更新",
     idle_release_error: "无法更新节能设置",
+    auto_record_section: "自动记录",
     auto_record_3d: "出现 3D 定位时自动录制",
     auto_record_3d_note: "出现 3D 定位时开始新轨迹。默认关闭。",
     auto_stop_recording: "遥测丢失时停止录制（秒）",
@@ -1670,6 +1842,7 @@ const I18N = {
     unknown_frame: "未知",
     not_described: "查看器未描述该帧",
     no_data: "无数据",
+    last_known: "最后已知",
     mode_failsafe: "失控保护",
     mode_blocked: "解锁被阻止",
     mode_gps_rescue_off: "可以解锁，但 GPS 救援已禁用",
@@ -1818,6 +1991,8 @@ const HELP = {
 function t(key, vars) {
   const table = I18N[LANG] || I18N.en;
   let text = table[key];
+  if (text === undefined && window.OFFLINE_I18N && window.OFFLINE_I18N[LANG]) text = window.OFFLINE_I18N[LANG][key];
+  if (text === undefined && window.OFFLINE_I18N && window.OFFLINE_I18N.en) text = window.OFFLINE_I18N.en[key];
   if (text === undefined) text = I18N.en[key];
   if (text === undefined) text = key;
   if (vars) {
@@ -1913,6 +2088,11 @@ let mapFixType = null;
 let trackPopup = null;
 let trackPopupTimer = 0;
 let mapFollow = true;
+let mapOfflineMode = "online";
+let mapOfflinePack = null;
+let mapRestoreView = null;
+let mapGpsLive = false;
+let lastState = null;
 
 let tracks = [];
 let recordState = {};
@@ -1940,10 +2120,32 @@ function mapVisible() {
   return !$("mapPage").hidden;
 }
 
-function showMapFailure() {
+function showMapFailure(message) {
   const el = $("mapStatus");
   el.hidden = false;
-  el.textContent = t("map_load_error");
+  el.textContent = message || t("map_load_error");
+}
+
+function resetMap() {
+  if (mapObj) {
+    try {
+      mapRestoreView = {
+        center: mapObj.getCenter().toArray(),
+        zoom: mapObj.getZoom()
+      };
+    } catch (e) {
+      mapRestoreView = null;
+    }
+    try { mapObj.remove(); } catch (e) {}
+  }
+  mapObj = null;
+  mapPlacemark = null;
+  playbackMarker = null;
+  mapReady = false;
+  mapLoading = false;
+  mapLastPos = null;
+  const offlineBtn = $("mapOfflineBtn");
+  if (offlineBtn) offlineBtn.hidden = true;
 }
 
 function ensureMap() {
@@ -1977,27 +2179,46 @@ async function initMap() {
     showMapFailure();
     return;
   }
-  const g = mapLastGps && Number.isFinite(Number(mapLastGps.lat)) && Number.isFinite(Number(mapLastGps.lon)) ? mapLastGps : null;
-  const center = g ? [g.lon, g.lat] : [37.618423, 55.751244];
-  let style;
+  const g = mapLastGps && gpsHasFix(mapLastGps) ? mapLastGps : null;
+  const restore = !mapFollow ? mapRestoreView : null;
+  const center = restore ? restore.center : (g ? [g.lon, g.lat] : [37.618423, 55.751244]);
+  const zoom = restore ? restore.zoom : (g ? 15 : 4);
+  mapRestoreView = null;
+  let runtime;
   try {
-    style = await window.ELRS_MAP.loadStyle(LANG);
+    runtime = await window.ELRS_MAP.loadRuntimeStyle(LANG, center);
   } catch (e) {
     mapLoading = false;
     showMapFailure();
     return;
   }
+  if (!runtime || runtime.offlineUnavailable) {
+    mapLoading = false;
+    mapOfflineMode = runtime && runtime.mode ? runtime.mode : "offline";
+    mapOfflinePack = runtime && runtime.pack ? runtime.pack : null;
+    showMapFailure(t("offline_badge_none"));
+    if (typeof updateOfflineBadge === "function") updateOfflineBadge();
+    return;
+  }
+  mapOfflineMode = runtime.mode || "online";
+  mapOfflinePack = runtime.pack || null;
   try {
     mapObj = new maplibregl.Map({
       container: "map",
-      style: style,
+      style: runtime.style,
       center: center,
-      zoom: g ? 15 : 4
+      zoom: zoom
     });
   } catch (e) {
     mapLoading = false;
     showMapFailure();
     return;
+  }
+  if (typeof updateOfflineButton === "function") {
+    mapObj.on("moveend", updateOfflineButton);
+    mapObj.on("moveend", () => { if (typeof maybeSwitchOfflinePack === "function") maybeSwitchOfflinePack(); });
+    mapObj.on("zoomend", updateOfflineButton);
+    mapObj.on("resize", updateOfflineButton);
   }
   mapObj.on("load", () => {
     try {
@@ -2050,12 +2271,14 @@ async function initMap() {
       showPlaybackMarker();
       positionPlaybackMarker(playback.time);
     }
+    if (typeof updateOfflineButton === "function") updateOfflineButton();
   });
   const icon = document.createElement("div");
   icon.className = "droneMarker";
   icon.innerHTML = DRONE_SVG;
+  icon.style.display = g ? "block" : "none";
   mapPlacemark = new maplibregl.Marker({ element: icon, anchor: "center" })
-    .setLngLat(center)
+    .setLngLat(g ? [g.lon, g.lat] : center)
     .addTo(mapObj);
   const pIcon = document.createElement("div");
   pIcon.className = "playbackMarker";
@@ -2066,6 +2289,8 @@ async function initMap() {
     .addTo(mapObj);
   mapReady = true;
   mapLoading = false;
+  if (typeof updateOfflineBadge === "function") updateOfflineBadge();
+  if (typeof updateOfflineButton === "function") updateOfflineButton();
   updateMap(mapLastGps, true);
   if (window.ResizeObserver && !mapResizeObserver) {
     mapResizeObserver = new ResizeObserver(() => {
@@ -2098,19 +2323,31 @@ function refreshMapLayout() {
   }
 }
 
+function gpsHasFix(g) {
+  if (!g || !Number.isFinite(Number(g.lat)) || !Number.isFinite(Number(g.lon))) return false;
+  if (g.fix_type !== undefined && g.fix_type !== null) return Number(g.fix_type) >= 2;
+  if (g.fix !== undefined) return !!g.fix;
+  return true;
+}
+
 function updateMap(gps, force) {
-  if (gps) mapLastGps = gps;
+  if (gps && gpsHasFix(gps)) mapLastGps = gps;
   const g = mapLastGps;
-  const hasGps = !!(g && Number.isFinite(Number(g.lat)) && Number.isFinite(Number(g.lon)));
+  const hasGps = gpsHasFix(g);
+  const stale = hasGps && !(mapGpsLive && gpsHasFix(gps));
   const trackMode = !!currentTrack;
-  if (mapPlacemark) mapPlacemark.getElement().style.display = trackMode ? "none" : "block";
+  if (mapPlacemark) {
+    const el = mapPlacemark.getElement();
+    el.style.display = (trackMode || !hasGps) ? "none" : "block";
+    el.classList.toggle("stale", stale);
+  }
   if (trackMode) {
     updateMapSats(null, null);
   } else if (!playback.playing) {
-    updateMapSats(hasGps ? g.sats : null, mapFixType);
+    updateMapSats((hasGps && !stale) ? g.sats : null, mapFixType);
   }
   if (!mapReady) {
-    setText("mapInfo", hasGps ? Number(g.lat).toFixed(6) + ", " + Number(g.lon).toFixed(6) + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh") : "—");
+    setText("mapInfo", hasGps ? Number(g.lat).toFixed(6) + ", " + Number(g.lon).toFixed(6) + (stale ? " · " + t("last_known") : "") : "—");
     return;
   }
   if (hasGps && !trackMode) {
@@ -2122,8 +2359,9 @@ function updateMap(gps, force) {
         mapObj.easeTo({ center: [pos[1], pos[0]], duration: 300 });
       }
     }
-    $("mapStatus").hidden = true;
-    setText("mapInfo", pos[0].toFixed(6) + ", " + pos[1].toFixed(6) + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh"));
+    $("mapStatus").hidden = !stale;
+    if (stale) setText("mapStatus", t("last_known"));
+    setText("mapInfo", pos[0].toFixed(6) + ", " + pos[1].toFixed(6) + " · " + Number(g.speed || 0).toFixed(1) + " " + t("u_kmh") + (stale ? " · " + t("last_known") : ""));
   } else if (!trackMode) {
     $("mapStatus").hidden = false;
     setText("mapStatus", t("no_data"));
@@ -2578,6 +2816,10 @@ async function loadSelectedTrack() {
 
 async function toggleRecord() {
   const active = !!(recordState && recordState.active);
+  if (!active && !(lastState && lastState.gps && gpsHasFix(lastState.gps))) {
+    setText("recordStatus", t("no_gps"));
+    return;
+  }
   const action = active ? "stop" : "start";
   let res;
   try {
@@ -2614,10 +2856,16 @@ async function toggleRecord() {
 
 function updateRecordUi() {
   const active = !!(recordState && recordState.active);
-  $("recordBtn").classList.toggle("recording", active);
+  const canStart = !!(lastState && lastState.gps && gpsHasFix(lastState.gps));
+  const btn = $("recordBtn");
+  btn.classList.toggle("recording", active);
+  btn.disabled = !active && !canStart;
+  btn.title = (!active && !canStart) ? t("no_gps") : "";
   $("recordLabel").textContent = active ? t("stop") : t("record");
   if (active) {
     setText("recordStatus", t("recording") + " · " + fmtDur(recordState.duration) + " · " + Number(recordState.point_count || 0) + " " + t("points"));
+  } else if (!canStart) {
+    setText("recordStatus", t("no_gps"));
   } else {
     setText("recordStatus", "");
   }
@@ -2751,8 +2999,8 @@ function render(s) {
 
   const l = s.link;
   if (l) {
-    setText("lqUp", l.lq + "%");   bar("barUp", l.lq);
-    setText("lqDn", l.lq_d + "%"); bar("barDn", l.lq_d);
+    setText("lqUp", l.lq + "%");   bar("barUp", l.lq, "lqUp");
+    setText("lqDn", l.lq_d + "%"); bar("barDn", l.lq_d, "lqDn");
     setText("rssiUp", rssi(l.rssi1)); setText("rssiDn", rssi(l.rssi_d));
     setText("snrUp", snr(l.snr));     setText("snrDn", snr(l.snr_d));
     setText("txp", TX_POWER_MW[l.tx_power] !== undefined ? TX_POWER_MW[l.tx_power] + " " + t("u_mw") : "—");
@@ -2773,19 +3021,19 @@ function render(s) {
           rangeSmooth = Math.round(rangeSmooth * 0.6 + target * 0.4);
         }
         setText("rangePct", rangeSmooth + "%");
-        rangeBar("barRange", rangeSmooth);
+        rangeBar("barRange", rangeSmooth, "rangePct");
       } else {
         setText("rangePct", "—");
-        rangeBar("barRange", 0);
+        rangeBar("barRange", null, "rangePct");
       }
     } else {
       setText("band", "—"); setText("pktRate", "—");
-      setText("rangePct", "—"); rangeBar("barRange", 0);
+      setText("rangePct", "—"); rangeBar("barRange", null, "rangePct");
       rangeSmooth = null; rangeMode = null;
     }
   } else {
     ["lqUp","lqDn","rssiUp","rssiDn","snrUp","snrDn","txp","ant","band","pktRate","rangePct"].forEach(id => setText(id, "—"));
-    bar("barUp", 0); bar("barDn", 0); rangeBar("barRange", 0);
+    bar("barUp", null, "lqUp"); bar("barDn", null, "lqDn"); rangeBar("barRange", null, "rangePct");
     rangeSmooth = null; rangeMode = null;
   }
 
@@ -2903,8 +3151,11 @@ function render(s) {
     ? rows.join("")
     : '<tr><td colspan="4" class="muted">' + t("no_frames") + "</td></tr>";
 
-  if (s.gps) mapLastGps = s.gps;
-  updateMap(s.gps, false);
+  const currentGps = (s.gps && gpsHasFix(s.gps)) ? s.gps : null;
+  mapGpsLive = !!currentGps;
+  if (currentGps) mapLastGps = currentGps;
+  else if (!mapLastGps && s.gps_last && gpsHasFix(s.gps_last)) mapLastGps = s.gps_last;
+  updateMap(currentGps, false);
   const rec = s.record || {};
   if (rec.active && !(recordState && recordState.active)) {
     currentTrackPoints = [];
@@ -2995,8 +3246,6 @@ const helpCloseBtn = $("helpClose");
 if (helpCloseBtn) helpCloseBtn.addEventListener("click", closeHelp);
 const trackPointCloseBtn = $("trackPointClose");
 if (trackPointCloseBtn) trackPointCloseBtn.addEventListener("click", closeTrackPointDetails);
-
-let lastState = null;
 
 async function tick() {
   try {

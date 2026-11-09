@@ -91,8 +91,8 @@
   обновления позиции/с. Для 10 Гц его нужно поднять вручную.
 - **900 МГц:** максимум обычно 200 Гц; таблица рассчитана на 2.4 ГГц.
 
-## Связь с USB-донглом
+## Связь с USB-приемником ESP-NOW
 
-Для USB-донгла ELRS ESP-NOW нужен `Link Mode = Normal` и
+Для USB-приемника ESP-NOW ELRS ESP-NOW нужен `Link Mode = Normal` и
 `Backpack → Telemetry → ESP-NOW`. MAVLink-режим отдаёт MAVLink только по Wi-Fi
-и к ESP-NOW-донглу не относится.
+и к приемнику ESP-NOW не относится.

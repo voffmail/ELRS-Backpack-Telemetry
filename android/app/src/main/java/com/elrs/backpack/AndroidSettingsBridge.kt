@@ -20,6 +20,9 @@ class AndroidSettingsBridge(private val activity: MainActivity) {
     fun chooseTracksFolder() = activity.chooseTracksFolder()
 
     @JavascriptInterface
+    fun chooseOfflinePack() = activity.chooseOfflinePack()
+
+    @JavascriptInterface
     fun resetTracksFolder() = activity.resetTracksFolder()
 
     @JavascriptInterface

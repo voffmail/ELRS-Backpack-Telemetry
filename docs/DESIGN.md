@@ -2,9 +2,9 @@
 
 ## 1. Назначение
 
-USB-донгл принимает телеметрию ExpressLRS от TX-бэкпака по ESP-NOW и отдаёт
+USB-приемник ESP-NOW принимает телеметрию ExpressLRS от TX-бэкпака по ESP-NOW и отдаёт
 её в смартфон по native USB CDC. Разбор CRSF и отображение остаются на
-стороне Android-приложения или внешнего вьюера. Донгл — прозрачный транспорт.
+стороне Android-приложения или внешнего вьюера. Приемник ESP-NOW — прозрачный транспорт.
 
 ```text
 ELRS TX module
@@ -54,7 +54,7 @@ ESP32-C3 dongle ──USB CDC──► Android
 - **manual UID**: ровно 6 байт; all-zero запрещён; LSB первого байта
   очищается как в ELRS. Phrase может быть пустой.
 
-Донгл ставит UID на STA-интерфейс до старта ESP-NOW. Android-приложение и
+Приемник ESP-NOW ставит UID на STA-интерфейс до старта ESP-NOW. Android-приложение и
 `tools/dongle_config.py` читают и меняют режим и phrase/UID через
 конфигурационный протокол.
 
@@ -80,7 +80,7 @@ PHY — BGN (`11B│11G│11N`). Другие PHY-режимы не исполь
 
 ### 5.2. Формат
 
-Донгл отдаёт сырой ESP-NOW payload. Обычно это MSP v2-обёртка `$X<` + CRSF.
+Приемник ESP-NOW отдаёт сырой ESP-NOW payload. Обычно это MSP v2-обёртка `$X<` + CRSF.
 Android-приложение сканирует поток на CRSF-адреса `0xC8/0xEA/0xEE`, проверяет
 длину и CRC8 и передаёт каждый валидный CRSF-кадр в общий парсер телеметрии.
 
@@ -106,8 +106,8 @@ boot-fallback, когда UID не настроен.
 ## 7. Android-приложение
 
 - USB host + `usb-serial-for-android` (CDC ACM), без root.
-- Приложение принимает только native-USB донглы Espressif (`VID 0x303A`).
-- При открытии приложение само подключается к найденному USB-донглу.
+- Приложение принимает только native-USB приемники ESP-NOW Espressif (`VID 0x303A`).
+- При открытии приложение само подключается к найденному USB-приемнику ESP-NOW.
 - Конфиг читается автоматически.
 - Phrase/Manual UID — переключатель; редактируется только одно поле.
 - Источник телеметрии переключается в настройках (шестерёнка в шапке):
@@ -151,7 +151,7 @@ GPS extended, Vario, Battery, Baro, Link, Attitude, Flight mode, Device info
 и sequence. GPS движется по кругу (радиус/скорость — build flags), ~46
 пакетов/с.
 
-Стенд без телефона: `sim` → донгл → USB → `tools/serial_bridge.py` → UDP
+Стенд без телефона: `sim` → приемник ESP-NOW → USB → `tools/serial_bridge.py` → UDP
 `14550` → внешний вьюер.
 
 ## 10. Web Flasher и CI

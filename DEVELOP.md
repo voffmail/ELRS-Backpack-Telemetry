@@ -274,23 +274,42 @@ curl -s http://127.0.0.1:18081/api/state
 curl -s http://127.0.0.1:18081/api/settings
 ```
 
-## Map tiles
+## Map tiles and offline maps
 
 The map is keyless. The pages use MapLibre GL JS and load a style from OpenFreeMap
 (`https://tiles.openfreemap.org/styles/liberty`), then add satellite raster layers:
 
 - **Esri World Imagery** — the primary high-resolution satellite layer;
-- **Sentinel-2 cloudless** (EOX) — an always-on fallback underneath Esri.
+- **Sentinel-2 cloudless** (EOX) — an always-on fallback underneath Esri. EOxCloudless 2025 is CC BY-NC-SA 4.0, non-commercial only.
 
-Vector labels and roads remain from OpenFreeMap/OpenStreetMap. The shared map code lives in
-`web/static/elrs-map.js`; MapLibre and PMTiles are vendored in `web/static/` and packaged into
-the Android APK through a Gradle assets source set. No runtime key injection is used.
+For offline use the Android app downloads the **currently visible map bbox plus 5%
+padding** at max offline zoom z14, together with EOxCloudless 2025 Sentinel-2 tiles.
+The download button appears only at map zoom z10+ and only when the estimated
+vector+satellite size fits a 45 MB budget (50 MB with a 10% reserve). The old
+radius/zoom dialog is gone; the map button starts the download and the panel shows
+progress only. EOxCloudless 2018–2025 is CC BY-NC-SA 4.0 and non-commercial only;
+keep the exact attribution visible and disable offline satellite if the project
+becomes commercial.
 
-`/static/*` is served by both the Python viewer and the Android local HTTP server. `/tiles/*` is
-also served with HTTP Range support (and is currently empty in the Python viewer; Android reads it
-from `filesDir/tiles`). This is the hook for optional offline PMTiles maps: put a regional
-`.pmtiles` extract there and point `ELRS_MAP.setOfflineTilesUrl("pmtiles://http://127.0.0.1:8080/tiles/<name>.pmtiles")`
-before the map is created. No server or protocol changes are needed for the vector tiles. Full offline labels would also need a cached style JSON and local glyphs/sprites; that is a later step, not a server-side blocker.
+Key files:
+
+- `web/static/elrs-map.js` — online style, `loadOfflineStyle()`, `loadRuntimeStyle()` and
+  `checkOfflineCoverage()`;
+- `web/static/style-offline.json` — local vector style;
+- `web/static/glyphs/` and `web/static/sprite/` — bundled label fonts and sprite;
+- `android/.../OfflineManager.kt` — area download, PMTiles import, pack list/delete;
+- `android/.../HttpServer.kt` — `/api/offline`, `/offline/<pack>/{z}/{x}/{y}.pbf`,
+  and the existing `/tiles/<name>.pmtiles` with HTTP Range.
+
+Downloads respect the OpenFreeMap limits: at most 3000 tiles, 4 parallel requests and
+a unique User-Agent. The app enforces a combined 45 MB budget for vector + satellite.
+The manifest stores a `satellite` object with the local tile URL, size, license and
+attribution. Larger areas require a
+prepared PMTiles archive. Packs live in internal app storage (`filesDir/offline` and
+`filesDir/tiles`).
+
+The Python viewer remains online-only for now; it can still serve local static files
+from `web/static/`, and `/tiles/*` is available manually.
 
 Attribution is shown on the map: OpenStreetMap/OpenFreeMap, Esri and EOX. Esri availability and
 terms of use should be checked for the target region; Sentinel-2 is the fallback.

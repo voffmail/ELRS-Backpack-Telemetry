@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     companion object {
         private const val REQ_NOTIFICATIONS = 1
         private const val REQ_TRACKS_FOLDER = 2
+        private const val REQ_OFFLINE_PACK = 3
         private const val UI_PREFS = "elrs_ui"
         private const val ACTION_USB_PERMISSION = "com.elrs.backpack.USB_PERMISSION"
     }
@@ -193,6 +194,17 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_OFFLINE_PACK) {
+            val uri = data?.data
+            if (resultCode == RESULT_OK && uri != null) {
+                val intent = Intent(this, TelemetryService::class.java)
+                    .setAction(TelemetryService.ACTION_IMPORT_OFFLINE)
+                    .putExtra(TelemetryService.EXTRA_OFFLINE_URI, uri.toString())
+                startService(intent)
+                handler.postDelayed({ notifyWebSettingsChanged() }, 1500)
+            }
+            return
+        }
         if (requestCode != REQ_TRACKS_FOLDER || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         try {
@@ -278,6 +290,21 @@ class MainActivity : Activity() {
                 )
             } catch (_: Exception) {
                 toast(getString(R.string.settings_open_error))
+            }
+        }
+    }
+
+    fun chooseOfflinePack() {
+        runOnUiThread {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            try {
+                startActivityForResult(intent, REQ_OFFLINE_PACK)
+            } catch (_: ActivityNotFoundException) {
+                toast("File picker not found")
             }
         }
     }

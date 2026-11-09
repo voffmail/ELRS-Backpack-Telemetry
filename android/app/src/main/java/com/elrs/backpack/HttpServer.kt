@@ -23,6 +23,8 @@ interface SettingsHost {
     fun changeAutoRecordOn3d(enabled: Boolean): Pair<Boolean, String>
     fun changeAutoStopRecordingSeconds(seconds: Int): Pair<Boolean, String>
     fun changeKeepTracks(count: Int?): Pair<Boolean, String>
+    fun changeOfflineMode(mode: String): Pair<Boolean, String>
+    fun changeOfflinePack(id: String?): Pair<Boolean, String>
 }
 
 class HttpServer(
@@ -32,6 +34,7 @@ class HttpServer(
     private val host: SettingsHost,
     private val assets: AssetManager,
     private val tilesDir: File,
+    private val offline: OfflineManager,
 ) {
 
     private data class Request(
@@ -172,6 +175,10 @@ class HttpServer(
 
         path.startsWith("/tiles/") -> serveTile(path.removePrefix("/tiles/"), headers)
 
+        path.startsWith("/offline/") -> serveOffline(path.removePrefix("/offline/"), headers)
+
+        path == "/api/offline" -> json(offline.listJson())
+
         path == "/api/state" -> json(state.snapshotJson())
 
         path == "/api/record" -> {
@@ -195,6 +202,41 @@ class HttpServer(
 
     private fun post(path: String, body: String): Response {
         return when (path) {
+            "/api/offline/download" -> {
+                val data = try {
+                    JSONObject(body)
+                } catch (_: Exception) {
+                    null
+                }
+                if (data == null) {
+                    json(JSONObject().put("ok", false).put("error", "invalid json").toString(), 400)
+                } else {
+                    val bbox = data.optJSONArray("bbox")
+                    if (bbox == null || bbox.length() != 4) {
+                        json(JSONObject().put("ok", false).put("error", "bbox must be [minLon,minLat,maxLon,maxLat]").toString(), 400)
+                    } else {
+                        val (ok, error) = offline.startBbox(
+                            bbox.optDouble(0, Double.NaN),
+                            bbox.optDouble(1, Double.NaN),
+                            bbox.optDouble(2, Double.NaN),
+                            bbox.optDouble(3, Double.NaN),
+                            data.optInt("maxzoom", 14),
+                            data.optBoolean("satellite", true),
+                        )
+                        if (ok) {
+                            json(JSONObject().put("ok", true).put("job", JSONObject(offline.listJson()).optJSONObject("job")).toString())
+                        } else {
+                            json(JSONObject().put("ok", false).put("error", error).toString(), 409)
+                        }
+                    }
+                }
+            }
+
+            "/api/offline/cancel" -> {
+                offline.cancel()
+                json(JSONObject().put("ok", true).toString())
+            }
+
             "/api/record/start" -> {
                 val (ok, error) = state.startRecording()
                 if (ok) {
@@ -252,7 +294,7 @@ class HttpServer(
                     json(JSONObject().put("ok", false).put("error", "invalid json").toString(), 400)
                 } else if (!data.has("udp_port") && !data.has("source") && !data.has("idle_release_min") &&
                     !data.has("auto_record_3d") && !data.has("auto_stop_recording_sec") &&
-                    !data.has("keep_tracks")) {
+                    !data.has("keep_tracks") && !data.has("offline_mode") && !data.has("offline_pack")) {
                     json(JSONObject().put("ok", false).put("error", "no settings").toString(), 400)
                 } else {
                     var error: String? = null
@@ -303,6 +345,15 @@ class HttpServer(
                             if (!ok) error = keepError
                         }
                     }
+                    if (error == null && data.has("offline_mode")) {
+                        val (ok, modeError) = host.changeOfflineMode(data.optString("offline_mode", ""))
+                        if (!ok) error = modeError
+                    }
+                    if (error == null && data.has("offline_pack")) {
+                        val id = if (data.isNull("offline_pack")) null else data.optString("offline_pack", "")
+                        val (ok, packError) = host.changeOfflinePack(id)
+                        if (!ok) error = packError
+                    }
                     if (error == null) {
                         json(
                             JSONObject()
@@ -321,6 +372,19 @@ class HttpServer(
     }
 
     private fun delete(path: String): Response = when {
+        path == "/api/offline/packs" -> {
+            offline.clearAll()
+            json(JSONObject().put("ok", true).toString())
+        }
+
+        path.startsWith("/api/offline/packs/") -> {
+            if (offline.deletePack(decode(path.removePrefix("/api/offline/packs/")))) {
+                json(JSONObject().put("ok", true).toString())
+            } else {
+                notFound()
+            }
+        }
+
         path.startsWith("/api/tracks/") -> {
             if (state.deleteTrack(decode(path.removePrefix("/api/tracks/")))) {
                 json(JSONObject().put("ok", true).toString())
@@ -343,11 +407,17 @@ class HttpServer(
         }
     }
 
-    private fun serveTile(relative: String, headers: Map<String, String>): Response {
+    private fun serveTile(relative: String, headers: Map<String, String>): Response =
+        serveFile(tilesDir, relative, headers)
+
+    private fun serveOffline(relative: String, headers: Map<String, String>): Response =
+        serveFile(offline.root, relative, headers)
+
+    private fun serveFile(rootDir: File, relative: String, headers: Map<String, String>): Response {
         val name = decode(relative)
         if (name.isEmpty() || name.contains("..")) return notFound()
         val root = try {
-            tilesDir.canonicalFile
+            rootDir.canonicalFile
         } catch (_: Exception) {
             return notFound()
         }
@@ -431,6 +501,7 @@ class HttpServer(
         name.endsWith(".js") -> "application/javascript; charset=utf-8"
         name.endsWith(".css") -> "text/css; charset=utf-8"
         name.endsWith(".json") -> "application/json; charset=utf-8"
+        name.endsWith(".pbf") -> "application/x-protobuf"
         name.endsWith(".pmtiles") -> "application/vnd.pmtiles"
         name.endsWith(".png") -> "image/png"
         name.endsWith(".jpg") || name.endsWith(".jpeg") -> "image/jpeg"

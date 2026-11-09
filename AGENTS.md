@@ -16,7 +16,7 @@ Detailed setup is in `DEVELOP.md`.
   - Firmware outputs: `firmware/.pio/build/<env>/firmware.bin`; `firmware/include/secrets.h` is git-ignored.
   - Host tests: `python3 -m unittest discover -s tests`.
   - Web flasher: build `esp32-c3-usb`, merge with `esptool` into `build/firmware-merged.bin`, then `python3 scripts/make_webflasher.py --version <ver> --binary build/firmware-merged.bin --out site`. CI: `.github/workflows/firmware.yml` and `.github/workflows/webflasher.yml`.
-- Map stack: MapLibre GL JS + OpenFreeMap vector labels/roads + Esri World Imagery with Sentinel-2 fallback; no API key. Shared assets live in `web/static/`, and `/tiles/*.pmtiles` is reserved for optional offline maps. See `DEVELOP.md`.
+- Map stack: MapLibre GL JS + OpenFreeMap vector labels/roads + Esri World Imagery with Sentinel-2 fallback; no API key. Shared assets live in `web/static/`; Android offline maps download OpenFreeMap vector areas plus optional EOxCloudless 2025 Sentinel-2 (CC BY-NC-SA 4.0, non-commercial) or import PMTiles, with local style/fonts and `/offline/*` + `/tiles/*` routes. See `DEVELOP.md`.
 - Telemetry sources: Wi-Fi/UDP (default) and ESP-NOW via native-USB ESP32-C3 dongle (recommended). See `docs/BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md`, `docs/DESIGN.md`, `docs/REFERENCE.md`.
 
 ## Skill: replay ELRS telemetry offline
