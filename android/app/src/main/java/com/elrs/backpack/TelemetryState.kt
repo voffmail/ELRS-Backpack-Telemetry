@@ -152,6 +152,41 @@ class TelemetryState(initialStore: TrackStore) {
         if (last == 0L) null else (System.currentTimeMillis() - last) / 1000.0
     }
 
+    fun telemetryAgeSeconds(): Double? = synchronized(lock) {
+        if (telemetryAt == 0L) null else (SystemClock.elapsedRealtime() - telemetryAt) / 1000.0
+    }
+
+    fun isOnline(): Boolean = synchronized(lock) { onlineLocked() }
+
+    fun onlineAgeSeconds(): Double? = synchronized(lock) {
+        val now = SystemClock.elapsedRealtime()
+        val linkActivity = if (linkUpLocked()) linkAt else 0L
+        val lastActivity = maxOf(linkActivity, telemetryAt)
+        if (lastActivity == 0L) null else (now - lastActivity) / 1000.0
+    }
+
+    fun recordingTelemetryIdleSeconds(): Double? = synchronized(lock) {
+        if (!recording.active) null else {
+            val now = SystemClock.elapsedRealtime()
+            val base = maxOf(recording.startMono, telemetryAt)
+            (now - base) / 1000.0
+        }
+    }
+
+    private fun linkUpLocked(): Boolean {
+        if (linkAt == 0L) return false
+        val age = (SystemClock.elapsedRealtime() - linkAt) / 1000.0
+        val stats = link ?: return false
+        return age <= ONLINE_TIMEOUT_SEC && stats.lq > 0 && stats.lqD > 0
+    }
+
+    private fun onlineLocked(): Boolean {
+        if (linkUpLocked()) return true
+        if (telemetryAt == 0L) return false
+        val age = (SystemClock.elapsedRealtime() - telemetryAt) / 1000.0
+        return age <= ONLINE_TIMEOUT_SEC
+    }
+
     fun recentPps(windowSeconds: Double): Int = synchronized(lock) {
         if (windowSeconds <= 0.0) {
             0
@@ -163,11 +198,23 @@ class TelemetryState(initialStore: TrackStore) {
         }
     }
 
+    fun resetCounters() = synchronized(lock) {
+        total = 0
+        times.clear()
+        last = 0
+        linkAt = 0
+        telemetryAt = 0
+        frames.clear()
+        unknown.clear()
+    }
+
     companion object {
         private val TRACK_ID = Regex("[A-Za-z0-9_-]{1,80}")
         private const val MAX_TIMES = 4000
         private const val GPS_EXT_TTL_MS = 5000L
+        private const val ONLINE_TIMEOUT_SEC = 2.0
         private val RAD_TO_DEG = 180.0 / Math.PI / 10000.0
+        private val TELEMETRY_TYPES = setOf(0x02, 0x03, 0x06, 0x07, 0x08, 0x09, 0x1E, 0x21, 0x29)
     }
 
     private class Recording(
@@ -198,6 +245,8 @@ class TelemetryState(initialStore: TrackStore) {
     private var total = 0L
     private val times = ArrayDeque<Long>()
     private var last = 0L
+    private var linkAt = 0L
+    private var telemetryAt = 0L
 
     private val recording = Recording()
     @Volatile
@@ -245,6 +294,11 @@ class TelemetryState(initialStore: TrackStore) {
     }
 
     private fun parseFrame(type: Int, data: ByteArray, from: Int, to: Int) {
+        val nowMono = SystemClock.elapsedRealtime()
+        when (type) {
+            0x14 -> linkAt = nowMono
+            in TELEMETRY_TYPES -> telemetryAt = nowMono
+        }
         val len = to - from
         when (type) {
             0x14 -> if (len >= 10) {
@@ -454,7 +508,31 @@ class TelemetryState(initialStore: TrackStore) {
             .put("frames", framesJson)
             .put("unknown", unknownJson)
             .put("record", record)
-            .put("stats", JSONObject().put("total", total).put("pps", pps).put("age", age))
+            .put(
+                "stats",
+                JSONObject()
+                    .put("total", total)
+                    .put("pps", pps)
+                    .put("age", age)
+                    .put("online", onlineLocked())
+                    .put("link_up", linkUpLocked())
+                    .put(
+                        "telemetry_age",
+                        if (telemetryAt == 0L) {
+                            JSONObject.NULL
+                        } else {
+                            (SystemClock.elapsedRealtime() - telemetryAt) / 1000.0
+                        },
+                    )
+                    .put(
+                        "link_age",
+                        if (linkAt == 0L) {
+                            JSONObject.NULL
+                        } else {
+                            (SystemClock.elapsedRealtime() - linkAt) / 1000.0
+                        },
+                    ),
+            )
     }
 
     fun startRecording(): Pair<Boolean, String> = synchronized(lock) {

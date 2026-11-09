@@ -45,8 +45,8 @@ android {
         applicationId = "com.elrs.backpack"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "2.0.1"
+        versionCode = 7
+        versionName = "2.1.0"
         buildConfigField("String", "MAPTILER_KEY", jsString(readMapTilerKey()))
     }
 
@@ -85,4 +85,5 @@ android {
 
 dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("com.github.mik3y:usb-serial-for-android:3.11.0")
 }

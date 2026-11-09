@@ -4,6 +4,21 @@ This document describes how to build, run and test the project on a development 
 
 User-facing overview and installation: [README.md](README.md). Technical reference
 (API, CRSF frames, Range, map details, troubleshooting): [docs/REFERENCE.md](docs/REFERENCE.md).
+Wi-Fi/ESP-NOW comparison: [docs/BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md](docs/BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md).
+USB dongle design: [docs/DESIGN.md](docs/DESIGN.md).
+
+## Telemetry paths
+
+The app supports two independent sources:
+
+- **Wi-Fi/UDP (default)** — the backpack sends CRSF over UDP; no extra hardware.
+- **ESP-NOW via USB (recommended)** — the backpack sends ESP-NOW to an ESP32-C3
+  dongle, which forwards CRSF over native USB CDC. Less RF pollution, but needs
+  OTG and a dongle.
+
+Both paths feed the same CRSF parser and UI. Switching is done in the app
+settings (gear icon): `source: "network"` or `"usb"` in `/api/settings`.
+The firmware and web flasher in this repository are for the USB path only.
 
 ## Requirements
 
@@ -14,6 +29,7 @@ User-facing overview and installation: [README.md](README.md). Technical referen
   - Platform-tools (`adb`)
 - **Gradle** — not installed manually; use the wrapper in `android/` (Gradle 8.9).
 - **Python 3.8+** for the desktop viewer and replay tool. No third-party packages are required.
+- **Python 3.11+ with `venv`** for the PlatformIO firmware toolchain (`./init.sh`).
 - A **MapTiler API key** for the map tab (optional; telemetry works without it). See below.
 - Free ports: UDP `14550` (telemetry) and TCP `8080` (web UI).
 
@@ -33,6 +49,82 @@ instead of fetching everything again. It also writes `android/local.properties` 
 `.toolchain/env.sh`.
 
 Use the manual setup below on macOS/Windows or if you prefer Android Studio.
+
+## Firmware toolchain (PlatformIO)
+
+The ESP32-C3 dongle firmware and the backpack simulator use PlatformIO. They share
+`.toolchain/` with the Android tools but are installed separately:
+
+```bash
+./init.sh                     # creates .toolchain/venv and PlatformIO 6.2.0
+source .toolchain/pio-env.sh  # optional when using ./tools/pio
+```
+
+Build the main native-USB firmware:
+
+```bash
+./tools/pio run -d firmware -e esp32-c3-usb
+```
+
+Other builds:
+
+```bash
+./tools/pio run -d sim -e sim                  # backpack simulator
+```
+
+Firmware binaries: `firmware/.pio/build/<env>/firmware.bin`. Runtime phrase/UID are
+configured from the Android app or `tools/dongle_config.py`; no `secrets.h` is required
+unless you want a build-time default.
+
+Host checks:
+
+```bash
+python3 -m py_compile tools/*.py
+python3 -m unittest discover -s tests
+```
+
+Runtime tools (they need `pyserial` from the same venv):
+
+```bash
+source .toolchain/pio-env.sh
+python3 tools/dongle_config.py --port /dev/ttyACM0 --show
+python3 tools/serial_bridge.py --serial /dev/ttyACM1 --udp 127.0.0.1:14550
+```
+
+`./init.sh` only sets up PlatformIO. The Android toolchain is still bootstrapped by
+`bash scripts/setup-toolchain.sh`; its environment file is `.toolchain/env.sh`, while
+PlatformIO uses `.toolchain/pio-env.sh`.
+
+## Build the web flasher
+
+The web flasher is a static page plus a merged ESP32-C3 image:
+
+```bash
+./tools/pio run -d firmware -e esp32-c3-usb
+
+PYTHON=.toolchain/venv/bin/python
+ESPTOOL=.toolchain/platformio/packages/tool-esptoolpy/esptool.py
+BUILD=firmware/.pio/build/esp32-c3-usb
+BOOT_APP0=.toolchain/platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+
+mkdir -p build
+"$PYTHON" "$ESPTOOL" --chip esp32c3 merge_bin \
+  -o build/firmware-merged.bin \
+  --flash_mode dio --flash_freq 80m --flash_size 4MB \
+  0x0 "$BUILD/bootloader.bin" \
+  0x8000 "$BUILD/partitions.bin" \
+  0xe000 "$BOOT_APP0" \
+  0x10000 "$BUILD/firmware.bin"
+
+python3 scripts/make_webflasher.py \
+  --version dev \
+  --binary build/firmware-merged.bin \
+  --out site
+```
+
+The generated `site/` is git-ignored. It contains `index.html`, `manifest.json`,
+`firmware-merged.bin` and `SHA256SUMS`. Open it over HTTPS or `localhost` (Web Serial
+requires a secure context and Chrome/Edge on a desktop).
 
 ## Android SDK setup
 
@@ -109,6 +201,17 @@ The workflow:
 
 Download the APK from the workflow run page under **Artifacts**.
 
+### Firmware and web flasher workflows
+
+- `.github/workflows/firmware.yml` builds `esp32-c3-usb`, the simulator (`sim`),
+  runs the Python checks/tests and uploads the native-USB `firmware.bin` artifact.
+- `.github/workflows/webflasher.yml` builds the native-USB image, merges it with
+  `esptool`, generates `site/`, uploads the site artifact, deploys GitHub Pages
+  and, for releases, attaches `firmware-merged.bin`, `SHA256SUMS` and
+  `firmware.elf` to the GitHub Release.
+
+For Pages, enable **Settings → Pages → Source: GitHub Actions** once.
+
 ## Release APK and GitHub Releases
 
 The debug APK is intended for testing. Releases use a signed release build with a stable key.
@@ -130,6 +233,9 @@ Create a release:
 for test artifacts.
 
 ## Desktop viewer and replay
+
+The Python viewer listens to Wi-Fi/UDP. For the USB dongle on a PC, bridge the
+serial stream to UDP with `tools/serial_bridge.py` (see the firmware section).
 
 ```bash
 # live viewer (UDP 14550, HTTP 8080)
@@ -194,10 +300,18 @@ Third-party developers can create their own free key at `https://cloud.maptiler.
 The key is embedded in the built APK. If the APK/artifact is public, it can be extracted; restrict
 the key and/or keep the repository/artifact private if this matters.
 
+## Known issues
+
+- **No notification sounds on some devices.** On Redmi Note 15 (HyperOS) the app plays no sound
+  for any notification event, even with the dedicated power-save channel set to the default sound
+  and the phone out of silent mode. Visual notifications and the persistent status still work. The
+  cause has not been investigated yet; this is not specific to the power-save logic.
+
 ## Notes
 
 - `maptiler.key`, `android/local.properties`, build outputs, `__pycache__`, backups and APKs are
-  git-ignored.
+  git-ignored. PlatformIO build outputs (`firmware/.pio/`, `sim/.pio/`), `build/`, `site/` and
+  `firmware/include/secrets.h` are git-ignored too.
 - Android runtime permissions: install-time permissions are granted automatically. Notifications
   and the battery-optimization exemption are requested on first launch and can be managed from the
-  **Telemetry → Settings** card.
+  gear icon in the app header.

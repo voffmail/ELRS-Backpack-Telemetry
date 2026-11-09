@@ -44,8 +44,12 @@ STATE = {
     "device": None,
     "frames": {},
     "unknown": {},
+    "link_at": 0.0,
+    "telemetry_at": 0.0,
 }
 STATS = {"total": 0, "times": deque(maxlen=4000), "last": 0.0}
+TELEMETRY_TYPES = {0x02, 0x03, 0x06, 0x07, 0x08, 0x09, 0x1E, 0x21, 0x29}
+ONLINE_TIMEOUT_SEC = 2.0
 
 
 def s8(v):
@@ -77,6 +81,11 @@ def iter_frames(data):
 
 
 def parse_frame(t, p):
+    now_mono = time.monotonic()
+    if t == 0x14:
+        STATE["link_at"] = now_mono
+    elif t in TELEMETRY_TYPES:
+        STATE["telemetry_at"] = now_mono
     if t == 0x14 and len(p) >= 10:
         a1, a2, lq, snr, ant, rf, txp, dr, dlq, dsnr = struct.unpack(">BBBBBBBBBB", p[:10])
         STATE["link"] = {
@@ -185,8 +194,19 @@ def listener(udp_port):
 def snapshot():
     now = time.time()
     with LOCK:
+        now_mono = time.monotonic()
         pps = sum(1 for t in STATS["times"] if now - t <= 1.0)
         age = (now - STATS["last"]) if STATS["last"] else None
+        telemetry_age = ((now_mono - STATE["telemetry_at"])
+                         if STATE["telemetry_at"] else None)
+        link_age = (now_mono - STATE["link_at"]) if STATE["link_at"] else None
+        link = STATE["link"]
+        link_up = bool(
+            link and link_age is not None and link_age <= ONLINE_TIMEOUT_SEC
+            and link["lq"] > 0 and link["lq_d"] > 0
+        )
+        online = link_up or (telemetry_age is not None
+                             and telemetry_age <= ONLINE_TIMEOUT_SEC)
         record = {
             "active": RECORD["active"],
             "id": RECORD["id"],
@@ -209,7 +229,11 @@ def snapshot():
             "frames": dict(STATE["frames"]),
             "unknown": dict(STATE["unknown"]),
             "record": record,
-            "stats": {"total": STATS["total"], "pps": pps, "age": age},
+            "stats": {
+                "total": STATS["total"], "pps": pps, "age": age,
+                "online": online, "link_up": link_up,
+                "telemetry_age": telemetry_age, "link_age": link_age,
+            },
         }
 
 
@@ -675,41 +699,55 @@ PAGE = """<!doctype html>
   <details class="card guideCard">
     <summary data-i18n="guide_title">Quick setup guide</summary>
     <div class="guideBody">
-      <b data-i18n="guide_backpack">ELRS backpack</b>
+      <b data-i18n="guide_methods">Two ways to receive telemetry</b>
+      <ul class="guideList">
+        <li data-i18n="guide_method_wifi">Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.</li>
+        <li data-i18n="guide_method_usb">ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3 native-USB dongle and the serial bridge.</li>
+      </ul>
+
+      <b data-i18n="guide_wifi">Wi-Fi setup</b>
       <ol class="guideList">
-        <li data-i18n="guide_backpack_1">You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).</li>
-        <li data-i18n="guide_backpack_2">In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.</li>
-        <li data-i18n="guide_backpack_3">Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.</li>
-        <li data-i18n="guide_backpack_4">Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.</li>
+        <li data-i18n="guide_wifi_1">In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter.</li>
+        <li data-i18n="guide_wifi_2">Connect the computer to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs) or to the same network as the backpack.</li>
+        <li data-i18n="guide_wifi_3">Start the viewer: python3 tlm_viewer.py</li>
+        <li data-i18n="guide_wifi_4">Open http://localhost:8080 and wait for the green online status and growing packet counters.</li>
       </ol>
+
+      <b data-i18n="guide_espnow">ESP-NOW via USB setup</b>
+      <ol class="guideList">
+        <li data-i18n="guide_espnow_1">Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.</li>
+        <li data-i18n="guide_espnow_2">In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.</li>
+        <li data-i18n="guide_espnow_3">Connect the dongle to the computer and find its serial port (/dev/ttyACM0, COMx, …).</li>
+        <li data-i18n="guide_espnow_4">Start the viewer and the bridge: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550</li>
+        <li data-i18n="guide_espnow_5">For phrase/UID, stop the bridge and use tools/dongle_config.py --port &lt;port&gt; --show or --phrase/--uid.</li>
+      </ol>
+
       <b data-i18n="guide_problems">Possible problems</b>
       <ul class="guideList">
-        <li data-i18n="guide_problem_nodata_android" data-platform="android">No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.</li>
-        <li data-i18n="guide_problem_nodata_python" data-platform="python">No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.</li>
-        <li data-i18n="guide_problem_port_android" data-platform="android">Port 14550 busy? Change it in Settings → UDP port.</li>
-        <li data-i18n="guide_problem_port_python" data-platform="python">Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port &lt;port&gt;.</li>
-        <li data-i18n="guide_problem_vendor">Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.</li>
+        <li data-i18n="guide_problem_nodata_python">No Wi-Fi data? Check Telemetry → WiFi, the shared network, the firewall, and UDP port 14550.</li>
+        <li data-i18n="guide_problem_port_python">Port 14550 busy? Start the viewer with --udp-port &lt;port&gt; and the bridge with --udp 127.0.0.1:&lt;port&gt;.</li>
+        <li data-i18n="guide_problem_usb_python">No USB data? Check the serial port, data cable, permissions, and that tools/serial_bridge.py is running.</li>
+        <li data-i18n="guide_problem_bridge_port">Bridge and viewer ports must match; only one process can open the serial port.</li>
+        <li data-i18n="guide_problem_vendor">Some vendors' access point does not start; a backpack firmware from master may help.</li>
       </ul>
+
       <details class="guideDetails">
         <summary data-i18n="guide_flash_title">Backpack flashing</summary>
         <ul class="guideList">
-          <li data-i18n="guide_flash_1">Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.</li>
-          <li data-i18n="guide_flash_2">The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.</li>
-          <li data-i18n="guide_flash_3">The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.</li>
-          <li data-i18n="guide_flash_4">Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.</li>
+          <li data-i18n="guide_flash_1">Flashing is needed if the backpack does not start Wi-Fi/ESP-NOW or the menu item is missing. Flash via ExpressLRS Configurator → Backpack.</li>
+          <li data-i18n="guide_flash_2">Binding phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.</li>
+          <li data-i18n="guide_flash_3">For ESP-NOW the phrase produces the UID and ESP-NOW group address; use the same phrase as your ELRS link or set a manual UID in the dongle settings.</li>
+          <li data-i18n="guide_flash_4">Without a phrase the backpack uses the EEPROM group address (after binding) or leaves it zero; Wi-Fi telemetry still works. The AP password is always expresslrs.</li>
           <li data-i18n="guide_flash_5">Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.</li>
         </ul>
         <a class="guideLink" data-i18n="guide_flash_link" href="https://www.expresslrs.org/hardware/backpack/backpack-tx-setup/" target="_blank" rel="noopener noreferrer">Tx Backpack Setup — ExpressLRS</a>
       </details>
-      <b data-i18n="guide_app">App</b>
+
+      <b data-i18n="guide_viewer">Viewer</b>
       <ol class="guideList">
-        <li data-i18n="guide_app_1">Allow notifications and battery exemption — otherwise Android may suspend reception in the background.</li>
-        <li data-i18n="guide_app_2">Keep the app running; reception works in a foreground service even with the screen locked.</li>
-        <li data-i18n="guide_app_3">Change the UDP port in Settings if needed; the listener restarts automatically.</li>
-        <li data-i18n="guide_app_4">Choose a folder for tracks; existing tracks are copied to it.</li>
-        <li data-i18n="guide_app_background" data-platform="android">The app keeps receiving in the background: the Back button only hides the window.</li>
-        <li data-i18n="guide_app_stop_android" data-platform="android">To stop reception completely, press “Stop” in the notification.</li>
-        <li data-i18n="guide_app_stop_python" data-platform="python">To stop the viewer, press Ctrl+C in the terminal.</li>
+        <li data-i18n="guide_viewer_1">Open http://localhost:8080 (or the computer IP) in a browser.</li>
+        <li data-i18n="guide_viewer_2">Stop the viewer and the bridge with Ctrl+C in their terminals.</li>
+        <li data-i18n="guide_viewer_3">The map requires internet and a MapTiler key.</li>
       </ol>
     </div>
   </details>
@@ -885,6 +923,8 @@ const I18N = {
     status_wait: "waiting for data",
     status_online: "online · {pps} pkt/s",
     status_online_short: "{pps} pkt/s",
+    status_link_down: "link down · {pps} pkt/s",
+    status_link_down_short: "link down",
     status_no_data: "no data",
     status_no_data_short: "—",
     status_stale: "no data · {age} s",
@@ -951,32 +991,37 @@ const I18N = {
     udp_port_saved: "Port updated",
     udp_port_error: "Could not change port",
     guide_title: "Quick setup guide",
-    guide_backpack: "ELRS backpack",
-    guide_backpack_1: "You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).",
-    guide_backpack_2: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.",
-    guide_backpack_3: "Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.",
-    guide_backpack_4: "Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.",
+    guide_methods: "Two ways to receive telemetry",
+    guide_method_wifi: "Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.",
+    guide_method_usb: "ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3 native-USB dongle and the serial bridge.",
+    guide_wifi: "Wi-Fi setup",
+    guide_wifi_1: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter.",
+    guide_wifi_2: "Connect the computer to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs) or to the same network as the backpack.",
+    guide_wifi_3: "Start the viewer: python3 tlm_viewer.py",
+    guide_wifi_4: "Open http://localhost:8080 and wait for the green online status and growing packet counters.",
+    guide_espnow: "ESP-NOW via USB setup",
+    guide_espnow_1: "Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.",
+    guide_espnow_2: "In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
+    guide_espnow_3: "Connect the dongle to the computer and find its serial port (/dev/ttyACM0, COMx, …).",
+    guide_espnow_4: "Start the viewer and the bridge: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
+    guide_espnow_5: "For phrase/UID, stop the bridge and use tools/dongle_config.py --port <port> --show or --phrase/--uid.",
     guide_problems: "Possible problems",
-    guide_problem_nodata_android: "No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.",
-    guide_problem_nodata_python: "No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.",
-    guide_problem_port_android: "Port 14550 busy? Change it in Settings → UDP port.",
-    guide_problem_port_python: "Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port <port>.",
-    guide_problem_vendor: "Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.",
+    guide_problem_nodata_python: "No Wi-Fi data? Check Telemetry → WiFi, the shared network, the firewall, and UDP port 14550.",
+    guide_problem_port_python: "Port 14550 busy? Start the viewer with --udp-port <port> and the bridge with --udp 127.0.0.1:<port>.",
+    guide_problem_usb_python: "No USB data? Check the serial port, data cable, permissions, and that tools/serial_bridge.py is running.",
+    guide_problem_bridge_port: "Bridge and viewer ports must match; only one process can open the serial port.",
+    guide_problem_vendor: "Some vendors' access point does not start; a backpack firmware from master may help.",
     guide_flash_title: "Backpack flashing",
-    guide_flash_1: "Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.",
-    guide_flash_2: "The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.",
-    guide_flash_3: "The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.",
-    guide_flash_4: "Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.",
+    guide_flash_1: "Flashing is needed if the backpack does not start Wi-Fi/ESP-NOW or the menu item is missing. Flash via ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "Binding phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.",
+    guide_flash_3: "For ESP-NOW the phrase produces the UID and ESP-NOW group address; use the same phrase as your ELRS link or set a manual UID in the dongle settings.",
+    guide_flash_4: "Without a phrase the backpack uses the EEPROM group address (after binding) or leaves it zero; Wi-Fi telemetry still works. The AP password is always expresslrs.",
     guide_flash_5: "Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.",
     guide_flash_link: "Tx Backpack Setup — ExpressLRS",
-    guide_app: "App",
-    guide_app_1: "Allow notifications and battery exemption — otherwise Android may suspend reception in the background.",
-    guide_app_2: "Keep the app running; reception works in a foreground service even with the screen locked.",
-    guide_app_3: "Change the UDP port in Settings if needed; the listener restarts automatically.",
-    guide_app_4: "Choose a folder for tracks; existing tracks are copied to it.",
-    guide_app_background: "The app keeps receiving in the background: the Back button only hides the window.",
-    guide_app_stop_android: "To stop reception and close the app, press “Close app” at the bottom of the Telemetry tab (or “Stop” in the notification).",
-    guide_app_stop_python: "To stop the viewer, press Ctrl+C in the terminal.",
+    guide_viewer: "Viewer",
+    guide_viewer_1: "Open http://localhost:8080 (or the computer IP) in a browser.",
+    guide_viewer_2: "Stop the viewer and the bridge with Ctrl+C in their terminals.",
+    guide_viewer_3: "The map requires internet and a MapTiler key.",
     save: "Save",
     card_battery: "Battery",
     current: "Current",
@@ -1065,6 +1110,8 @@ const I18N = {
     status_wait: "нет данных",
     status_online: "онлайн · {pps} пак/с",
     status_online_short: "{pps} пак/с",
+    status_link_down: "нет связи · {pps} пак/с",
+    status_link_down_short: "нет связи",
     status_no_data: "нет данных",
     status_no_data_short: "—",
     status_stale: "нет данных · {age} с",
@@ -1131,32 +1178,37 @@ const I18N = {
     udp_port_saved: "Порт обновлён",
     udp_port_error: "Не удалось изменить порт",
     guide_title: "Краткое руководство",
-    guide_backpack: "Бэкпак ELRS",
-    guide_backpack_1: "Нужен TX-бэкпак ELRS с поддержкой Wi-Fi-телеметрии (Backpack 1.5.7+).",
-    guide_backpack_2: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите значение «WiFi». Не используйте пункт «WiFi Connectivity» — это режим настройки передатчика, а не его модуля Backpack.",
-    guide_backpack_3: "Подключите телефон/ПК к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или наоборот — Backpack к мобильной точке доступа смартфона или к той же домашней сети/хот-споту, если бэкпак в неё включён. Цель — чтобы Backpack и приложение оказались в одном сегменте сети. При этом для функциональности карты должен быть доступен интернет.",
-    guide_backpack_4: "Откройте вкладку «Телеметрия» и дождитесь статуса «онлайн · N пак/с» — в «Приёме» должны расти пакеты.",
+    guide_methods: "Два способа получения телеметрии",
+    guide_method_wifi: "Wi-Fi — по умолчанию. Дополнительное железо не нужно: бэкпак поднимает точку доступа или подключается к вашей сети.",
+    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен донгл ESP32-C3 с native USB и serial-мост.",
+    guide_wifi: "Настройка Wi-Fi",
+    guide_wifi_1: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите «WiFi». Не используйте «WiFi Connectivity» — это режим настройки передатчика.",
+    guide_wifi_2: "Подключите компьютер к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или к той же сети, что и бэкпак.",
+    guide_wifi_3: "Запустите вьюер: python3 tlm_viewer.py",
+    guide_wifi_4: "Откройте http://localhost:8080 и дождитесь зелёного статуса «онлайн» и роста пакетов.",
+    guide_espnow: "Настройка ESP-NOW по USB",
+    guide_espnow_1: "Прошейте ESP32-C3 с native USB прошивкой esp32-c3-usb через Web Flasher или PlatformIO.",
+    guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
+    guide_espnow_3: "Подключите донгл к компьютеру и найдите его serial-порт (/dev/ttyACM0, COMx, …).",
+    guide_espnow_4: "Запустите вьюер и мост: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
+    guide_espnow_5: "Для phrase/UID остановите мост и используйте tools/dongle_config.py --port <port> --show или --phrase/--uid.",
     guide_problems: "Возможные проблемы",
-    guide_problem_nodata_android: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, телефон в той же сети, VPN не режет локальный трафик, а порт 14550 не занят другой программой.",
-    guide_problem_nodata_python: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, компьютер в той же сети, firewall не режет UDP, а порт 14550 не занят другой программой.",
-    guide_problem_port_android: "Порт 14550 занят? Смените его в Настройки → UDP-порт.",
-    guide_problem_port_python: "Порт 14550 занят? Запустите вьюер с другим портом: python3 tlm_viewer.py --udp-port <порт>.",
-    guide_problem_vendor: "У некоторых вендоров существует баг нестартующего «ExpressLRS TX Backpack XXXXXX», фикса которого нет в релизах, и нужна прошивка из master.",
+    guide_problem_nodata_python: "Нет данных по Wi-Fi? Проверьте Telemetry → WiFi, общую сеть, firewall и UDP-порт 14550.",
+    guide_problem_port_python: "Порт 14550 занят? Запустите вьюер с --udp-port <port>, а мост с --udp 127.0.0.1:<port>.",
+    guide_problem_usb_python: "Нет данных по USB? Проверьте serial-порт, data-кабель, права доступа и что tools/serial_bridge.py запущен.",
+    guide_problem_bridge_port: "Порты моста и вьюера должны совпадать; serial-порт может занимать только один процесс.",
+    guide_problem_vendor: "У некоторых вендоров не стартует точка доступа; может помочь прошивка бэкпака из master.",
     guide_flash_title: "Прошивка бэкпака",
-    guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi или в меню нет Telemetry → WiFi. Прошивать через ExpressLRS Configurator → Backpack.",
-    guide_flash_2: "Binding Phrase для Wi-Fi-телеметрии не обязательна: вьюер не проверяет UID.",
-    guide_flash_3: "Фраза задаёт UID, который бэкпак использует как адрес ESP-NOW-группы и как суффикс SSID «ExpressLRS TX Backpack XXXXXX». Её указывают для ESP-NOW (VRX/таймер/AAT) и стабильного имени сети; обычно берут ту же фразу, что в ELRS-линке.",
-    guide_flash_4: "Если фразу не задавать, бэкпак возьмёт адрес группы из EEPROM (после бинда от TX-модуля) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs, фраза его не меняет.",
+    guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi/ESP-NOW или в меню нет нужного пункта. Прошивать через ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "Для Wi-Fi-телеметрии binding phrase не обязательна: вьюер не проверяет UID.",
+    guide_flash_3: "Для ESP-NOW фраза задаёт UID и адрес ESP-NOW-группы; используйте ту же фразу, что в ELRS-линии, либо задайте UID вручную в настройках донгла.",
+    guide_flash_4: "Без фразы бэкпак возьмёт адрес из EEPROM (после бинда) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs.",
     guide_flash_5: "При смене фразы меняются UID и SSID — перепрошейте с той же фразой все устройства группы.",
     guide_flash_link: "Прошивка TX Backpack — ExpressLRS",
-    guide_app: "Приложение",
-    guide_app_1: "Разрешите уведомления и исключение из оптимизации батареи — иначе Android может приостановить приём в фоне.",
-    guide_app_2: "Оставьте приложение запущенным: приём идёт в foreground-сервисе даже при заблокированном экране.",
-    guide_app_3: "При необходимости смените UDP-порт в настройках — приём перезапустится автоматически.",
-    guide_app_4: "Выберите папку для треков; существующие треки будут скопированы.",
-    guide_app_background: "Приложение принимает данные в фоне: кнопка «Назад» только сворачивает окно.",
-    guide_app_stop_android: "Чтобы остановить приём и закрыть приложение, нажмите «Закрыть приложение» внизу вкладки «Телеметрия» (или «Стоп» в уведомлении).",
-    guide_app_stop_python: "Чтобы завершить вьюер, нажмите Ctrl+C в терминале.",
+    guide_viewer: "Вьюер",
+    guide_viewer_1: "Откройте http://localhost:8080 (или IP компьютера) в браузере.",
+    guide_viewer_2: "Остановите вьюер и мост через Ctrl+C в их терминалах.",
+    guide_viewer_3: "Для карты нужны интернет и ключ MapTiler.",
     save: "Сохранить",
     card_battery: "Батарея",
     current: "Ток",
@@ -1245,6 +1297,8 @@ const I18N = {
     status_wait: "等待数据",
     status_online: "在线 · {pps} 包/秒",
     status_online_short: "{pps} 包/秒",
+    status_link_down: "链路断开 · {pps} 包/秒",
+    status_link_down_short: "链路断开",
     status_no_data: "无数据",
     status_no_data_short: "—",
     status_stale: "无数据 · {age} 秒",
@@ -1311,32 +1365,37 @@ const I18N = {
     udp_port_saved: "端口已更新",
     udp_port_error: "无法更改端口",
     guide_title: "快速设置指南",
-    guide_backpack: "ELRS 背包",
-    guide_backpack_1: "需要支持 Wi-Fi 遥测的 ELRS TX 背包（Backpack 1.5.7+）。",
-    guide_backpack_2: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器，而不是它的 Backpack 模块。",
-    guide_backpack_3: "将手机/电脑连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或者反过来把 Backpack 连接到手机的移动热点或同一个家庭网络/热点（如果背包已接入该网络）。目标是让 Backpack 和应用处于同一网段。地图功能需要可用的互联网连接。",
-    guide_backpack_4: "打开“遥测”标签页，等待状态变为“在线 · N 包/秒”——“接收”中的包计数应持续增长。",
+    guide_methods: "两种获取遥测的方式",
+    guide_method_wifi: "Wi-Fi — 默认。无需额外硬件：背包会创建热点或加入你的网络。",
+    guide_method_usb: "USB ESP-NOW — 推荐。减少无线电污染。需要带 native USB 的 ESP32-C3 适配器和串口桥。",
+    guide_wifi: "Wi-Fi 设置",
+    guide_wifi_1: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器。",
+    guide_wifi_2: "将电脑连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或连接到与背包相同的网络。",
+    guide_wifi_3: "启动查看器：python3 tlm_viewer.py",
+    guide_wifi_4: "打开 http://localhost:8080，等待绿色“在线”状态和不断增长的包计数。",
+    guide_espnow: "USB ESP-NOW 设置",
+    guide_espnow_1: "通过 Web Flasher 或 PlatformIO 为带 native USB 的 ESP32-C3 刷写 esp32-c3-usb。",
+    guide_espnow_2: "在 EdgeTX 中设置：ELRS Lua → Backpack → Telemetry → ESP-NOW。",
+    guide_espnow_3: "将适配器连接到电脑，并找到其串口（/dev/ttyACM0、COMx 等）。",
+    guide_espnow_4: "启动查看器和桥接：python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
+    guide_espnow_5: "设置 phrase/UID 时，先停止桥接，再使用 tools/dongle_config.py --port <port> --show 或 --phrase/--uid。",
     guide_problems: "可能的问题",
-    guide_problem_nodata_android: "没有数据？检查是否启用了 Telemetry → WiFi，手机是否在同一网络，VPN 是否拦截本地流量，以及 UDP 端口 14550 是否被其他应用占用。",
-    guide_problem_nodata_python: "没有数据？检查是否启用了 Telemetry → WiFi，电脑是否在同一网络，防火墙是否拦截 UDP，以及 UDP 端口 14550 是否被其他程序占用。",
-    guide_problem_port_android: "端口 14550 被占用？在 设置 → UDP 端口 中更改。",
-    guide_problem_port_python: "端口 14550 被占用？使用其他端口启动查看器：python3 tlm_viewer.py --udp-port <端口>。",
-    guide_problem_vendor: "部分厂商存在“ExpressLRS TX Backpack XXXXXX”无法启动的 bug，正式版尚未修复，需要刷写 master 固件。",
+    guide_problem_nodata_python: "Wi-Fi 没有数据？检查 Telemetry → WiFi、同一网络、防火墙，以及 UDP 端口 14550。",
+    guide_problem_port_python: "端口 14550 被占用？查看器使用 --udp-port <port> 启动，桥接使用 --udp 127.0.0.1:<port>。",
+    guide_problem_usb_python: "USB 没有数据？检查串口、数据线、权限，以及 tools/serial_bridge.py 是否在运行。",
+    guide_problem_bridge_port: "桥接和查看器的端口必须一致；串口只能被一个进程占用。",
+    guide_problem_vendor: "部分厂商的热点无法启动；可尝试 master 分支的背包固件。",
     guide_flash_title: "背包刷写",
-    guide_flash_1: "如果背包无法启动 Wi-Fi 或菜单中没有 Telemetry → WiFi，则需要刷写。通过 ExpressLRS Configurator → Backpack 刷写。",
-    guide_flash_2: "Wi-Fi 遥测不要求 Binding Phrase：查看器不校验 UID。",
-    guide_flash_3: "该短语会生成 UID，背包将其用作 ESP-NOW 组地址和 SSID 后缀“ExpressLRS TX Backpack XXXXXX”。需要 ESP-NOW（VRX/计时器/AAT）和稳定网络名称时设置；通常使用与 ELRS 链路相同的短语。",
-    guide_flash_4: "如果不设置短语，背包会使用 EEPROM 中的组地址（由 TX 模块绑定后写入），否则保持为零；Wi-Fi 遥测仍然可用。热点密码始终是 expresslrs，与短语无关。",
+    guide_flash_1: "如果背包无法启动 Wi-Fi/ESP-NOW 或菜单中没有相应项目，则需要刷写。通过 ExpressLRS Configurator → Backpack 刷写。",
+    guide_flash_2: "Wi-Fi 遥测不要求绑定短语：查看器不校验 UID。",
+    guide_flash_3: "ESP-NOW 使用该短语生成 UID 和 ESP-NOW 组地址；请使用与 ELRS 链路相同的短语，或在适配器设置中手动设置 UID。",
+    guide_flash_4: "如果不设置短语，背包会使用 EEPROM 中的组地址（绑定后）或保持为零；Wi-Fi 遥测仍然可用。热点密码始终是 expresslrs。",
     guide_flash_5: "更改短语会改变 UID 和 SSID——请用相同短语重新刷写组内所有设备。",
     guide_flash_link: "TX Backpack 刷写 — ExpressLRS",
-    guide_app: "应用",
-    guide_app_1: "允许通知和电池优化豁免，否则 Android 可能会在后台暂停接收。",
-    guide_app_2: "保持应用运行；即使锁屏，前台服务也会继续接收。",
-    guide_app_3: "如有需要，在设置中更改 UDP 端口；监听会自动重启。",
-    guide_app_4: "选择轨迹文件夹；现有轨迹会被复制。",
-    guide_app_background: "应用会在后台继续接收：按“返回”只会隐藏窗口。",
-    guide_app_stop_android: "要停止接收并关闭应用，请按“遥测”标签页底部的“关闭应用”（或通知中的“停止”）。",
-    guide_app_stop_python: "要结束查看器，请在终端中按 Ctrl+C。",
+    guide_viewer: "查看器",
+    guide_viewer_1: "在浏览器中打开 http://localhost:8080（或电脑 IP）。",
+    guide_viewer_2: "在各自终端中按 Ctrl+C 停止查看器和桥接。",
+    guide_viewer_3: "地图需要互联网和 MapTiler 密钥。",
     save: "保存",
     card_battery: "电池",
     current: "电流",
@@ -2103,12 +2162,16 @@ function switchTab(name) {
 
 function render(s) {
   const st = s.stats || {};
-  const online = st.age !== null && st.age !== undefined && st.age < 2 && st.total > 0;
+  const online = st.online === true;
+  const transportFresh = st.age !== null && st.age !== undefined && st.age < 2 && st.total > 0;
   const pill = $("status");
   const mobile = window.matchMedia("(max-width: 520px)").matches;
   if (online) {
     pill.className = "pill on";
     pill.textContent = t(mobile ? "status_online_short" : "status_online", { pps: st.pps });
+  } else if (transportFresh) {
+    pill.className = "pill off";
+    pill.textContent = t(mobile ? "status_link_down_short" : "status_link_down", { pps: st.pps });
   } else {
     pill.className = "pill off";
     pill.textContent = st.total

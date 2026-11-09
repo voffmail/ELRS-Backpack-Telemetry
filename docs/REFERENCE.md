@@ -2,6 +2,22 @@
 
 Технические детали для разработчиков и продвинутых пользователей. Установка и краткий старт — в [README](../README.md); сборка, toolchain, CI и релизы — в [DEVELOP.md](../DEVELOP.md).
 
+## Два способа получения телеметрии
+
+| Способ | Статус | Что нужно | Как включается |
+|---|---|---|---|
+| Wi-Fi (UDP) | По умолчанию | Wi-Fi-бэкпак, общая сеть | `Backpack → Telemetry → WiFi`, приложение слушает UDP-порт |
+| ESP-NOW по USB | Рекомендуется | ESP32-C3 с native USB, OTG-адаптер и data-кабель | `Backpack → Telemetry → ESP-NOW`, донгл в USB, источник в настройках |
+
+Wi-Fi не требует дополнительного железа — с него проще начать. ESP-NOW
+рекомендуется из-за меньшего засорения радиоэфира: нет Wi-Fi AP/beacons,
+DHCP и трафика телефона в 2.4 ГГц. Подробное сравнение —
+[BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md](BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md).
+
+Переключение источника — в настройках по шестерёнке в шапке приложения:
+**«Сеть»** или **«ESP-NOW по USB»**. Общие настройки (треки, энергосбережение,
+разрешения) видны в обоих режимах.
+
 ## Что показывается
 
 | Карточка | Данные |
@@ -81,10 +97,24 @@ Android-приложение пишет `fix_type`, `fix_type_computed` и вл�
 | `GET` | `/api/tracks` | список сохранённых треков |
 | `GET` | `/api/tracks/<id>` | точки трека |
 | `DELETE` | `/api/tracks/<id>` | удалить трек |
-| `GET` | `/api/settings` | UDP-порт, папка треков, статус записи, таймаут энергосбережения, авто-запись/авто-стоп, лимит треков |
-| `POST` | `/api/settings` | изменить настройки, например `{"keep_tracks": 10}` (`null` — без ограничения, `0` недопустим) |
+| `GET` | `/api/settings` | источник (`source`), UDP-порт, статус USB, папка треков, статус записи, таймаут энергосбережения, авто-запись/авто-стоп, лимит треков |
+| `POST` | `/api/settings` | изменить настройки, например `{"source": "usb"}` или `{"keep_tracks": 10}` (`null` — без ограничения, `0` недопустим) |
+| `GET` | `/api/dongle` | конфиг USB-донгла: state, UID, phrase, версия прошивки, режим UID |
+| `POST` | `/api/dongle` | команды донглу: `set_phrase`, `set_uid`, `reset`, `ping` |
 
-`/api/settings` реализован в Android-приложении.
+`/api/settings` и `/api/dongle` реализованы в Android-приложении. Примеры:
+
+```bash
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"source":"usb"}' http://127.0.0.1:8080/api/settings
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"action":"set_phrase","phrase":"my-phrase"}' http://127.0.0.1:8080/api/dongle
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"action":"set_uid","uid":"AA:BB:CC:DD:EE:FE"}' http://127.0.0.1:8080/api/dongle
+```
+
+`source` — `network` (Wi-Fi/UDP, по умолчанию) или `usb` (ESP-NOW-донгл).
+В режиме `usb` UDP-порт сохраняется, но слушатель не запускается.
 
 ## Диапазон, пакетрейт и Range
 
@@ -152,15 +182,50 @@ TX power в CRSF — это enum; вьюер переводит его в мВт
   "frames": {"2": 193, "3": 193, "6": 193, "7": 193, "8": 193, "9": 193, "20": 193, "30": 193, "33": 193, "41": 193},
   "unknown": {},
   "record": {"active": false, "id": null, "started_at": null, "duration": 0, "point_count": 0},
-  "stats": {"total": 1930, "pps": 10, "age": 0.69}
+  "stats": {
+    "total": 1930, "pps": 10, "age": 0.69,
+    "online": true, "link_up": true, "telemetry_age": 0.2, "link_age": 0.1
+  }
 }
 ```
 
 Ключи в `frames` — десятичные значения типов (например, `20` = `0x14`).
 
+`stats.age` — возраст последнего CRSF-кадра любого типа (транспорт). `stats.telemetry_age` — возраст последнего кадра телеметрии с датчиков (без `0x14`), `stats.link_age` — возраст последних link statistics. `stats.link_up` истинно, только если свежие `0x14` имеют `lq > 0` и `lq_d > 0` (как у донгла). `stats.online` = `link_up` или свежая телеметрия; именно он управляет зелёным индикатором. Кадры `0x14` с `LQ=0` (аппаратура включена, дрон выключен) считаются транспортом, но не связью и не телеметрией.
+
+## USB-донгл (ESP-NOW)
+
+ESP-NOW-режим использует ESP32-C3 с native USB (например, Super Mini) и
+USB-OTG на телефоне. Донгл принимает ESP-NOW от бэкпака и отдаёт CRSF-кадры в
+приложение по USB CDC. Разбор протокола — [DESIGN.md](DESIGN.md).
+
+- Прошивка: только `esp32-c3-usb` (native USB), PHY BGN.
+- Сборка: `./init.sh && ./tools/pio run -d firmware -e esp32-c3-usb`;
+  прошивка — `firmware/.pio/build/esp32-c3-usb/firmware.bin`.
+- Web Flasher: `webflasher/` + `scripts/make_webflasher.py`; публикуется
+  workflow `.github/workflows/webflasher.yml` на GitHub Pages.
+- Подробности сборки и CI — в [DEVELOP.md](../DEVELOP.md).
+
+В настройках приложения (шестерёнка в шапке):
+
+1. включите источник **«ESP-NOW по USB»**;
+2. разрешите доступ к USB-донглу;
+3. задайте **binding phrase** или **ручной UID**, совпадающие с бэкпаком;
+4. дождитесь статуса подключения.
+
+После подключения конфиг донгла читается автоматически. LED:
+
+- не горит — нет связи/пакетов;
+- ровный синий — пакеты идут, но линка/телеметрии с дроном нет;
+- быстрое мигание — линк живой, телеметрия идёт;
+- 3 импульса раз в 2 с — ошибка ESP-NOW или переполнение очереди.
+
+В режиме Wi-Fi USB-донгл не используется, а в режиме ESP-NOW приложение не
+слушает UDP-порт.
+
 ## Python-вьюер
 
-Веб-интерфейс для ПК или телефона в браузере. Удобен для разработки и запуска на ноутбуке в поле.
+Веб-интерфейс для ПК или телефона в браузере. Удобен для разработки и запуска на ноутбуке в поле. Работает с Wi-Fi/UDP. Для USB-донгла на ПК используйте `tools/serial_bridge.py` и любой CRSF-вьюер; на телефоне — Android-приложение.
 
 1. Включите бэкпак Wi-Fi-телеметрии:
    - ELRS Lua-скрипт на аппаратуре → `Backpack` → `Telemetry` → `WiFi`;
@@ -223,22 +288,34 @@ python3 replay.py testdata/tlm_20261105_111628.jsonl --host 192.168.1.10 --port 
 ## Структура проекта
 
 ```text
-tlm_viewer.py   вьюер: UDP-приём, парсинг CRSF, HTTP-сервер и веб-интерфейс
-android/        Android-приложение на Kotlin (WebView + UDP/CRSF/HTTP), APK
+tlm_viewer.py   ПК-вьюер: UDP-приём, парсинг CRSF, HTTP-сервер и веб-интерфейс
+android/        Android-приложение на Kotlin (WebView, Wi-Fi/UDP и USB)
+firmware/       прошивка ESP32-C3 USB-донгла (esp32-c3-usb)
+sim/            симулятор ELRS TX-бэкпака для стенда
+tools/          PlatformIO wrapper, конфиг донгла, serial bridge и протоколы
+tests/          host-тесты CRSF/MSP/конфиг-протокола
+webflasher/     страница ESP Web Tools для прошивки донгла
+scripts/        сборка web-flasher и локальных toolchain
+docs/           эта справка, сравнение Wi-Fi/ESP-NOW, DESIGN, cheat sheet
 replay.py       оффлайн-воспроизведение JSONL-записей
 testdata/       записанные сессии телеметрии
 tracks/         сохранённые GPS-треки (JSON)
-docs/           скриншоты для README и технический справочник
 DEVELOP.md      настройка toolchain, сборка, CI, ключ MapTiler и регрессия
+init.sh         установка PlatformIO в .toolchain/venv
 LICENSE         MIT
-.github/        GitHub Actions: APK-артефакт и релизы
+.github/        GitHub Actions: APK, прошивка, web-flasher и релизы
 ```
 
 ## Диагностика
 
 | Проблема | Что проверить |
 |---|---|
-| «Нет данных» | Бэкпак в той же сети; `Telemetry = WiFi`; порт UDP 14550 свободен; firewall |
+| «Нет данных» в режиме «Сеть» | Бэкпак в той же сети; `Telemetry = WiFi`; порт UDP 14550 свободен; firewall |
+| «Нет связи с аппаратурой» (USB) | Донгл подключён по OTG data-кабелем; бэкпак в `Telemetry = ESP-NOW`; донгл запитан; USB-разрешение выдано |
+| «Нет связи с дроном», счётчики растут | Свежие `0x14` с `LQ=0`: дрон/RX выключен, либо не совпадает binding phrase/UID |
+| Донгл не найден | Native-USB ESP32-C3 (VID `0x303A`), OTG-адаптер, data-кабель, разрешение USB |
+| Уведомление/индикатор красный при живом дроне | Проверьте `lq`/`lq_d` в карточке «Линк»; при `0` — питание RX и phrase/UID |
+| Индикатор зелёный, но GPS/батареи нет | Линк живой, но FC не отдаёт телеметрию или низкий telemetry ratio |
 | Бэкпак не поднимает Wi-Fi | Backpack 1.5.7+; для ESP32-C3 — master или workaround `Link Mode = MAVLink` |
 | Range показывает `—` | Неизвестный `rf_mode` или режим без известного порога |
 | Порт 14550 занят | Остановите другой процесс; вьюер должен быть слушателем |
@@ -258,3 +335,5 @@ LICENSE         MIT
 - Выбранная для треков папка должна быть доступна для записи; при смене папки старые треки копируются.
 - В Android-приложении точки трека пишутся на каждый GPS-кадр, пока запись активна (включая 2D и отсутствие фикса); в Python-вьюере — только при 3D-фиксе. Незавершённая запись хранится в памяти и сохраняется на диск по кнопке «Стоп» (в Android также по авто-стопу); при подтверждённом закрытии Android-приложения и при падении процесса она теряется.
 - Запись новых сессий в репозиторий не встроена; формат JSONL описан выше.
+- USB-режим требует native-USB ESP32-C3 и OTG; телефон при этом не заряжается без powered-хаба.
+- USB-донгл отдаёт CRSF; нативный MAVLink доступен только по Wi-Fi.

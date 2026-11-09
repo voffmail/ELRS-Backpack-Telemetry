@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ ! -x "$ROOT/.toolchain/venv/bin/pio" ]; then
+    "$ROOT/scripts/setup-firmware-toolchain.sh"
+fi
+export PLATFORMIO_CORE_DIR="$ROOT/.toolchain/platformio"
+export PLATFORMIO_CACHE_DIR="$ROOT/.toolchain/cache"
+export PLATFORMIO_SETTING_ENABLE_TELEMETRY=false
+exec "$ROOT/.toolchain/venv/bin/pio" "$@"

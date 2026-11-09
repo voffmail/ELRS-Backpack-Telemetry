@@ -16,13 +16,18 @@
     <string name="tracks_folder_error">Could not use this folder</string>
     <string name="tracks_location_changed">Tracks: %1$s</string>
     <string name="notif_channel_name">Telemetry service</string>
-    <string name="alert_channel_name">Telemetry alerts</string>
+    <string name="powersave_channel_name">Power saving</string>
     <string name="notif_title">ELRS Backpack Telemetry</string>
     <string name="notif_title_powersave">ELRS Backpack Telemetry · power saving</string>
     <string name="notif_running">UDP %1$d · %2$d pkt/s · total %3$d</string>
-    <string name="notif_waiting">UDP %1$d · waiting for data</string>
+    <string name="notif_waiting">UDP %1$d · no backpack link</string>
+    <string name="notif_running_usb">USB · %1$d pkt/s · total %2$d</string>
+    <string name="notif_waiting_usb">USB · waiting for dongle</string>
+    <string name="notif_usb_no_data">USB · no backpack link</string>
+    <string name="notif_link_down_usb">USB · no drone link</string>
+    <string name="notif_link_down">UDP %1$d · no drone link</string>
+    <string name="usb_no_device">No supported USB dongle found</string>
+    <string name="usb_permission_denied">USB access denied</string>
     <string name="notif_recording">Recording track</string>
-    <string name="notif_powersave_text">No data for %1$d min · locks released</string>
-    <string name="alert_title">Telemetry is not arriving</string>
-    <string name="alert_text">No data for %1$d min. Locks released to save battery.</string>
+    <string name="notif_powersave_text">No data for %1$d min · power saving</string>
 </resources>

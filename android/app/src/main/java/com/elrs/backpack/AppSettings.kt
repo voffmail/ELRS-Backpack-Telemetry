@@ -10,6 +10,14 @@ class AppSettings(context: Context) {
         get() = prefs.getInt(KEY_UDP_PORT, DEFAULT_UDP_PORT)
         set(value) = prefs.edit().putInt(KEY_UDP_PORT, value).apply()
 
+    var source: String
+        get() = prefs.getString(KEY_SOURCE, SOURCE_NETWORK) ?: SOURCE_NETWORK
+        set(value) = prefs.edit().putString(KEY_SOURCE, value).apply()
+
+    var usbDevice: String?
+        get() = prefs.getString(KEY_USB_DEVICE, null)
+        set(value) = prefs.edit().putString(KEY_USB_DEVICE, value).apply()
+
     var tracksUri: String?
         get() = prefs.getString(KEY_TRACKS_URI, null)
         set(value) = prefs.edit().putString(KEY_TRACKS_URI, value).apply()
@@ -38,8 +46,12 @@ class AppSettings(context: Context) {
         const val DEFAULT_IDLE_RELEASE_MIN = 5
         const val DEFAULT_AUTO_STOP_RECORDING_SEC = 10
         const val DEFAULT_KEEP_TRACKS = 10
+        const val SOURCE_NETWORK = "network"
+        const val SOURCE_USB = "usb"
         private const val UNLIMITED_KEEP_TRACKS = -1
         private const val KEY_UDP_PORT = "udp_port"
+        private const val KEY_SOURCE = "source"
+        private const val KEY_USB_DEVICE = "usb_device"
         private const val KEY_TRACKS_URI = "tracks_uri"
         private const val KEY_IDLE_RELEASE_MIN = "idle_release_min"
         private const val KEY_AUTO_RECORD_3D = "auto_record_on_3d"

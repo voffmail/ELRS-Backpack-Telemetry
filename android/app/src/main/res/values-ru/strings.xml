@@ -15,13 +15,18 @@
     <string name="tracks_folder_error">Не удалось использовать эту папку</string>
     <string name="tracks_location_changed">Треки: %1$s</string>
     <string name="notif_channel_name">Сервис телеметрии</string>
-    <string name="alert_channel_name">Оповещения телеметрии</string>
+    <string name="powersave_channel_name">Энергосбережение</string>
     <string name="notif_title">ELRS Backpack Telemetry</string>
     <string name="notif_title_powersave">ELRS Backpack Telemetry · энергосбережение</string>
     <string name="notif_running">UDP %1$d · %2$d пак/с · всего %3$d</string>
-    <string name="notif_waiting">UDP %1$d · ожидание данных</string>
+    <string name="notif_waiting">UDP %1$d · нет связи с аппаратурой</string>
+    <string name="notif_running_usb">USB · %1$d пак/с · всего %2$d</string>
+    <string name="notif_waiting_usb">USB · ожидание донгла</string>
+    <string name="notif_usb_no_data">USB · нет связи с аппаратурой</string>
+    <string name="notif_link_down_usb">USB · нет связи с дроном</string>
+    <string name="notif_link_down">UDP %1$d · нет связи с дроном</string>
+    <string name="usb_no_device">Поддерживаемый USB-донгл не найден</string>
+    <string name="usb_permission_denied">Доступ к USB не получен</string>
     <string name="notif_recording">Записывается трек</string>
-    <string name="notif_powersave_text">Нет данных %1$d мин · блокировки отпущены</string>
-    <string name="alert_title">Телеметрия не приходит</string>
-    <string name="alert_text">Нет данных %1$d мин. Блокировки отпущены для экономии батареи.</string>
+    <string name="notif_powersave_text">Нет данных %1$d мин · энергосбережение</string>
 </resources>

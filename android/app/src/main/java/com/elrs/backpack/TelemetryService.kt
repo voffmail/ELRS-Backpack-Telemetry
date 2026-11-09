@@ -11,8 +11,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.net.wifi.WifiManager
@@ -43,10 +41,14 @@ class TelemetryService : Service(), SettingsHost {
         const val ACTION_SETTINGS_CHANGED = "com.elrs.backpack.SETTINGS_CHANGED"
         const val EXTRA_TRACKS_URI = "tracks_uri"
         private const val CHANNEL_ID = "elrs_telemetry_v2"
-        private const val ALERT_CHANNEL_ID = "elrs_alerts"
+        private const val POWERSAVE_CHANNEL_ID = "elrs_powersave"
+        private const val LEGACY_ALERT_CHANNEL_ID = "elrs_alerts"
         private const val GROUP_ID = "elrs_backpack"
         private const val NOTIFICATION_ID = 14550
-        private const val ALERT_NOTIFICATION_ID = 14551
+        private const val POWERSAVE_NOTIFICATION_ID = 14552
+        private const val LEGACY_ALERT_NOTIFICATION_ID = 14551
+        private val COLOR_ONLINE = Color.rgb(63, 185, 80)
+        private val COLOR_OFFLINE = Color.rgb(248, 81, 73)
 
         @Volatile
         var httpReady = false
@@ -67,16 +69,24 @@ class TelemetryService : Service(), SettingsHost {
     private var udpGeneration = 0
 
     @Volatile
+    private var currentSource = AppSettings.SOURCE_NETWORK
+
+    @Volatile
+    private var usb: UsbTelemetryReader? = null
+
+    @Volatile
     private var currentUdpPort = AppSettings.DEFAULT_UDP_PORT
 
     @Volatile
     private var powerSave = false
 
+    @Volatile
+    private var powerSaveAlerted = false
+
     private var watchdog: ScheduledExecutorService? = null
     private var serviceStartMono = 0L
     private var notificationTicker: Runnable? = null
     private var recordingPulsePhase = 0.0
-    private var largeIconBase: Bitmap? = null
 
     private var wifiLock: WifiManager.WifiLock? = null
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -89,19 +99,20 @@ class TelemetryService : Service(), SettingsHost {
         serviceStartMono = SystemClock.elapsedRealtime()
         settings = AppSettings(this)
         currentUdpPort = settings.udpPort
+        currentSource = settings.source
         state = TelemetryState(initialTrackStore())
         state.setAutoRecordOn3d(settings.autoRecordOn3d)
         state.setKeepTracks(settings.keepTracks)
         createChannel()
+        try {
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.cancel(LEGACY_ALERT_NOTIFICATION_ID)
+            manager.cancel(POWERSAVE_NOTIFICATION_ID)
+        } catch (_: Exception) {
+        }
         startForegroundCompat(buildNotification())
         acquireLocks()
-        if (!startUdp(currentUdpPort)) {
-            if (currentUdpPort != AppSettings.DEFAULT_UDP_PORT && startUdp(AppSettings.DEFAULT_UDP_PORT)) {
-                currentUdpPort = AppSettings.DEFAULT_UDP_PORT
-                settings.udpPort = currentUdpPort
-                updateNotification()
-            }
-        }
+        startSource()
         startHttp()
         startWatchdog()
         startNotificationTicker()
@@ -140,14 +151,16 @@ class TelemetryService : Service(), SettingsHost {
         running = false
         stopWatchdog()
         stopNotificationTicker()
-        stopUdp()
+        stopSource()
         http?.stop()
         http = null
         httpReady = false
         releaseLocks()
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
-            getSystemService(NotificationManager::class.java).cancel(ALERT_NOTIFICATION_ID)
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.cancel(LEGACY_ALERT_NOTIFICATION_ID)
+            manager.cancel(POWERSAVE_NOTIFICATION_ID)
         } catch (_: Exception) {
         }
         super.onDestroy()
@@ -155,6 +168,8 @@ class TelemetryService : Service(), SettingsHost {
 
     override fun settingsJson(): String = JSONObject()
         .put("udp_port", currentUdpPort)
+        .put("source", currentSource)
+        .put("usb", usb?.statusJson() ?: JSONObject().put("state", "idle"))
         .put("tracks_location", state.tracksLocation())
         .put("tracks_uri", settings.tracksUri ?: JSONObject.NULL)
         .put("recording", state.isRecording())
@@ -164,8 +179,86 @@ class TelemetryService : Service(), SettingsHost {
         .put("keep_tracks", settings.keepTracks ?: JSONObject.NULL)
         .toString()
 
+    override fun changeSource(source: String): Pair<Boolean, String> {
+        if (source != AppSettings.SOURCE_NETWORK && source != AppSettings.SOURCE_USB) {
+            return Pair(false, "unknown source")
+        }
+        if (source == currentSource) return Pair(true, "")
+
+        stopSource()
+        currentSource = source
+        settings.source = source
+        state.resetCounters()
+        if (source == AppSettings.SOURCE_USB) {
+            startUsb()
+        } else {
+            acquireWifiLocks()
+            startSource()
+        }
+        updateNotification()
+        notifySettingsChanged()
+        return Pair(true, "")
+    }
+
+    override fun dongleJson(): String {
+        val reader = usb
+        val info = reader?.config
+        return JSONObject()
+            .put("available", currentSource == AppSettings.SOURCE_USB)
+            .put("state", reader?.state ?: "idle")
+            .put("status", reader?.configStatus ?: "")
+            .put(
+                "config",
+                if (info == null) {
+                    JSONObject.NULL
+                } else {
+                    JSONObject()
+                        .put("uid", info.uid)
+                        .put("phrase", info.phrase)
+                        .put("version", info.version)
+                        .put("uid_mode", info.uidMode)
+                },
+            )
+            .toString()
+    }
+
+    override fun dongleCommand(action: String, phrase: String?, uid: String?): Pair<Boolean, String> {
+        val reader = usb ?: return Pair(false, "USB is not active")
+        if (reader.state != "connected") return Pair(false, "dongle is not connected")
+        when (action) {
+            "set_phrase" -> {
+                val value = phrase.orEmpty()
+                if (value.toByteArray(Charsets.UTF_8).size > DongleConfig.MAX_PHRASE) {
+                    return Pair(false, "phrase is too long")
+                }
+                reader.queue(DongleConfig.buildSetConfig(value))
+            }
+
+            "set_uid" -> {
+                val bytes = DongleConfig.parseUid(uid.orEmpty())
+                    ?: return Pair(false, "UID must be 12 hex digits")
+                if (DongleConfig.uidIsZero(DongleConfig.normalizeUid(bytes))) {
+                    return Pair(false, "UID must not be zero")
+                }
+                reader.queue(DongleConfig.buildSetUid(bytes))
+            }
+
+            "reset" -> reader.queue(DongleConfig.buildReset())
+            "ping" -> reader.queue(DongleConfig.buildPing())
+            else -> return Pair(false, "unknown action")
+        }
+        notifySettingsChanged()
+        return Pair(true, "")
+    }
+
     override fun changeUdpPort(port: Int): Pair<Boolean, String> {
         if (port !in 1..65535) return Pair(false, "port must be 1..65535")
+        if (currentSource == AppSettings.SOURCE_USB) {
+            currentUdpPort = port
+            settings.udpPort = port
+            notifySettingsChanged()
+            return Pair(true, "")
+        }
         if (port == currentUdpPort && udpSocket != null) return Pair(true, "")
 
         val oldPort = currentUdpPort
@@ -312,6 +405,41 @@ class TelemetryService : Service(), SettingsHost {
         udpThread = null
     }
 
+    private fun startSource() {
+        if (currentSource == AppSettings.SOURCE_USB) {
+            startUsb()
+            return
+        }
+        if (!startUdp(currentUdpPort)) {
+            if (currentUdpPort != AppSettings.DEFAULT_UDP_PORT && startUdp(AppSettings.DEFAULT_UDP_PORT)) {
+                currentUdpPort = AppSettings.DEFAULT_UDP_PORT
+                settings.udpPort = currentUdpPort
+                updateNotification()
+            }
+        }
+    }
+
+    private fun startUsb() {
+        stopUdp()
+        usb?.stop()
+        releaseWifiLocks()
+        val reader = UsbTelemetryReader(
+            this,
+            settings.usbDevice,
+            { frame -> state.onDatagram(frame, frame.size) },
+            { if (powerSave) mainHandler.post { exitPowerSaveNow() } },
+        )
+        usb = reader
+        reader.start()
+        updateNotification()
+    }
+
+    private fun stopSource() {
+        stopUdp()
+        usb?.stop()
+        usb = null
+    }
+
     private fun startHttp() {
         val page = try {
             assets.open("index.html").bufferedReader().use { it.readText() }
@@ -349,7 +477,10 @@ class TelemetryService : Service(), SettingsHost {
     }
 
     private fun updateNotification() {
-        startForegroundCompat(buildNotification())
+        val alert = powerSave && !powerSaveAlerted
+        val id = if (powerSave) POWERSAVE_NOTIFICATION_ID else NOTIFICATION_ID
+        startForegroundCompat(buildNotification(alert), id)
+        if (alert) powerSaveAlerted = true
     }
 
     private fun createChannel() {
@@ -366,27 +497,43 @@ class TelemetryService : Service(), SettingsHost {
         channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         manager.createNotificationChannel(channel)
 
-        val alert = NotificationChannel(
-            ALERT_CHANNEL_ID,
-            getString(R.string.alert_channel_name),
-            NotificationManager.IMPORTANCE_HIGH,
+        val powersave = NotificationChannel(
+            POWERSAVE_CHANNEL_ID,
+            getString(R.string.powersave_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT,
         )
-        alert.setShowBadge(false)
-        manager.createNotificationChannel(alert)
+        powersave.enableVibration(false)
+        powersave.setShowBadge(false)
+        powersave.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        manager.createNotificationChannel(powersave)
+        manager.deleteNotificationChannel(LEGACY_ALERT_CHANNEL_ID)
     }
 
-    private fun notificationText(): String {
+    private fun notificationText(online: Boolean): String {
         val age = state.lastPacketAgeSeconds()
         val total = state.totalPackets()
         val pps = state.recentPps(5.0)
+        if (powerSave) {
+            return getString(R.string.notif_powersave_text, settings.idleReleaseMinutes)
+        }
+        val transportFresh = age != null && age <= 5.0
+        if (currentSource == AppSettings.SOURCE_USB) {
+            val usbState = usb?.state
+            return when {
+                usbState != "connected" -> getString(R.string.notif_waiting_usb)
+                online -> getString(R.string.notif_running_usb, pps, total)
+                transportFresh -> getString(R.string.notif_link_down_usb)
+                else -> getString(R.string.notif_usb_no_data)
+            }
+        }
         return when {
-            powerSave -> getString(R.string.notif_powersave_text, settings.idleReleaseMinutes)
-            age == null || age > 5.0 -> getString(R.string.notif_waiting, currentUdpPort)
-            else -> getString(R.string.notif_running, currentUdpPort, pps, total)
+            online -> getString(R.string.notif_running, currentUdpPort, pps, total)
+            transportFresh -> getString(R.string.notif_link_down, currentUdpPort)
+            else -> getString(R.string.notif_waiting, currentUdpPort)
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(alertPowerSave: Boolean = false): Notification {
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
         val openIntent = PendingIntent.getActivity(
@@ -396,24 +543,35 @@ class TelemetryService : Service(), SettingsHost {
             flags,
         )
         val recording = state.isRecording()
+        val online = state.isOnline()
+        val statusColor = if (online) COLOR_ONLINE else COLOR_OFFLINE
+        val statusIcon = if (online) R.drawable.ic_stat_elrs else R.drawable.ic_stat_elrs_off
         val stopIntent = PendingIntent.getService(
             this,
             if (recording) 2 else 1,
             Intent(this, TelemetryService::class.java).setAction(if (recording) ACTION_STOP_RECORDING else ACTION_STOP),
             flags,
         )
+        val channelId = if (powerSave) POWERSAVE_CHANNEL_ID else CHANNEL_ID
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
+            Notification.Builder(this, channelId)
         } else {
             @Suppress("DEPRECATION")
-            Notification.Builder(this).setPriority(Notification.PRIORITY_LOW)
+            Notification.Builder(this).setPriority(
+                if (alertPowerSave) Notification.PRIORITY_DEFAULT else Notification.PRIORITY_LOW,
+            )
+        }
+        if (alertPowerSave && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            @Suppress("DEPRECATION")
+            builder.setDefaults(Notification.DEFAULT_SOUND)
         }
         builder
             .setContentTitle(getString(if (powerSave) R.string.notif_title_powersave else R.string.notif_title))
-            .setContentText(notificationText())
-            .setSmallIcon(R.drawable.ic_stat_elrs)
+            .setContentText(notificationText(online))
+            .setSmallIcon(statusIcon)
+            .setColor(statusColor)
             .setOngoing(true)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(!alertPowerSave)
             .setGroup(GROUP_ID)
             .setGroupSummary(true)
             .setContentIntent(openIntent)
@@ -426,9 +584,8 @@ class TelemetryService : Service(), SettingsHost {
             )
         if (recording) {
             builder.setSubText(getString(R.string.notif_recording))
-            builder.setColor(Color.rgb(248, 81, 73))
         }
-        notificationLargeIcon(recording)?.let { builder.setLargeIcon(it) }
+        notificationLargeIcon(online, recording)?.let { builder.setLargeIcon(it) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder.setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN)
         }
@@ -458,32 +615,31 @@ class TelemetryService : Service(), SettingsHost {
         notificationTicker = null
     }
 
-    private fun notificationLargeIcon(recording: Boolean): Bitmap? {
-        val base = largeIconBase ?: try {
-            val drawable = packageManager.getApplicationIcon(packageName)
-            val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 96
-            val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 96
-            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
-                val canvas = Canvas(bitmap)
-                drawable.setBounds(0, 0, width, height)
-                drawable.draw(canvas)
-            }.also { largeIconBase = it }
+    private fun notificationLargeIcon(online: Boolean, recording: Boolean): Bitmap? {
+        return try {
+            val size = 96
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val background = Paint().apply {
+                color = Color.rgb(11, 15, 20)
+                isAntiAlias = true
+            }
+            val corner = size * 0.22f
+            canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), corner, corner, background)
+
+            val icon = getDrawable(R.drawable.ic_stat_elrs)?.mutate() ?: return null
+            icon.setTint(if (online) COLOR_ONLINE else COLOR_OFFLINE)
+            val padding = (size * 0.2f).toInt()
+            icon.setBounds(padding, padding, size - padding, size - padding)
+            icon.alpha = if (recording) {
+                (150 + 105 * ((sin(recordingPulsePhase) + 1.0) / 2.0)).toInt()
+            } else {
+                255
+            }
+            icon.draw(canvas)
+            bitmap
         } catch (_: Exception) {
             null
-        } ?: return null
-        if (!recording) return base
-        return try {
-            val tinted = base.copy(Bitmap.Config.ARGB_8888, true)
-            val alpha = (70 + 150 * ((sin(recordingPulsePhase) + 1.0) / 2.0).toFloat()).toInt()
-            val canvas = Canvas(tinted)
-            val paint = Paint().apply {
-                color = Color.argb(alpha, 248, 81, 73)
-                xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
-            }
-            canvas.drawRect(0f, 0f, tinted.width.toFloat(), tinted.height.toFloat(), paint)
-            tinted
-        } catch (_: Exception) {
-            base
         }
     }
 
@@ -517,8 +673,8 @@ class TelemetryService : Service(), SettingsHost {
         if (!state.isRecording()) return
         val seconds = settings.autoStopRecordingSeconds
         if (seconds <= 0) return
-        val age = state.lastPacketAgeSeconds() ?: return
-        if (age >= seconds) {
+        val idle = state.recordingTelemetryIdleSeconds() ?: return
+        if (idle >= seconds) {
             state.stopRecording()
             mainHandler.post { updateNotification() }
         }
@@ -528,8 +684,8 @@ class TelemetryService : Service(), SettingsHost {
         if (powerSave) return
         val minutes = settings.idleReleaseMinutes
         if (minutes <= 0) return
-        val age = state.lastPacketAgeSeconds()
-        val idleSeconds = age ?: ((SystemClock.elapsedRealtime() - serviceStartMono) / 1000.0)
+        val onlineAge = state.onlineAgeSeconds()
+        val idleSeconds = onlineAge ?: ((SystemClock.elapsedRealtime() - serviceStartMono) / 1000.0)
         if (idleSeconds >= minutes * 60.0) {
             mainHandler.post { enterPowerSave() }
         }
@@ -538,92 +694,73 @@ class TelemetryService : Service(), SettingsHost {
     private fun enterPowerSave() {
         if (!running || powerSave) return
         powerSave = true
+        powerSaveAlerted = false
         updateNotification()
-        showPowerSaveAlert()
         releaseLocks()
     }
 
     private fun exitPowerSaveNow() {
         if (!running || !powerSave) return
         powerSave = false
+        powerSaveAlerted = false
         acquireLocks()
         updateNotification()
         try {
-            getSystemService(NotificationManager::class.java).cancel(ALERT_NOTIFICATION_ID)
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.cancel(LEGACY_ALERT_NOTIFICATION_ID)
+            manager.cancel(POWERSAVE_NOTIFICATION_ID)
         } catch (_: Exception) {
         }
     }
 
-    private fun showPowerSaveAlert() {
-        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
-        val openIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            flags,
-        )
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, ALERT_CHANNEL_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this).setPriority(Notification.PRIORITY_HIGH)
-        }
-        builder
-            .setContentTitle(getString(R.string.alert_title))
-            .setContentText(getString(R.string.alert_text, settings.idleReleaseMinutes))
-            .setSmallIcon(R.drawable.ic_stat_elrs)
-            .setAutoCancel(true)
-            .setGroup(GROUP_ID)
-            .setContentIntent(openIntent)
-        try {
-            getSystemService(NotificationManager::class.java).notify(ALERT_NOTIFICATION_ID, builder.build())
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun startForegroundCompat(notification: Notification) {
+    private fun startForegroundCompat(notification: Notification, id: Int = NOTIFICATION_ID) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
-                NOTIFICATION_ID,
+                id,
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
             )
         } else {
-            startForeground(NOTIFICATION_ID, notification)
+            startForeground(id, notification)
         }
     }
 
     @Suppress("DEPRECATION")
     private fun acquireLocks() {
-        if (wakeLock != null || wifiLock != null || multicastLock != null) return
-        try {
-            val power = getSystemService(PowerManager::class.java)
-            wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ELRSBackpack::telemetry").apply {
-                setReferenceCounted(false)
-                acquire()
+        if (wakeLock == null) {
+            try {
+                val power = getSystemService(PowerManager::class.java)
+                wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ELRSBackpack::telemetry").apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {
         }
+        if (currentSource != AppSettings.SOURCE_USB) acquireWifiLocks()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun acquireWifiLocks() {
         try {
             val wifi = applicationContext.getSystemService(WifiManager::class.java)
-            wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "ELRSBackpack::wifi").apply {
-                setReferenceCounted(false)
-                acquire()
+            if (wifiLock == null) {
+                wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "ELRSBackpack::wifi").apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
             }
-            multicastLock = wifi.createMulticastLock("ELRSBackpack::udp").apply {
-                setReferenceCounted(false)
-                acquire()
+            if (multicastLock == null) {
+                multicastLock = wifi.createMulticastLock("ELRSBackpack::udp").apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
             }
         } catch (_: Exception) {
         }
     }
 
-    private fun releaseLocks() {
-        try {
-            wakeLock?.takeIf { it.isHeld }?.release()
-        } catch (_: Exception) {
-        }
+    private fun releaseWifiLocks() {
         try {
             wifiLock?.takeIf { it.isHeld }?.release()
         } catch (_: Exception) {
@@ -632,8 +769,16 @@ class TelemetryService : Service(), SettingsHost {
             multicastLock?.takeIf { it.isHeld }?.release()
         } catch (_: Exception) {
         }
-        wakeLock = null
         wifiLock = null
         multicastLock = null
+    }
+
+    private fun releaseLocks() {
+        try {
+            wakeLock?.takeIf { it.isHeld }?.release()
+        } catch (_: Exception) {
+        }
+        releaseWifiLocks()
+        wakeLock = null
     }
 }

@@ -10,8 +10,14 @@ Detailed setup is in `DEVELOP.md`.
 - APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 - CI: `.github/workflows/android-apk.yml` uploads the artifact `elrs-backpack-debug-apk`.
 - Release: tag `v*` → `.github/workflows/release-apk.yml` (signed APK attached to a GitHub Release).
-- Python checks: `python3 -m py_compile tlm_viewer.py replay.py`
+- Python checks: `python3 -m py_compile tlm_viewer.py replay.py tools/*.py`
+- Firmware toolchain (PlatformIO): `./init.sh` (installs into `.toolchain/venv`; do not overwrite the Android `.toolchain/env.sh`), then `./tools/pio run -d firmware -e esp32-c3-usb`.
+  - Environments: `esp32-c3-usb` (native USB, main) and `sim` (backpack simulator).
+  - Firmware outputs: `firmware/.pio/build/<env>/firmware.bin`; `firmware/include/secrets.h` is git-ignored.
+  - Host tests: `python3 -m unittest discover -s tests`.
+  - Web flasher: build `esp32-c3-usb`, merge with `esptool` into `build/firmware-merged.bin`, then `python3 scripts/make_webflasher.py --version <ver> --binary build/firmware-merged.bin --out site`. CI: `.github/workflows/firmware.yml` and `.github/workflows/webflasher.yml`.
 - MapTiler key: `MAPTILER_KEY` env or `maptiler.key` (git-ignored); CI uses the `MAPTILER_KEY` secret. See `DEVELOP.md`.
+- Telemetry sources: Wi-Fi/UDP (default) and ESP-NOW via native-USB ESP32-C3 dongle (recommended). See `docs/BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md`, `docs/DESIGN.md`, `docs/REFERENCE.md`.
 
 ## Skill: replay ELRS telemetry offline
 

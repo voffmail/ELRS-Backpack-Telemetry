@@ -13,6 +13,9 @@ import java.util.concurrent.Executors
 interface SettingsHost {
     fun settingsJson(): String
     fun changeUdpPort(port: Int): Pair<Boolean, String>
+    fun changeSource(source: String): Pair<Boolean, String>
+    fun dongleJson(): String
+    fun dongleCommand(action: String, phrase: String?, uid: String?): Pair<Boolean, String>
     fun changeIdleReleaseMinutes(minutes: Int): Pair<Boolean, String>
     fun changeAutoRecordOn3d(enabled: Boolean): Pair<Boolean, String>
     fun changeAutoStopRecordingSeconds(seconds: Int): Pair<Boolean, String>
@@ -156,6 +159,8 @@ class HttpServer(
 
         path == "/api/settings" -> json(host.settingsJson())
 
+        path == "/api/dongle" -> json(host.dongleJson())
+
         path.startsWith("/api/tracks/") -> {
             val track = state.loadTrackJson(decode(path.removePrefix("/api/tracks/")))
             if (track == null) notFound() else json(track)
@@ -187,6 +192,32 @@ class HttpServer(
                 }
             }
 
+            "/api/dongle" -> {
+                val data = try {
+                    JSONObject(body)
+                } catch (_: Exception) {
+                    null
+                }
+                if (data == null) {
+                    json(JSONObject().put("ok", false).put("error", "invalid json").toString(), 400)
+                } else {
+                    val action = data.optString("action", "")
+                    val phrase = if (data.has("phrase") && !data.isNull("phrase")) data.optString("phrase") else null
+                    val uid = if (data.has("uid") && !data.isNull("uid")) data.optString("uid") else null
+                    val (ok, error) = host.dongleCommand(action, phrase, uid)
+                    if (ok) {
+                        json(
+                            JSONObject()
+                                .put("ok", true)
+                                .put("dongle", JSONObject(host.dongleJson()))
+                                .toString(),
+                        )
+                    } else {
+                        json(JSONObject().put("ok", false).put("error", error).toString(), 409)
+                    }
+                }
+            }
+
             "/api/settings" -> {
                 val data = try {
                     JSONObject(body)
@@ -195,13 +226,18 @@ class HttpServer(
                 }
                 if (data == null) {
                     json(JSONObject().put("ok", false).put("error", "invalid json").toString(), 400)
-                } else if (!data.has("udp_port") && !data.has("idle_release_min") &&
+                } else if (!data.has("udp_port") && !data.has("source") && !data.has("idle_release_min") &&
                     !data.has("auto_record_3d") && !data.has("auto_stop_recording_sec") &&
                     !data.has("keep_tracks")) {
                     json(JSONObject().put("ok", false).put("error", "no settings").toString(), 400)
                 } else {
                     var error: String? = null
-                    if (data.has("udp_port")) {
+                    if (data.has("source")) {
+                        val source = data.optString("source", "")
+                        val (ok, sourceError) = host.changeSource(source)
+                        if (!ok) error = sourceError
+                    }
+                    if (error == null && data.has("udp_port")) {
                         val newPort = data.optInt("udp_port", -1)
                         if (newPort !in 1..65535) {
                             error = "port must be 1..65535"

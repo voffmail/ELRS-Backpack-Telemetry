@@ -3,6 +3,7 @@ package com.elrs.backpack
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -10,6 +11,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -23,6 +25,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import com.hoho.android.usbserial.driver.UsbSerialProber
 import org.json.JSONObject
 import java.util.Locale
 
@@ -32,6 +35,7 @@ class MainActivity : Activity() {
         private const val REQ_NOTIFICATIONS = 1
         private const val REQ_TRACKS_FOLDER = 2
         private const val UI_PREFS = "elrs_ui"
+        private const val ACTION_USB_PERMISSION = "com.elrs.backpack.USB_PERMISSION"
     }
 
     private lateinit var webView: WebView
@@ -41,6 +45,18 @@ class MainActivity : Activity() {
     private val settingsReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             notifyWebSettingsChanged()
+        }
+    }
+
+    private val usbReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != ACTION_USB_PERMISSION) return
+            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            if (granted) {
+                notifyWebSettingsChanged()
+            } else {
+                toast(getString(R.string.usb_permission_denied))
+            }
         }
     }
 
@@ -108,13 +124,22 @@ class MainActivity : Activity() {
         val filter = IntentFilter(TelemetryService.ACTION_SETTINGS_CHANGED)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(settingsReceiver, filter, RECEIVER_NOT_EXPORTED)
+            registerReceiver(usbReceiver, IntentFilter(ACTION_USB_PERMISSION), RECEIVER_NOT_EXPORTED)
         } else {
             @Suppress("DEPRECATION")
             registerReceiver(settingsReceiver, filter)
+            @Suppress("DEPRECATION")
+            registerReceiver(usbReceiver, IntentFilter(ACTION_USB_PERMISSION))
         }
 
         handler.post(openPage)
         handler.postDelayed({ maybePromptStartupPermissions() }, 1500)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        notifyWebSettingsChanged()
     }
 
     override fun onStart() {
@@ -143,6 +168,10 @@ class MainActivity : Activity() {
         handler.removeCallbacksAndMessages(null)
         try {
             unregisterReceiver(settingsReceiver)
+        } catch (_: Exception) {
+        }
+        try {
+            unregisterReceiver(usbReceiver)
         } catch (_: Exception) {
         }
         webView.destroy()
@@ -278,6 +307,34 @@ class MainActivity : Activity() {
         }
     }
 
+    fun requestUsbPermission() {
+        runOnUiThread {
+            val usb = getSystemService(UsbManager::class.java)
+            val drivers = try {
+                UsbSerialProber.getDefaultProber().findAllDrivers(usb)
+                    .filter { it.device.vendorId == UsbTelemetryReader.ESPRESSIF_VID }
+            } catch (_: Exception) {
+                emptyList()
+            }
+            val device = drivers.firstOrNull { !usb.hasPermission(it.device) }?.device
+                ?: drivers.firstOrNull()?.device
+            if (device == null) {
+                toast(getString(R.string.usb_no_device))
+                notifyWebSettingsChanged()
+                return@runOnUiThread
+            }
+            if (usb.hasPermission(device)) {
+                notifyWebSettingsChanged()
+                return@runOnUiThread
+            }
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+            val intent = Intent(ACTION_USB_PERMISSION).setPackage(packageName)
+            val pending = PendingIntent.getBroadcast(this, 0, intent, flags)
+            usb.requestPermission(device, pending)
+        }
+    }
+
     fun closeApp() {
         runOnUiThread {
             stopService(Intent(this, TelemetryService::class.java))
@@ -380,10 +437,16 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (this::webView.isInitialized && webView.canGoBack()) {
-            webView.goBack()
-        } else {
+        if (!this::webView.isInitialized) {
             super.onBackPressed()
+            return
+        }
+        if (webView.canGoBack()) {
+            webView.goBack()
+            return
+        }
+        webView.evaluateJavascript("window.appBack ? window.appBack() : false") { result ->
+            if (result != "true" && !isFinishing) finish()
         }
     }
 }

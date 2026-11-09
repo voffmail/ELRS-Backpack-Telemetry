@@ -24,3 +24,16 @@ Thumbs.db
 
 # Local toolchain (JDK/SDK/Gradle caches)
 .toolchain/
+
+# Firmware / PlatformIO
+.pio/
+firmware/.pio/
+sim/.pio/
+firmware/build/
+build/
+site/
+firmware/include/secrets.h
+*.bin
+*.elf
+*.map
+.venv/

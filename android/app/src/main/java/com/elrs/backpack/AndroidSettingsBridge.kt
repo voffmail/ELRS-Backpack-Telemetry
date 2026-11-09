@@ -23,5 +23,8 @@ class AndroidSettingsBridge(private val activity: MainActivity) {
     fun resetTracksFolder() = activity.resetTracksFolder()
 
     @JavascriptInterface
+    fun requestUsbPermission() = activity.requestUsbPermission()
+
+    @JavascriptInterface
     fun closeApp() = activity.closeApp()
 }

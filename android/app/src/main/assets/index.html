@@ -29,6 +29,12 @@
   .lang { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px;
           padding: 3px 6px; font-size: 11px; outline: none; }
   .lang:focus { border-color: #3fb950; }
+  .iconBtn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+             padding: 0; border-radius: 8px; border: 1px solid #30363d; background: #11161d;
+             color: #7d8590; cursor: pointer; }
+  .iconBtn svg { width: 16px; height: 16px; display: block; }
+  .iconBtn:hover { color: #e6edf3; border-color: #3fb950; }
+  .iconBtn.active { color: #3fb950; border-color: #238636; background: rgba(63,185,80,.1); }
   main { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
          gap: 14px; padding: 16px 20px 40px; max-width: 1200px; margin: 0 auto; }
   .card { background: #11161d; border: 1px solid #1f2630; border-radius: 14px; padding: 16px;
@@ -86,6 +92,7 @@
   .tab:hover { color: #e6edf3; }
   .tab.active { color: #e6edf3; background: #11161d; border-color: #30363d; }
   #mapPage { padding: 16px 20px 40px; max-width: 1200px; margin: 0 auto; }
+  #settingsPage { padding: 16px 20px 40px; max-width: 760px; margin: 0 auto; }
   .mapWrap { position: relative; height: calc(100vh - 110px); min-height: 360px;
              border: 1px solid #1f2630; border-radius: 14px; overflow: hidden; background: #0b0f14; }
   #map { position: absolute; inset: 0; }
@@ -136,8 +143,18 @@
   .settingsGroup:last-child { margin-bottom: 0; }
   .settingsLabel { font-size: 12px; color: #9da7b3; margin-bottom: 4px; }
   .settingsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .settingsRow input[type=number] { width: 110px; padding: 6px 8px; border-radius: 8px;
+  .settingsRow input[type=number], .settingsRow input[type=text], .settingsRow input[type=password] { padding: 6px 8px; border-radius: 8px;
       border: 1px solid #30363d; background: #0b0f14; color: #e6edf3; font: inherit; font-size: 13px; }
+  .settingsRow input[type=number] { width: 110px; }
+  .settingsRow input[type=text], .settingsRow input[type=password] { width: 100%; max-width: 320px; }
+  .sourceToggle { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid #30363d;
+                  border-radius: 10px; background: #0b0f14; }
+  .sourceBtn { background: transparent; color: #7d8590; border: 0; border-radius: 8px;
+               padding: 7px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+  .sourceBtn:hover { color: #e6edf3; }
+  .sourceBtn.active { color: #e6edf3; background: #1f2630; }
+  .settingsSectionTitle { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: #7d8590;
+                          margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid #1f2630; }
   .settingsValue { color: #e6edf3; font-size: 13px; word-break: break-all; margin-bottom: 6px; }
   .settingsMsg { font-size: 12px; color: #3fb950; }
   .settingsMsg.err { color: #f85149; }
@@ -236,7 +253,7 @@
                                 overflow-wrap: anywhere; }
   @media (max-width: 620px) { .pointBody { grid-template-columns: 1fr; } }
   @media (max-width: 720px) { .gpsGrid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 520px) { header { padding: 5px 8px; gap: 2px; } .brand { font-size: 12px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 3px; border-radius: 5px; } .headRight { gap: 3px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 2px; padding: 0; min-width: 0; } .tab { padding: 4px 7px; font-size: 14px; border-radius: 9px; } #mapPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
+  @media (max-width: 520px) { header { padding: 5px 8px; gap: 2px; } .brand { font-size: 12px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 3px; border-radius: 5px; } .headRight { gap: 3px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 2px; padding: 0; min-width: 0; } .tab { padding: 4px 7px; font-size: 14px; border-radius: 9px; } #mapPage { padding: 12px; } #settingsPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
   @media (max-width: 330px) { .tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-top: 2px; } }
 </style>
 </head>
@@ -252,6 +269,9 @@
   </nav>
   <div class="headRight">
     <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
+    <button id="settingsBtn" class="iconBtn" type="button" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.55-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.39 1.03.7 1.62.94l.36 2.54c.03.24.24.41.48.41h3.84c.24 0 .45-.17.48-.41l.36-2.54c.59-.24 1.13-.55 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+    </button>
     <select id="lang" class="lang" aria-label="Language">
       <option value="en">EN</option>
       <option value="ru">RU</option>
@@ -373,10 +393,91 @@
     </details>
   </section>
 
-  <details class="card settingsCard" id="settingsCard" hidden>
-    <summary data-i18n="settings">Settings</summary>
+  <details class="card guideCard">
+    <summary data-i18n="guide_title">Quick setup guide</summary>
+    <div class="guideBody">
+      <b data-i18n="guide_methods">Two ways to receive telemetry</b>
+      <ul class="guideList">
+        <li data-i18n="guide_method_wifi">Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.</li>
+        <li data-i18n="guide_method_usb">ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3 native-USB dongle, OTG and a data cable.</li>
+      </ul>
+
+      <b data-i18n="guide_wifi">Wi-Fi setup</b>
+      <ol class="guideList">
+        <li data-i18n="guide_wifi_1">In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter.</li>
+        <li data-i18n="guide_wifi_2">Connect the phone to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs) or to the same network as the backpack.</li>
+        <li data-i18n="guide_wifi_3">Start the app and open the “Telemetry” tab. UDP port 14550 is used by default.</li>
+        <li data-i18n="guide_wifi_4">Wait for the green “online” status and growing packet counters in “Reception”. If the port was changed, set it in Settings (gear).</li>
+      </ol>
+
+      <b data-i18n="guide_espnow">ESP-NOW via USB setup</b>
+      <ol class="guideList">
+        <li data-i18n="guide_espnow_1">Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.</li>
+        <li data-i18n="guide_espnow_2">In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.</li>
+        <li data-i18n="guide_espnow_3">Connect the dongle to the phone over OTG (data cable) and allow USB access.</li>
+        <li data-i18n="guide_espnow_4">Open Settings (gear icon in the header) and select the “ESP-NOW via USB” source.</li>
+        <li data-i18n="guide_espnow_5">Set the binding phrase or manual UID matching the backpack.</li>
+        <li data-i18n="guide_espnow_6">Check the dongle LED: with the correct bind phrase/UID it stays solid blue — the dongle is receiving frames from the backpack. With an active drone link it blinks. If the dongle is not connected to the app or the phrase/UID is wrong, the LED is off.</li>
+      </ol>
+
+      <b data-i18n="guide_problems">Possible problems</b>
+      <ul class="guideList">
+        <li data-i18n="guide_problem_nodata_android">No Wi-Fi data? Check Telemetry → WiFi, the shared network, VPN, and that UDP port 14550 is not used by another app.</li>
+        <li data-i18n="guide_problem_no_dongle">No dongle in USB mode? Use an ESP32-C3 native-USB board, an OTG adapter and a data cable; check USB permission.</li>
+        <li data-i18n="guide_problem_no_link">Counters grow but the status says “no drone link”? Check RX/drone power and that the binding phrase or UID matches.</li>
+        <li data-i18n="guide_problem_port_android">Port 14550 busy? Change it in Settings (gear → UDP port).</li>
+        <li data-i18n="guide_problem_vendor">Some vendors' “ExpressLRS TX Backpack XXXXXX” AP does not start; a backpack firmware from master may help.</li>
+      </ul>
+
+      <details class="guideDetails">
+        <summary data-i18n="guide_flash_title">Backpack flashing</summary>
+        <ul class="guideList">
+          <li data-i18n="guide_flash_1">Flashing is needed if the backpack does not start Wi-Fi/ESP-NOW or the menu item is missing. Flash via ExpressLRS Configurator → Backpack.</li>
+          <li data-i18n="guide_flash_2">Binding phrase is optional for Wi-Fi telemetry: the app does not check the UID.</li>
+          <li data-i18n="guide_flash_3">For ESP-NOW the phrase produces the UID and ESP-NOW group address; use the same phrase as your ELRS link or set a manual UID in the dongle settings.</li>
+          <li data-i18n="guide_flash_4">Without a phrase the backpack uses the EEPROM group address (after binding) or leaves it zero; Wi-Fi telemetry still works. The AP password is always expresslrs.</li>
+          <li data-i18n="guide_flash_5">Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.</li>
+        </ul>
+        <a class="guideLink" data-i18n="guide_flash_link" href="https://www.expresslrs.org/hardware/backpack/backpack-tx-setup/" target="_blank" rel="noopener noreferrer">Tx Backpack Setup — ExpressLRS</a>
+      </details>
+
+      <b data-i18n="guide_app">App</b>
+      <ol class="guideList">
+        <li data-i18n="guide_app_1">Allow notifications and battery exemption — otherwise Android may suspend reception in the background.</li>
+        <li data-i18n="guide_app_2">Keep the app running; reception works in a foreground service even with the screen locked.</li>
+        <li data-i18n="guide_app_3">Source and options are in Settings (gear icon). Wi-Fi is the default; ESP-NOW via USB is recommended.</li>
+        <li data-i18n="guide_app_4">Choose a folder for tracks; existing tracks are copied to it.</li>
+        <li data-i18n="guide_app_background">The app keeps receiving in the background: the Back button only hides the window.</li>
+        <li data-i18n="guide_app_stop_android">To stop reception and close the app, press “Close app” at the bottom of the Telemetry tab (or “Stop” in the notification).</li>
+      </ol>
+    </div>
+  </details>
+
+  <section class="card supportCard">
+    <a class="supportLink" href="https://rutube.ru/channel/36225989/" target="_blank" rel="noopener noreferrer">
+      <span data-i18n="support_text">Вы можете отблагодарить автора за потраченные токены и время на Rutube-канале</span>
+      <span class="supportChannel">Рассказы ветра</span>
+    </a>
+  </section>
+
+  <section class="card closeCard" data-platform="android">
+    <button id="closeApp" class="mapBtn closeBtn" data-i18n="close_app">Close app</button>
+  </section>
+</main>
+<section id="settingsPage" hidden>
+  <div class="card settingsCard" id="settingsCard">
+    <h2 data-i18n="settings">Settings</h2>
     <div class="settingsBody">
     <div class="settingsGroup">
+      <div class="settingsLabel" data-i18n="source_label">Signal source</div>
+      <div class="sourceToggle" id="sourceToggle">
+        <button type="button" class="sourceBtn" data-source="network" data-i18n="source_network">Network</button>
+        <button type="button" class="sourceBtn" data-source="usb" data-i18n="source_espnow_usb">ESP-NOW via USB</button>
+      </div>
+      <div class="guideNote" id="sourceNote"></div>
+      <span id="sourceMsg" class="settingsMsg"></span>
+    </div>
+    <div class="settingsGroup" id="networkGroup">
       <div class="settingsLabel" data-i18n="udp_port">UDP listen port</div>
       <div class="settingsRow">
         <input id="udpPortInput" type="number" min="1" max="65535" inputmode="numeric">
@@ -385,14 +486,51 @@
       </div>
       <div class="guideNote" data-i18n="udp_port_note">The backpack must send telemetry to this port.</div>
     </div>
+    <div id="usbBlock" hidden>
+    <div class="settingsGroup" id="usbGroup">
+      <div class="settingsLabel" data-i18n="usb_section">USB dongle</div>
+      <div id="usbStatus" class="settingsValue">—</div>
+      <div class="settingsRow">
+        <button id="usbAllow" class="mapBtn" data-i18n="usb_allow">Allow USB access</button>
+        <span id="usbMsg" class="settingsMsg"></span>
+      </div>
+      <div class="guideNote" data-i18n="usb_note">Connect the dongle over USB OTG and allow access. The app reads the CRSF stream directly.</div>
+    </div>
+    <div class="settingsGroup" id="dongleGroup">
+      <div class="settingsLabel" data-i18n="dongle_config">Dongle setup</div>
+      <div id="dongleInfo" class="settingsValue">—</div>
+      <label class="settingsRow" for="dongleManualUid">
+        <input id="dongleManualUid" type="checkbox">
+        <span data-i18n="dongle_manual_uid">Manual UID</span>
+      </label>
+      <div id="donglePhraseRow">
+        <div class="settingsLabel" data-i18n="dongle_phrase">Binding phrase</div>
+        <div class="settingsRow">
+          <input id="donglePhrase" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="expresslrs">
+          <button id="donglePhraseToggle" class="mapBtn" type="button">Show</button>
+        </div>
+      </div>
+      <div id="dongleUidRow" hidden>
+        <div class="settingsLabel" data-i18n="dongle_uid">UID</div>
+        <div class="settingsRow"><input id="dongleUid" type="text" autocomplete="off" placeholder="AA:BB:CC:DD:EE:FF"></div>
+      </div>
+      <div class="settingsRow">
+        <button id="dongleApply" class="mapBtn" data-i18n="dongle_apply">Apply to dongle</button>
+        <button id="dongleReset" class="mapBtn" data-i18n="dongle_reset">Reset dongle</button>
+        <span id="dongleMsg" class="settingsMsg"></span>
+      </div>
+      <div class="guideNote" data-i18n="dongle_note">Use the same bind phrase you flashed the ELRS backpack with, or set the UID manually.</div>
+    </div>
+    </div>
+    <div class="settingsSectionTitle" data-i18n="settings_common">Common settings</div>
     <div class="settingsGroup">
-      <div class="settingsLabel" data-i18n="idle_release">Release locks when no data (min)</div>
+      <div class="settingsLabel" data-i18n="idle_release">Power saving when idle (min)</div>
       <div class="settingsRow">
         <input id="idleReleaseMin" type="number" min="0" max="1440" inputmode="numeric" placeholder="5">
         <button id="idleReleaseSave" class="mapBtn" data-i18n="apply">Apply</button>
         <span id="idleReleaseMsg" class="settingsMsg"></span>
       </div>
-      <div class="guideNote" data-i18n="idle_release_note">0 or empty — never release locks.</div>
+      <div class="guideNote" data-i18n="idle_release_note">When idle, the app switches to power saving. 0 or empty — keep it off.</div>
     </div>
     <div class="settingsGroup">
       <label class="settingsRow" for="autoRecord3d">
@@ -439,61 +577,8 @@
       <div class="guideNote" data-i18n="permissions_note">Install-time permissions are granted automatically; notifications and battery exemption are requested on first launch.</div>
     </div>
     </div>
-  </details>
-
-  <details class="card guideCard">
-    <summary data-i18n="guide_title">Quick setup guide</summary>
-    <div class="guideBody">
-      <b data-i18n="guide_backpack">ELRS backpack</b>
-      <ol class="guideList">
-        <li data-i18n="guide_backpack_1">You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).</li>
-        <li data-i18n="guide_backpack_2">In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.</li>
-        <li data-i18n="guide_backpack_3">Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.</li>
-        <li data-i18n="guide_backpack_4">Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.</li>
-      </ol>
-      <b data-i18n="guide_problems">Possible problems</b>
-      <ul class="guideList">
-        <li data-i18n="guide_problem_nodata_android" data-platform="android">No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.</li>
-        <li data-i18n="guide_problem_nodata_python" data-platform="python">No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.</li>
-        <li data-i18n="guide_problem_port_android" data-platform="android">Port 14550 busy? Change it in Settings → UDP port.</li>
-        <li data-i18n="guide_problem_port_python" data-platform="python">Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port &lt;port&gt;.</li>
-        <li data-i18n="guide_problem_vendor">Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.</li>
-      </ul>
-      <details class="guideDetails">
-        <summary data-i18n="guide_flash_title">Backpack flashing</summary>
-        <ul class="guideList">
-          <li data-i18n="guide_flash_1">Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.</li>
-          <li data-i18n="guide_flash_2">The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.</li>
-          <li data-i18n="guide_flash_3">The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.</li>
-          <li data-i18n="guide_flash_4">Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.</li>
-          <li data-i18n="guide_flash_5">Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.</li>
-        </ul>
-        <a class="guideLink" data-i18n="guide_flash_link" href="https://www.expresslrs.org/hardware/backpack/backpack-tx-setup/" target="_blank" rel="noopener noreferrer">Tx Backpack Setup — ExpressLRS</a>
-      </details>
-      <b data-i18n="guide_app">App</b>
-      <ol class="guideList">
-        <li data-i18n="guide_app_1">Allow notifications and battery exemption — otherwise Android may suspend reception in the background.</li>
-        <li data-i18n="guide_app_2">Keep the app running; reception works in a foreground service even with the screen locked.</li>
-        <li data-i18n="guide_app_3">Change the UDP port in Settings if needed; the listener restarts automatically.</li>
-        <li data-i18n="guide_app_4">Choose a folder for tracks; existing tracks are copied to it.</li>
-        <li data-i18n="guide_app_background" data-platform="android">The app keeps receiving in the background: the Back button only hides the window.</li>
-        <li data-i18n="guide_app_stop_android" data-platform="android">To stop reception completely, press “Stop” in the notification.</li>
-        <li data-i18n="guide_app_stop_python" data-platform="python">To stop the viewer, press Ctrl+C in the terminal.</li>
-      </ol>
-    </div>
-  </details>
-
-  <section class="card supportCard">
-    <a class="supportLink" href="https://rutube.ru/channel/36225989/" target="_blank" rel="noopener noreferrer">
-      <span data-i18n="support_text">Вы можете отблагодарить автора за потраченные токены и время на Rutube-канале</span>
-      <span class="supportChannel">Рассказы ветра</span>
-    </a>
-  </section>
-
-  <section class="card closeCard" data-platform="android">
-    <button id="closeApp" class="mapBtn closeBtn" data-i18n="close_app">Close app</button>
-  </section>
-</main>
+  </div>
+</section>
 <div id="helpOverlay" class="helpOverlay" hidden>
   <div class="helpCard" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
     <button id="helpClose" class="helpClose" type="button" aria-label="Close">×</button>
@@ -582,25 +667,79 @@ function snr(v) { return v === null || v === undefined ? "—" : v + " dB"; }
 const ANDROID_SETTINGS = !!(window.AndroidSettings && window.AndroidSettings.getPermissions);
 
 let currentSettings = null;
+let lastDongle = null;
+let dongleDirty = false;
+let settingsPoll = null;
+
+function markSettingDirty(id) {
+  const el = $(id);
+  if (el) el.dataset.dirty = "1";
+}
+
+function clearSettingDirty(id) {
+  const el = $(id);
+  if (el) delete el.dataset.dirty;
+}
+
+function applySettingValue(id, value) {
+  const el = $(id);
+  if (!el) return;
+  if (el === document.activeElement || el.dataset.dirty === "1") return;
+  el.value = value;
+}
+
+function applySettingChecked(id, checked) {
+  const el = $(id);
+  if (!el) return;
+  if (el === document.activeElement || el.dataset.dirty === "1") return;
+  el.checked = !!checked;
+}
 
 function applySettingsData(data) {
   if (!data) return;
   currentSettings = data;
-  const port = $("udpPortInput");
-  if (port) port.value = data.udp_port ?? "";
+  const source = data.source === "usb" ? "usb" : "network";
+  document.querySelectorAll("#sourceToggle .sourceBtn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.source === source);
+  });
+  const note = $("sourceNote");
+  if (note) note.textContent = t(source === "usb" ? "source_espnow_usb_note" : "source_network_note");
+  $("networkGroup").hidden = source !== "network";
+  $("usbBlock").hidden = source !== "usb";
+  applySettingValue("udpPortInput", data.udp_port ?? "");
   const location = $("tracksLocation");
   if (location) {
     location.textContent = data.tracks_location || "—";
     location.title = data.tracks_uri || data.tracks_location || "";
   }
-  const idle = $("idleReleaseMin");
-  if (idle) idle.value = data.idle_release_min ?? "";
-  const autoRecord = $("autoRecord3d");
-  if (autoRecord) autoRecord.checked = !!data.auto_record_3d;
-  const autoStop = $("autoStopRecordingSec");
-  if (autoStop) autoStop.value = data.auto_stop_recording_sec ?? 10;
-  const keep = $("keepTracksInput");
-  if (keep) keep.value = data.keep_tracks ?? "";
+  applySettingValue("idleReleaseMin", data.idle_release_min ?? "");
+  applySettingChecked("autoRecord3d", data.auto_record_3d);
+  applySettingValue("autoStopRecordingSec", data.auto_stop_recording_sec ?? 10);
+  applySettingValue("keepTracksInput", data.keep_tracks ?? "");
+  applyUsbStatus(data.usb);
+}
+
+function applyUsbStatus(usb) {
+  const el = $("usbStatus");
+  if (!el) return;
+  const state = usb && usb.state ? usb.state : "idle";
+  const frames = usb && usb.frames != null ? usb.frames : 0;
+  const crc = usb && usb.crc_errors != null ? usb.crc_errors : 0;
+  const device = usb && usb.device ? usb.device : "";
+  const error = usb && usb.error ? usb.error : "";
+  if (state === "connected") {
+    el.textContent = t("usb_connected", { device, frames, crc });
+  } else if (state === "permission") {
+    el.textContent = t("usb_state_permission");
+  } else if (state === "no_device") {
+    el.textContent = t("usb_state_no_device");
+  } else if (state === "error") {
+    el.textContent = t("usb_state_error", { error });
+  } else {
+    el.textContent = t("usb_state_idle");
+  }
+  const btn = $("usbAllow");
+  if (btn) btn.disabled = state === "connected";
 }
 
 function setSettingsMsg(id, text, isError) {
@@ -611,19 +750,136 @@ function setSettingsMsg(id, text, isError) {
 }
 
 async function loadSettings() {
-  const card = $("settingsCard");
-  if (!card) return;
-  if (!ANDROID_SETTINGS) {
-    card.hidden = true;
-    return;
-  }
-  card.hidden = false;
   try {
     const res = await fetch("/api/settings", { cache: "no-store" });
     if (res.ok) applySettingsData(await res.json());
   } catch (e) {
   }
   await loadPermissions();
+  await loadDongle();
+}
+
+async function loadDongle() {
+  if (!ANDROID_SETTINGS || !currentSettings || currentSettings.source !== "usb") return;
+  try {
+    const res = await fetch("/api/dongle", { cache: "no-store" });
+    if (res.ok) applyDongleData(await res.json());
+  } catch (e) {
+  }
+}
+
+function applyDongleData(data) {
+  if (!data) return;
+  lastDongle = data;
+  const info = $("dongleInfo");
+  if (info) {
+    const cfg = data.config;
+    if (cfg) {
+      info.textContent = t("dongle_state", {
+        version: cfg.version || "?",
+        mode: cfg.uid_mode === 1 ? t("dongle_mode_uid") : t("dongle_mode_phrase"),
+      });
+    } else if (data.state === "connected") {
+      info.textContent = t("dongle_reading");
+    } else {
+      info.textContent = t("dongle_unavailable");
+    }
+  }
+  if (!dongleDirty && data.config) {
+    $("dongleManualUid").checked = data.config.uid_mode === 1;
+    $("donglePhrase").value = data.config.phrase || "";
+    $("dongleUid").value = data.config.uid || "";
+    updateDongleMode();
+  }
+}
+
+function updateDongleMode() {
+  const manual = $("dongleManualUid").checked;
+  $("donglePhraseRow").hidden = manual;
+  $("dongleUidRow").hidden = !manual;
+}
+
+function setPhraseVisible(visible) {
+  const input = $("donglePhrase");
+  const btn = $("donglePhraseToggle");
+  if (!input || !btn) return;
+  input.type = visible ? "text" : "password";
+  btn.textContent = t(visible ? "hide_phrase" : "show_phrase");
+  btn.setAttribute("aria-pressed", visible ? "true" : "false");
+}
+
+function startSettingsPoll() {
+  if (settingsPoll) return;
+  settingsPoll = setInterval(() => {
+    loadSettings();
+    loadDongle();
+  }, 1500);
+}
+
+function stopSettingsPoll() {
+  if (settingsPoll) {
+    clearInterval(settingsPoll);
+    settingsPoll = null;
+  }
+  document.querySelectorAll("#settingsPage [data-dirty]").forEach(el => delete el.dataset.dirty);
+}
+
+async function setSource(source) {
+  if (currentSettings && currentSettings.source === source) {
+    if (source === "usb" && ANDROID_SETTINGS) AndroidSettings.requestUsbPermission();
+    return;
+  }
+  setSettingsMsg("sourceMsg", "");
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (data.settings) applySettingsData(data.settings);
+      loadDongle();
+      if (source === "usb" && ANDROID_SETTINGS) AndroidSettings.requestUsbPermission();
+    } else {
+      setSettingsMsg("sourceMsg", data.error || t("source_error"), true);
+    }
+  } catch (e) {
+    setSettingsMsg("sourceMsg", t("source_error"), true);
+  }
+}
+
+async function sendDongle(action, extra) {
+  setSettingsMsg("dongleMsg", "");
+  try {
+    const res = await fetch("/api/dongle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ action }, extra || {})),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      dongleDirty = false;
+      setSettingsMsg("dongleMsg", t("dongle_saved"));
+    } else {
+      setSettingsMsg("dongleMsg", data.error || t("dongle_error"), true);
+    }
+  } catch (e) {
+    setSettingsMsg("dongleMsg", t("dongle_error"), true);
+  }
+}
+
+function applyDongle() {
+  if ($("dongleManualUid").checked) {
+    const cleaned = $("dongleUid").value.trim().replace(/[:\-\s]/g, "");
+    if (!/^[0-9a-fA-F]{12}$/.test(cleaned)) {
+      setSettingsMsg("dongleMsg", t("dongle_bad_uid"), true);
+      return;
+    }
+    sendDongle("set_uid", { uid: cleaned });
+  } else {
+    sendDongle("set_phrase", { phrase: $("donglePhrase").value });
+  }
 }
 
 async function loadPermissions() {
@@ -670,6 +926,7 @@ async function loadPermissions() {
 
 window.onNativeSettingsChanged = function () {
   loadSettings();
+  loadDongle();
   if (typeof refreshTracks === "function") refreshTracks();
 };
 
@@ -680,6 +937,8 @@ const I18N = {
     status_wait: "waiting for data",
     status_online: "online · {pps} pkt/s",
     status_online_short: "{pps} pkt/s",
+    status_link_down: "link down · {pps} pkt/s",
+    status_link_down_short: "link down",
     status_no_data: "no data",
     status_no_data_short: "—",
     status_stale: "no data · {age} s",
@@ -728,13 +987,45 @@ const I18N = {
     point_baro_vario: "Baro / Vario",
 
     settings: "Settings",
+    settings_common: "Common settings",
+    source_label: "Signal source",
+    source_network: "Network",
+    source_espnow_usb: "ESP-NOW via USB",
+    source_network_note: "Default. Wi-Fi/UDP telemetry from the TX backpack; no extra hardware.",
+    source_espnow_usb_note: "Recommended. Less RF pollution; requires an ESP32-C3 native-USB dongle, OTG and a data cable.",
+    source_error: "Could not switch the source",
+    usb_section: "USB dongle",
+    usb_allow: "Allow USB access",
+    usb_note: "Connect the dongle over USB OTG and allow access. The app reads the CRSF stream directly.",
+    usb_state_idle: "Not started",
+    usb_state_no_device: "Dongle not found",
+    usb_state_permission: "USB access not granted",
+    usb_state_error: "USB error: {error}",
+    usb_connected: "Connected · {device} · {frames} CRSF · {crc} CRC errors",
+    dongle_config: "Dongle setup",
+    dongle_manual_uid: "Manual UID",
+    dongle_mode_phrase: "phrase",
+    dongle_mode_uid: "manual UID",
+    dongle_phrase: "Binding phrase",
+    dongle_uid: "UID",
+    dongle_apply: "Apply to dongle",
+    dongle_reset: "Reset dongle",
+    dongle_note: "Use the same bind phrase you flashed the ELRS backpack with, or set the UID manually. On a successful connection the LED turns solid blue. With live telemetry from the drone it blinks fast. On connection loss, a wrong bind phrase or UID it goes out.",
+    dongle_state: "Firmware {version} · {mode}",
+    dongle_reading: "Reading configuration…",
+    dongle_unavailable: "Dongle is not connected",
+    dongle_saved: "Command sent",
+    dongle_error: "Could not send the command",
+    dongle_bad_uid: "UID must be 12 hex digits",
+    show_phrase: "Show",
+    hide_phrase: "Hide",
     udp_port: "UDP listen port",
     apply: "Apply",
     udp_port_note: "The backpack must send telemetry to this port.",
-    idle_release: "Release locks when no data (min)",
-    idle_release_note: "0 or empty — never release locks.",
-    idle_release_saved: "Power saving timeout updated",
-    idle_release_error: "Could not update timeout",
+    idle_release: "Power saving when idle (min)",
+    idle_release_note: "When idle, the app switches to power saving. 0 or empty — keep it off.",
+    idle_release_saved: "Power saving setting updated",
+    idle_release_error: "Could not update power saving",
     auto_record_3d: "Auto-record on 3D fix",
     auto_record_3d_note: "Start a new track when a 3D fix appears. Off by default.",
     auto_stop_recording: "Stop recording when telemetry is lost (s)",
@@ -755,7 +1046,7 @@ const I18N = {
     close_recording_confirm: "Track recording is in progress. If you close the app, recording will be interrupted and will not be saved. Close?",
     permission_notifications: "Notifications",
     permission_battery: "Unrestricted background (battery)",
-    permission_wifi: "Wi-Fi / multicast / wake lock",
+    permission_wifi: "Wi-Fi and background operation",
     permission_foreground: "Foreground service",
     perm_granted: "granted",
     perm_denied: "not granted",
@@ -765,32 +1056,41 @@ const I18N = {
     udp_port_saved: "Port updated",
     udp_port_error: "Could not change port",
     guide_title: "Quick setup guide",
-    guide_backpack: "ELRS backpack",
-    guide_backpack_1: "You need an ELRS TX backpack with Wi-Fi telemetry support (Backpack 1.5.7+).",
-    guide_backpack_2: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter, not its Backpack module.",
-    guide_backpack_3: "Connect your phone/PC to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs), or connect the Backpack to your phone's mobile hotspot or the same home network/hotspot if the backpack is joined to it. The goal is for the Backpack and the app to be in the same network segment. Internet access is required for the map to work.",
-    guide_backpack_4: "Open the “Telemetry” tab and wait for the “online · N pkt/s” status — packet counters in “Reception” should increase.",
+    guide_methods: "Two ways to receive telemetry",
+    guide_method_wifi: "Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.",
+    guide_method_usb: "ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3 native-USB dongle, OTG and a data cable.",
+    guide_wifi: "Wi-Fi setup",
+    guide_wifi_1: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter.",
+    guide_wifi_2: "Connect the phone to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs) or to the same network as the backpack.",
+    guide_wifi_3: "Start the app and open the “Telemetry” tab. UDP port 14550 is used by default.",
+    guide_wifi_4: "Wait for the green “online” status and growing packet counters in “Reception”. If the port was changed, set it in Settings (gear).",
+    guide_espnow: "ESP-NOW via USB setup",
+    guide_espnow_1: "Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.",
+    guide_espnow_2: "In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
+    guide_espnow_3: "Connect the dongle to the phone over OTG (data cable) and allow USB access.",
+    guide_espnow_4: "Open Settings (gear icon in the header) and select the “ESP-NOW via USB” source.",
+    guide_espnow_5: "Set the binding phrase or manual UID matching the backpack.",
+    guide_espnow_6: "Check the dongle LED: with the correct bind phrase/UID it stays solid blue — the dongle is receiving frames from the backpack. With an active drone link it blinks. If the dongle is not connected to the app or the phrase/UID is wrong, the LED is off.",
     guide_problems: "Possible problems",
-    guide_problem_nodata_android: "No data? Check that Telemetry → WiFi is enabled, the phone is on the same network, the VPN is not blocking local traffic, and UDP port 14550 is not used by another app.",
-    guide_problem_nodata_python: "No data? Check that Telemetry → WiFi is enabled, the computer is on the same network, the firewall is not blocking UDP, and UDP port 14550 is not used by another program.",
-    guide_problem_port_android: "Port 14550 busy? Change it in Settings → UDP port.",
-    guide_problem_port_python: "Port 14550 busy? Start the viewer with another port: python3 tlm_viewer.py --udp-port <port>.",
-    guide_problem_vendor: "Some vendors have a bug where the “ExpressLRS TX Backpack XXXXXX” access point does not start; there is no fix in releases yet, so firmware from master is required.",
+    guide_problem_nodata_android: "No Wi-Fi data? Check Telemetry → WiFi, the shared network, VPN, and that UDP port 14550 is not used by another app.",
+    guide_problem_no_dongle: "No dongle in USB mode? Use an ESP32-C3 native-USB board, an OTG adapter and a data cable; check USB permission.",
+    guide_problem_no_link: "Counters grow but the status says “no drone link”? Check RX/drone power and that the binding phrase or UID matches.",
+    guide_problem_port_android: "Port 14550 busy? Change it in Settings (gear → UDP port).",
+    guide_problem_vendor: "Some vendors' “ExpressLRS TX Backpack XXXXXX” AP does not start; a backpack firmware from master may help.",
     guide_flash_title: "Backpack flashing",
-    guide_flash_1: "Flashing is needed if the backpack does not start Wi-Fi or the Telemetry → WiFi menu is missing. Flash via ExpressLRS Configurator → Backpack.",
-    guide_flash_2: "The Binding Phrase is optional for Wi-Fi telemetry: the viewer does not check the UID.",
-    guide_flash_3: "The phrase produces the UID used by the backpack as its ESP-NOW group address and as the “ExpressLRS TX Backpack XXXXXX” SSID suffix. Set it for ESP-NOW (VRX/timer/AAT) and a stable network name; usually use the same phrase as your ELRS link.",
-    guide_flash_4: "Without a phrase the backpack takes the group address from EEPROM (after binding from the TX module) or leaves it zero; Wi-Fi telemetry still works. The access point password is always expresslrs and does not depend on the phrase.",
+    guide_flash_1: "Flashing is needed if the backpack does not start Wi-Fi/ESP-NOW or the menu item is missing. Flash via ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "Binding phrase is optional for Wi-Fi telemetry: the app does not check the UID.",
+    guide_flash_3: "For ESP-NOW the phrase produces the UID and ESP-NOW group address; use the same phrase as your ELRS link or set a manual UID in the dongle settings.",
+    guide_flash_4: "Without a phrase the backpack uses the EEPROM group address (after binding) or leaves it zero; Wi-Fi telemetry still works. The AP password is always expresslrs.",
     guide_flash_5: "Changing the phrase changes the UID and SSID — reflash all devices in the group with the same phrase.",
     guide_flash_link: "Tx Backpack Setup — ExpressLRS",
     guide_app: "App",
     guide_app_1: "Allow notifications and battery exemption — otherwise Android may suspend reception in the background.",
     guide_app_2: "Keep the app running; reception works in a foreground service even with the screen locked.",
-    guide_app_3: "Change the UDP port in Settings if needed; the listener restarts automatically.",
+    guide_app_3: "Source and options are in Settings (gear icon). Wi-Fi is the default; ESP-NOW via USB is recommended.",
     guide_app_4: "Choose a folder for tracks; existing tracks are copied to it.",
     guide_app_background: "The app keeps receiving in the background: the Back button only hides the window.",
     guide_app_stop_android: "To stop reception and close the app, press “Close app” at the bottom of the Telemetry tab (or “Stop” in the notification).",
-    guide_app_stop_python: "To stop the viewer, press Ctrl+C in the terminal.",
     save: "Save",
     card_battery: "Battery",
     current: "Current",
@@ -895,6 +1195,8 @@ const I18N = {
     status_wait: "нет данных",
     status_online: "онлайн · {pps} пак/с",
     status_online_short: "{pps} пак/с",
+    status_link_down: "нет связи · {pps} пак/с",
+    status_link_down_short: "нет связи",
     status_no_data: "нет данных",
     status_no_data_short: "—",
     status_stale: "нет данных · {age} с",
@@ -943,13 +1245,45 @@ const I18N = {
     point_baro_vario: "Баро / Варио",
 
     settings: "Настройки",
+    settings_common: "Общие настройки",
+    source_label: "Источник сигнала",
+    source_network: "Сеть",
+    source_espnow_usb: "ESP-NOW по USB",
+    source_network_note: "По умолчанию. Телеметрия по Wi-Fi/UDP от TX-бэкпака; дополнительное железо не нужно.",
+    source_espnow_usb_note: "Рекомендуется. Меньше засорения эфира; нужен USB-донгл ESP32-C3 с native USB, OTG и data-кабель.",
+    source_error: "Не удалось переключить источник",
+    usb_section: "USB-донгл",
+    usb_allow: "Разрешить USB",
+    usb_note: "Подключите донгл по USB OTG и разрешите доступ. Приложение читает CRSF-поток напрямую.",
+    usb_state_idle: "Не запущено",
+    usb_state_no_device: "Донгл не найден",
+    usb_state_permission: "Доступ к USB не выдан",
+    usb_state_error: "Ошибка USB: {error}",
+    usb_connected: "Подключён · {device} · {frames} CRSF · ошибок CRC: {crc}",
+    dongle_config: "Настройка донгла",
+    dongle_manual_uid: "Ручной UID",
+    dongle_mode_phrase: "фраза",
+    dongle_mode_uid: "ручной UID",
+    dongle_phrase: "Binding phrase",
+    dongle_uid: "UID",
+    dongle_apply: "Применить",
+    dongle_reset: "Сбросить",
+    dongle_note: "Укажите ту же бинд-фразу, которую использовали при прошивке ELRS-backpack, либо задайте UID вручную. При успешном соединении светодиод загорится ровным синим цветом. При живых датчиках с дрона - будет мигать быстро. При разрыве соединения/неправильной бинд-фразе/UID - погаснет",
+    dongle_state: "Прошивка {version} · {mode}",
+    dongle_reading: "Чтение конфигурации…",
+    dongle_unavailable: "Донгл не подключён",
+    dongle_saved: "Команда отправлена",
+    dongle_error: "Не удалось отправить команду",
+    dongle_bad_uid: "UID должен состоять из 12 hex-цифр",
+    show_phrase: "Показать",
+    hide_phrase: "Скрыть",
     udp_port: "UDP-порт прослушивания",
     apply: "Применить",
     udp_port_note: "Бэкпак должен отправлять телеметрию на этот порт.",
-    idle_release: "Отпускать блокировки при отсутствии данных, мин",
-    idle_release_note: "0 или пусто — никогда не отпускать блокировки.",
-    idle_release_saved: "Таймаут энергосбережения обновлён",
-    idle_release_error: "Не удалось изменить таймаут",
+    idle_release: "Энергосбережение при простое, мин",
+    idle_release_note: "При простое приложение переходит в энергосбережение. 0 или пусто — не включать.",
+    idle_release_saved: "Настройка энергосбережения обновлена",
+    idle_release_error: "Не удалось изменить энергосбережение",
     auto_record_3d: "Автозапись при появлении 3D-фикса",
     auto_record_3d_note: "Начинать новый трек при появлении 3D-фикса. По умолчанию выключено.",
     auto_stop_recording: "Останавливать запись при потере телеметрии, с",
@@ -970,7 +1304,7 @@ const I18N = {
     close_recording_confirm: "Идёт запись трека. Если закрыть приложение, запись будет прервана и не сохранится. Закрыть?",
     permission_notifications: "Уведомления",
     permission_battery: "Работа в фоне без ограничений (батарея)",
-    permission_wifi: "Wi-Fi / multicast / wake lock",
+    permission_wifi: "Wi-Fi и работа в фоне",
     permission_foreground: "Foreground-сервис",
     perm_granted: "разрешено",
     perm_denied: "не разрешено",
@@ -980,32 +1314,41 @@ const I18N = {
     udp_port_saved: "Порт обновлён",
     udp_port_error: "Не удалось изменить порт",
     guide_title: "Краткое руководство",
-    guide_backpack: "Бэкпак ELRS",
-    guide_backpack_1: "Нужен TX-бэкпак ELRS с поддержкой Wi-Fi-телеметрии (Backpack 1.5.7+).",
-    guide_backpack_2: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите значение «WiFi». Не используйте пункт «WiFi Connectivity» — это режим настройки передатчика, а не его модуля Backpack.",
-    guide_backpack_3: "Подключите телефон/ПК к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или наоборот — Backpack к мобильной точке доступа смартфона или к той же домашней сети/хот-споту, если бэкпак в неё включён. Цель — чтобы Backpack и приложение оказались в одном сегменте сети. При этом для функциональности карты должен быть доступен интернет.",
-    guide_backpack_4: "Откройте вкладку «Телеметрия» и дождитесь статуса «онлайн · N пак/с» — в «Приёме» должны расти пакеты.",
+    guide_methods: "Два способа получения телеметрии",
+    guide_method_wifi: "Wi-Fi — по умолчанию. Дополнительное железо не нужно: бэкпак поднимает точку доступа или подключается к вашей сети.",
+    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен донгл ESP32-C3 с native USB, OTG и data-кабель.",
+    guide_wifi: "Настройка Wi-Fi",
+    guide_wifi_1: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите «WiFi». Не используйте «WiFi Connectivity» — это режим настройки передатчика.",
+    guide_wifi_2: "Подключите телефон к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или к той же сети, что и бэкпак.",
+    guide_wifi_3: "Запустите приложение и откройте вкладку «Телеметрия». По умолчанию слушается UDP-порт 14550.",
+    guide_wifi_4: "Дождитесь зелёного статуса «онлайн» и роста пакетов в «Приёме». Если порт изменён, смените его в настройках (шестерёнка).",
+    guide_espnow: "Настройка ESP-NOW по USB",
+    guide_espnow_1: "Прошейте ESP32-C3 с native USB прошивкой esp32-c3-usb через Web Flasher или PlatformIO.",
+    guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
+    guide_espnow_3: "Подключите донгл к телефону через OTG (data-кабель) и разрешите доступ к USB.",
+    guide_espnow_4: "Откройте настройки (шестерёнка в шапке) и выберите источник «ESP-NOW по USB».",
+    guide_espnow_5: "Укажите binding phrase или ручной UID, совпадающие с бэкпаком.",
+    guide_espnow_6: "Проверьте синий LED донгла: после верной бинд-фразы/UID он горит ровно — значит, донгл получает кадры от бэкпака. Если есть линк с дроном, LED мигает. Если донгл не видит приложение или фраза/UID неверны, LED не горит.",
     guide_problems: "Возможные проблемы",
-    guide_problem_nodata_android: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, телефон в той же сети, VPN не режет локальный трафик, а порт 14550 не занят другой программой.",
-    guide_problem_nodata_python: "Нет данных? Проверьте, что включён именно Telemetry → WiFi, компьютер в той же сети, firewall не режет UDP, а порт 14550 не занят другой программой.",
-    guide_problem_port_android: "Порт 14550 занят? Смените его в Настройки → UDP-порт.",
-    guide_problem_port_python: "Порт 14550 занят? Запустите вьюер с другим портом: python3 tlm_viewer.py --udp-port <порт>.",
-    guide_problem_vendor: "У некоторых вендоров существует баг нестартующего «ExpressLRS TX Backpack XXXXXX», фикса которого нет в релизах, и нужна прошивка из master.",
+    guide_problem_nodata_android: "Нет данных по Wi-Fi? Проверьте Telemetry → WiFi, общую сеть, VPN и что UDP-порт 14550 не занят другой программой.",
+    guide_problem_no_dongle: "В USB-режиме донгл не найден? Нужен ESP32-C3 с native USB, OTG-адаптер и data-кабель; проверьте разрешение USB.",
+    guide_problem_no_link: "Счётчики растут, но статус «нет связи с дроном»? Проверьте питание RX/дрона и совпадение binding phrase или UID.",
+    guide_problem_port_android: "Порт 14550 занят? Смените его в настройках (шестерёнка → UDP-порт).",
+    guide_problem_vendor: "У некоторых вендоров не стартует точка «ExpressLRS TX Backpack XXXXXX»; иногда помогает прошивка бэкпака из master.",
     guide_flash_title: "Прошивка бэкпака",
-    guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi или в меню нет Telemetry → WiFi. Прошивать через ExpressLRS Configurator → Backpack.",
-    guide_flash_2: "Binding Phrase для Wi-Fi-телеметрии не обязательна: вьюер не проверяет UID.",
-    guide_flash_3: "Фраза задаёт UID, который бэкпак использует как адрес ESP-NOW-группы и как суффикс SSID «ExpressLRS TX Backpack XXXXXX». Её указывают для ESP-NOW (VRX/таймер/AAT) и стабильного имени сети; обычно берут ту же фразу, что в ELRS-линке.",
-    guide_flash_4: "Если фразу не задавать, бэкпак возьмёт адрес группы из EEPROM (после бинда от TX-модуля) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs, фраза его не меняет.",
+    guide_flash_1: "Прошивка нужна, если бэкпак не поднимает Wi-Fi/ESP-NOW или в меню нет нужного пункта. Прошивать через ExpressLRS Configurator → Backpack.",
+    guide_flash_2: "Для Wi-Fi-телеметрии binding phrase не обязательна: приложение не проверяет UID.",
+    guide_flash_3: "Для ESP-NOW фраза задаёт UID и адрес ESP-NOW-группы; используйте ту же фразу, что в ELRS-линии, либо задайте UID вручную в настройках донгла.",
+    guide_flash_4: "Без фразы бэкпак возьмёт адрес из EEPROM (после бинда) или оставит нулевым; Wi-Fi-телеметрия всё равно работает. Пароль точки доступа всегда expresslrs.",
     guide_flash_5: "При смене фразы меняются UID и SSID — перепрошейте с той же фразой все устройства группы.",
     guide_flash_link: "Прошивка TX Backpack — ExpressLRS",
     guide_app: "Приложение",
     guide_app_1: "Разрешите уведомления и исключение из оптимизации батареи — иначе Android может приостановить приём в фоне.",
     guide_app_2: "Оставьте приложение запущенным: приём идёт в foreground-сервисе даже при заблокированном экране.",
-    guide_app_3: "При необходимости смените UDP-порт в настройках — приём перезапустится автоматически.",
-    guide_app_4: "Выберите папку для треков; существующие треки будут скопированы.",
+    guide_app_3: "Источник и параметры меняются в настройках по шестерёнке в шапке. Wi-Fi — по умолчанию, ESP-NOW по USB — рекомендуется.",
+    guide_app_4: "Выберите папку для треков; существующие треки копируются.",
     guide_app_background: "Приложение принимает данные в фоне: кнопка «Назад» только сворачивает окно.",
     guide_app_stop_android: "Чтобы остановить приём и закрыть приложение, нажмите «Закрыть приложение» внизу вкладки «Телеметрия» (или «Стоп» в уведомлении).",
-    guide_app_stop_python: "Чтобы завершить вьюер, нажмите Ctrl+C в терминале.",
     save: "Сохранить",
     card_battery: "Батарея",
     current: "Ток",
@@ -1110,6 +1453,8 @@ const I18N = {
     status_wait: "等待数据",
     status_online: "在线 · {pps} 包/秒",
     status_online_short: "{pps} 包/秒",
+    status_link_down: "链路断开 · {pps} 包/秒",
+    status_link_down_short: "链路断开",
     status_no_data: "无数据",
     status_no_data_short: "—",
     status_stale: "无数据 · {age} 秒",
@@ -1158,13 +1503,45 @@ const I18N = {
     point_baro_vario: "气压 / 升降速度",
 
     settings: "设置",
+    settings_common: "通用设置",
+    source_label: "信号来源",
+    source_network: "网络",
+    source_espnow_usb: "USB ESP-NOW",
+    source_network_note: "默认。通过 Wi-Fi/UDP 接收 TX 背包遥测，无需额外硬件。",
+    source_espnow_usb_note: "推荐。减少无线电污染；需要带 native USB 的 ESP32-C3 适配器、OTG 和数据线。",
+    source_error: "无法切换来源",
+    usb_section: "USB 适配器",
+    usb_allow: "允许 USB 访问",
+    usb_note: "通过 USB OTG 连接适配器并允许访问。应用将直接读取 CRSF 数据流。",
+    usb_state_idle: "未启动",
+    usb_state_no_device: "未找到适配器",
+    usb_state_permission: "未授予 USB 访问权限",
+    usb_state_error: "USB 错误：{error}",
+    usb_connected: "已连接 · {device} · {frames} CRSF · CRC 错误 {crc}",
+    dongle_config: "适配器设置",
+    dongle_manual_uid: "手动 UID",
+    dongle_mode_phrase: "短语",
+    dongle_mode_uid: "手动 UID",
+    dongle_phrase: "绑定短语",
+    dongle_uid: "UID",
+    dongle_apply: "应用",
+    dongle_reset: "重置",
+    dongle_note: "请使用烧录 ELRS-backpack 时所用的绑定短语，或手动设置 UID。连接成功时指示灯常亮蓝色；收到无人机实时数据时快速闪烁；连接断开、绑定短语或 UID 错误时熄灭。",
+    dongle_state: "固件 {version} · {mode}",
+    dongle_reading: "正在读取配置…",
+    dongle_unavailable: "适配器未连接",
+    dongle_saved: "命令已发送",
+    dongle_error: "无法发送命令",
+    dongle_bad_uid: "UID 必须是 12 位十六进制数",
+    show_phrase: "显示",
+    hide_phrase: "隐藏",
     udp_port: "UDP 监听端口",
     apply: "应用",
     udp_port_note: "背包必须将遥测发送到此端口。",
-    idle_release: "无数据时释放锁（分钟）",
-    idle_release_note: "0 或留空 — 永不释放锁。",
-    idle_release_saved: "节能超时已更新",
-    idle_release_error: "无法更新超时",
+    idle_release: "空闲时启用节能（分钟）",
+    idle_release_note: "空闲时应用会进入节能模式。0 或留空 — 不启用。",
+    idle_release_saved: "节能设置已更新",
+    idle_release_error: "无法更新节能设置",
     auto_record_3d: "出现 3D 定位时自动录制",
     auto_record_3d_note: "出现 3D 定位时开始新轨迹。默认关闭。",
     auto_stop_recording: "遥测丢失时停止录制（秒）",
@@ -1185,7 +1562,7 @@ const I18N = {
     close_recording_confirm: "正在录制轨迹。关闭应用将中断录制且不会保存。是否关闭？",
     permission_notifications: "通知",
     permission_battery: "后台无限制（电池）",
-    permission_wifi: "Wi-Fi / 多播 / 唤醒锁",
+    permission_wifi: "Wi-Fi 与后台运行",
     permission_foreground: "前台服务",
     perm_granted: "已授予",
     perm_denied: "未授予",
@@ -1195,32 +1572,41 @@ const I18N = {
     udp_port_saved: "端口已更新",
     udp_port_error: "无法更改端口",
     guide_title: "快速设置指南",
-    guide_backpack: "ELRS 背包",
-    guide_backpack_1: "需要支持 Wi-Fi 遥测的 ELRS TX 背包（Backpack 1.5.7+）。",
-    guide_backpack_2: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器，而不是它的 Backpack 模块。",
-    guide_backpack_3: "将手机/电脑连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或者反过来把 Backpack 连接到手机的移动热点或同一个家庭网络/热点（如果背包已接入该网络）。目标是让 Backpack 和应用处于同一网段。地图功能需要可用的互联网连接。",
-    guide_backpack_4: "打开“遥测”标签页，等待状态变为“在线 · N 包/秒”——“接收”中的包计数应持续增长。",
+    guide_methods: "两种获取遥测的方式",
+    guide_method_wifi: "Wi-Fi — 默认。无需额外硬件：背包会创建热点或加入你的网络。",
+    guide_method_usb: "USB ESP-NOW — 推荐。减少无线电污染。需要带 native USB 的 ESP32-C3、OTG 和数据线。",
+    guide_wifi: "Wi-Fi 设置",
+    guide_wifi_1: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器。",
+    guide_wifi_2: "将手机连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或连接到与背包相同的网络。",
+    guide_wifi_3: "启动应用并打开“遥测”标签页。默认使用 UDP 端口 14550。",
+    guide_wifi_4: "等待绿色“在线”状态和“接收”中不断增长的包计数。如果端口已更改，请在设置（齿轮）中修改。",
+    guide_espnow: "USB ESP-NOW 设置",
+    guide_espnow_1: "通过 Web Flasher 或 PlatformIO 为带 native USB 的 ESP32-C3 刷写 esp32-c3-usb。",
+    guide_espnow_2: "在 EdgeTX 中设置：ELRS Lua → Backpack → Telemetry → ESP-NOW。",
+    guide_espnow_3: "通过 OTG（数据线）将适配器连接到手机，并允许 USB 访问。",
+    guide_espnow_4: "打开设置（标题栏齿轮图标），选择来源“USB ESP-NOW”。",
+    guide_espnow_5: "设置与背包相同的绑定短语或手动 UID。",
+    guide_espnow_6: "检查适配器的蓝色 LED：绑定短语/UID 正确时它会常亮，表示适配器收到了背包的数据。与无人机建立链路时会闪烁。如果适配器没有连接到应用，或短语/UID 错误，LED 会熄灭。",
     guide_problems: "可能的问题",
-    guide_problem_nodata_android: "没有数据？检查是否启用了 Telemetry → WiFi，手机是否在同一网络，VPN 是否拦截本地流量，以及 UDP 端口 14550 是否被其他应用占用。",
-    guide_problem_nodata_python: "没有数据？检查是否启用了 Telemetry → WiFi，电脑是否在同一网络，防火墙是否拦截 UDP，以及 UDP 端口 14550 是否被其他程序占用。",
-    guide_problem_port_android: "端口 14550 被占用？在 设置 → UDP 端口 中更改。",
-    guide_problem_port_python: "端口 14550 被占用？使用其他端口启动查看器：python3 tlm_viewer.py --udp-port <端口>。",
-    guide_problem_vendor: "部分厂商存在“ExpressLRS TX Backpack XXXXXX”无法启动的 bug，正式版尚未修复，需要刷写 master 固件。",
+    guide_problem_nodata_android: "Wi-Fi 没有数据？检查 Telemetry → WiFi、同一网络、VPN，以及 UDP 端口 14550 是否被其他应用占用。",
+    guide_problem_no_dongle: "USB 模式找不到适配器？使用带 native USB 的 ESP32-C3、OTG 适配器和数据线；检查 USB 权限。",
+    guide_problem_no_link: "计数增长但显示“无无人机链路”？检查 RX/无人机电源，以及绑定短语或 UID 是否匹配。",
+    guide_problem_port_android: "端口 14550 被占用？在设置中更改（齿轮 → UDP 端口）。",
+    guide_problem_vendor: "部分厂商的“ExpressLRS TX Backpack XXXXXX”热点无法启动；可尝试 master 分支的背包固件。",
     guide_flash_title: "背包刷写",
-    guide_flash_1: "如果背包无法启动 Wi-Fi 或菜单中没有 Telemetry → WiFi，则需要刷写。通过 ExpressLRS Configurator → Backpack 刷写。",
-    guide_flash_2: "Wi-Fi 遥测不要求 Binding Phrase：查看器不校验 UID。",
-    guide_flash_3: "该短语会生成 UID，背包将其用作 ESP-NOW 组地址和 SSID 后缀“ExpressLRS TX Backpack XXXXXX”。需要 ESP-NOW（VRX/计时器/AAT）和稳定网络名称时设置；通常使用与 ELRS 链路相同的短语。",
-    guide_flash_4: "如果不设置短语，背包会使用 EEPROM 中的组地址（由 TX 模块绑定后写入），否则保持为零；Wi-Fi 遥测仍然可用。热点密码始终是 expresslrs，与短语无关。",
+    guide_flash_1: "如果背包无法启动 Wi-Fi/ESP-NOW 或菜单中没有相应项目，则需要刷写。通过 ExpressLRS Configurator → Backpack 刷写。",
+    guide_flash_2: "Wi-Fi 遥测不要求绑定短语：应用不校验 UID。",
+    guide_flash_3: "ESP-NOW 使用该短语生成 UID 和 ESP-NOW 组地址；请使用与 ELRS 链路相同的短语，或在适配器设置中手动设置 UID。",
+    guide_flash_4: "如果不设置短语，背包会使用 EEPROM 中的组地址（绑定后）或保持为零；Wi-Fi 遥测仍然可用。热点密码始终是 expresslrs。",
     guide_flash_5: "更改短语会改变 UID 和 SSID——请用相同短语重新刷写组内所有设备。",
     guide_flash_link: "TX Backpack 刷写 — ExpressLRS",
     guide_app: "应用",
     guide_app_1: "允许通知和电池优化豁免，否则 Android 可能会在后台暂停接收。",
     guide_app_2: "保持应用运行；即使锁屏，前台服务也会继续接收。",
-    guide_app_3: "如有需要，在设置中更改 UDP 端口；监听会自动重启。",
+    guide_app_3: "来源和选项在设置（标题栏齿轮图标）中。Wi-Fi 为默认；推荐 USB ESP-NOW。",
     guide_app_4: "选择轨迹文件夹；现有轨迹会被复制。",
     guide_app_background: "应用会在后台继续接收：按“返回”只会隐藏窗口。",
     guide_app_stop_android: "要停止接收并关闭应用，请按“遥测”标签页底部的“关闭应用”（或通知中的“停止”）。",
-    guide_app_stop_python: "要结束查看器，请在终端中按 Ctrl+C。",
     save: "保存",
     card_battery: "电池",
     current: "电流",
@@ -2350,6 +2736,18 @@ function switchTab(name) {
   document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === name));
   $("telemetryPage").hidden = name !== "telemetry";
   $("mapPage").hidden = name !== "map";
+  $("settingsPage").hidden = name !== "settings";
+  const gear = $("settingsBtn");
+  if (gear) gear.classList.toggle("active", name === "settings");
+  if (name === "settings") {
+    window.scrollTo(0, 0);
+    setPhraseVisible(false);
+    loadSettings();
+    loadDongle();
+    startSettingsPoll();
+  } else {
+    stopSettingsPoll();
+  }
   if (name === "map") {
     window.scrollTo(0, 0);
     ensureMap();
@@ -2361,14 +2759,30 @@ function switchTab(name) {
   }
 }
 
+window.appBack = function () {
+  if (!$("settingsPage").hidden) {
+    switchTab("telemetry");
+    return true;
+  }
+  if (!$("mapPage").hidden) {
+    switchTab("telemetry");
+    return true;
+  }
+  return false;
+};
+
 function render(s) {
   const st = s.stats || {};
-  const online = st.age !== null && st.age !== undefined && st.age < 2 && st.total > 0;
+  const online = st.online === true;
+  const transportFresh = st.age !== null && st.age !== undefined && st.age < 2 && st.total > 0;
   const pill = $("status");
   const mobile = window.matchMedia("(max-width: 520px)").matches;
   if (online) {
     pill.className = "pill on";
     pill.textContent = t(mobile ? "status_online_short" : "status_online", { pps: st.pps });
+  } else if (transportFresh) {
+    pill.className = "pill off";
+    pill.textContent = t(mobile ? "status_link_down_short" : "status_link_down", { pps: st.pps });
   } else {
     pill.className = "pill off";
     pill.textContent = st.total
@@ -2652,11 +3066,35 @@ $("lang").addEventListener("change", e => {
   localStorage.setItem("tlm_lang", LANG);
   applyI18n();
   if (ANDROID_SETTINGS) loadPermissions();
+  if (currentSettings) applySettingsData(currentSettings);
+  if (lastDongle) applyDongleData(lastDongle);
+  setPhraseVisible($("donglePhrase").type === "text");
   if (lastState) render(lastState);
 });
 document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
+$("settingsBtn").hidden = !ANDROID_SETTINGS;
+$("settingsBtn").addEventListener("click", () => {
+  switchTab($("settingsPage").hidden ? "settings" : "telemetry");
+});
+document.querySelectorAll("#sourceToggle .sourceBtn").forEach(btn => {
+  btn.addEventListener("click", () => setSource(btn.dataset.source));
+});
+$("usbAllow").addEventListener("click", () => {
+  if (ANDROID_SETTINGS) AndroidSettings.requestUsbPermission();
+});
+$("dongleManualUid").addEventListener("change", () => {
+  dongleDirty = true;
+  updateDongleMode();
+});
+$("donglePhrase").addEventListener("input", () => { dongleDirty = true; });
+$("donglePhraseToggle").addEventListener("click", () => {
+  setPhraseVisible($("donglePhrase").type !== "text");
+});
+$("dongleUid").addEventListener("input", () => { dongleDirty = true; });
+$("dongleApply").addEventListener("click", applyDongle);
+$("dongleReset").addEventListener("click", () => sendDongle("reset"));
 $("showMap").addEventListener("click", () => switchTab("map"));
 window.addEventListener("resize", () => setTimeout(refreshMapLayout, 50));
 window.addEventListener("orientationchange", () => setTimeout(refreshMapLayout, 200));
@@ -2725,6 +3163,11 @@ $("playSpeed").addEventListener("change", e => {
   playback.speed = parseFloat(e.target.value) || 1;
 });
 
+["udpPortInput", "idleReleaseMin", "autoStopRecordingSec", "keepTracksInput"].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener("input", () => { el.dataset.dirty = "1"; });
+});
+
 $("udpPortSave").addEventListener("click", async () => {
   const port = parseInt($("udpPortInput").value, 10);
   if (!Number.isFinite(port) || port < 1 || port > 65535) {
@@ -2740,6 +3183,7 @@ $("udpPortSave").addEventListener("click", async () => {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
+      clearSettingDirty("udpPortInput");
       setSettingsMsg("udpPortMsg", t("udp_port_saved"));
       if (data.settings) applySettingsData(data.settings);
     } else {
@@ -2763,6 +3207,7 @@ $("autoStopRecordingSave").addEventListener("click", async () => {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
+      clearSettingDirty("autoStopRecordingSec");
       if (data.settings) applySettingsData(data.settings);
       setSettingsMsg("autoStopRecordingMsg", t("save"), false);
     } else {
@@ -2773,6 +3218,7 @@ $("autoStopRecordingSave").addEventListener("click", async () => {
   }
 });
 $("autoRecord3d").addEventListener("change", async (event) => {
+  markSettingDirty("autoRecord3d");
   try {
     const res = await fetch("/api/settings", {
       method: "POST",
@@ -2780,7 +3226,10 @@ $("autoRecord3d").addEventListener("change", async (event) => {
       body: JSON.stringify({ auto_record_3d: event.target.checked }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.settings) applySettingsData(data.settings);
+    if (res.ok) {
+      clearSettingDirty("autoRecord3d");
+      if (data.settings) applySettingsData(data.settings);
+    }
   } catch (e) {
   }
 });
@@ -2802,6 +3251,7 @@ $("keepTracksSave").addEventListener("click", async () => {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
+      clearSettingDirty("keepTracksInput");
       if (data.settings) applySettingsData(data.settings);
       setSettingsMsg("keepTracksMsg", t("save"), false);
     } else {
@@ -2827,6 +3277,7 @@ $("idleReleaseSave").addEventListener("click", async () => {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
+      clearSettingDirty("idleReleaseMin");
       setSettingsMsg("idleReleaseMsg", t("idle_release_saved"));
       if (data.settings) applySettingsData(data.settings);
     } else {
