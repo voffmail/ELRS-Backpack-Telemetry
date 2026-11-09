@@ -45,8 +45,8 @@ android {
         applicationId = "com.elrs.backpack"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "2.1.0"
+        versionCode = 8
+        versionName = "2.1.1"
         buildConfigField("String", "MAPTILER_KEY", jsString(readMapTilerKey()))
     }
 
