@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Site version (e.g. v2.1.0); empty = dev-<sha>"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -64,6 +69,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             VERSION="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
           else
             VERSION="dev-${GITHUB_SHA::7}"
           fi
@@ -95,7 +102,6 @@ jobs:
             --clobber
 
   deploy:
-    if: github.event_name == 'release'
     needs: build
     runs-on: ubuntu-latest
     environment:
