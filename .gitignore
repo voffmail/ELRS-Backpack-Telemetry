@@ -37,3 +37,6 @@ firmware/include/secrets.h
 *.elf
 *.map
 .venv/
+
+# Local desktop viewer settings
+tlm_viewer_settings.json

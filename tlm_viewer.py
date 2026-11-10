@@ -13,7 +13,9 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-LOCK = threading.Lock()
+from tools import mavlink_protocol as mav
+
+LOCK = threading.RLock()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TRACKS_DIR = os.path.join(BASE_DIR, "tracks")
 STATIC_DIR = os.path.join(BASE_DIR, "web", "static")
@@ -23,6 +25,7 @@ RECORD = {
     "id": None,
     "start_mono": 0.0,
     "started_at": None,
+    "protocol": None,
     "points": [],
 }
 STATE = {
@@ -44,8 +47,47 @@ STATE = {
     "telemetry_at": 0.0,
 }
 STATS = {"total": 0, "times": deque(maxlen=4000), "last": 0.0}
+MAV_STATE = {
+    "link": None,
+    "battery": None,
+    "gps": None,
+    "gps_last": None,
+    "gps_ext": None,
+    "gps_time": None,
+    "attitude": None,
+    "baro": None,
+    "vario": None,
+    "flight_mode": None,
+    "device": None,
+    "frames": {},
+    "unknown": {},
+    "link_at": 0.0,
+    "telemetry_at": 0.0,
+    "heartbeat": None,
+    "armed": None,
+}
+MAV_STATS = {
+    "total": 0,
+    "times": deque(maxlen=4000),
+    "last": 0.0,
+    "messages": 0,
+    "message_times": deque(maxlen=8000),
+}
 TELEMETRY_TYPES = {0x02, 0x03, 0x06, 0x07, 0x08, 0x09, 0x1E, 0x21, 0x29}
+MAV_TELEMETRY_TYPES = {1, 2, 24, 30, 33, 49, 74, 147, 242}
 ONLINE_TIMEOUT_SEC = 2.0
+SWITCH_GAP_SEC = 0.5
+SWITCH_CONFIRM_COUNT = 3
+SETTINGS = {"auto_record_3d": False, "auto_stop_sec": 10}
+SETTINGS_FILE = os.path.join(BASE_DIR, "tlm_viewer_settings.json")
+SESSION = {
+    "protocol": None,
+    "id": None,
+    "started_at": None,
+    "source": None,
+    "last_valid": 0.0,
+}
+ROUTER = {"candidate": None, "count": 0, "since": 0.0}
 
 
 def s8(v):
@@ -76,6 +118,266 @@ def iter_frames(data):
         i += 1
 
 
+def reset_crsf_state():
+    STATE.update({
+        "link": None, "battery": None, "gps": None, "gps_last": None,
+        "gps_ext": None, "gps_ext_at": 0.0, "gps_time": None,
+        "attitude": None, "baro": None, "vario": None,
+        "flight_mode": None, "device": None, "frames": {}, "unknown": {},
+        "link_at": 0.0, "telemetry_at": 0.0,
+    })
+
+
+def reset_mav_state():
+    MAV_STATE.update({
+        "link": None, "battery": None, "gps": None, "gps_last": None,
+        "gps_ext": None, "gps_time": None, "attitude": None, "baro": None,
+        "vario": None, "flight_mode": None, "device": None, "frames": {},
+        "unknown": {}, "link_at": 0.0, "telemetry_at": 0.0,
+        "heartbeat": None, "armed": None,
+    })
+
+
+def reset_stats():
+    STATS.update({"total": 0, "times": deque(maxlen=4000), "last": 0.0})
+    MAV_STATS.update({
+        "total": 0, "times": deque(maxlen=4000), "last": 0.0,
+        "messages": 0, "message_times": deque(maxlen=8000),
+    })
+
+
+def new_session_id():
+    base = time.strftime("session_%Y%m%d_%H%M%S")
+    if SESSION.get("id") == base:
+        return base + "_2"
+    return base
+
+
+def start_session(protocol, source, now):
+    SESSION.update({
+        "protocol": protocol,
+        "id": new_session_id(),
+        "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "source": source,
+        "last_valid": now,
+    })
+    ROUTER.update({"candidate": None, "count": 0, "since": 0.0})
+
+
+def switch_protocol(protocol, source, now):
+    if RECORD["active"]:
+        stop_recording()
+    if protocol == "crsf":
+        reset_crsf_state()
+    else:
+        reset_mav_state()
+    reset_stats()
+    start_session(protocol, source, now)
+
+
+def route_protocol(protocol, source):
+    now = time.monotonic()
+    active = SESSION["protocol"]
+    if active is None:
+        start_session(protocol, source, now)
+        return True
+    if protocol == active:
+        SESSION["last_valid"] = now
+        ROUTER.update({"candidate": None, "count": 0, "since": 0.0})
+        return True
+    active_age = now - (SESSION["last_valid"] or 0.0)
+    if active_age >= ONLINE_TIMEOUT_SEC:
+        switch_protocol(protocol, source, now)
+        return True
+    if active_age < SWITCH_GAP_SEC:
+        return False
+    if ROUTER["candidate"] != protocol:
+        ROUTER.update({"candidate": protocol, "count": 1, "since": now})
+    else:
+        ROUTER["count"] += 1
+    if ROUTER["count"] >= SWITCH_CONFIRM_COUNT or (now - ROUTER["since"]) >= 0.3:
+        switch_protocol(protocol, source, now)
+        return True
+    return False
+
+
+def detect_protocol(data):
+    if not data:
+        return None
+    if data[:3] == b"$X<" or data[0] in (0xC8, 0xEA, 0xEE):
+        for _ in iter_frames(data):
+            return "crsf"
+        return None
+    if data[0] in (0xFD, 0xFE):
+        return "mavlink" if mav.first_valid_frame(data) is not None else None
+    return None
+
+
+def active_state():
+    return MAV_STATE if SESSION["protocol"] == "mavlink" else STATE
+
+
+def active_stats():
+    return MAV_STATS if SESSION["protocol"] == "mavlink" else STATS
+
+
+def active_protocol():
+    return SESSION["protocol"] or "crsf"
+
+
+def append_record_point(g, protocol, extra=None):
+    if not RECORD["active"]:
+        return
+    point = {
+        "t": round(time.monotonic() - RECORD["start_mono"], 3),
+        "lat": g["lat"], "lon": g["lon"], "alt": g["alt"],
+        "speed": g["speed"], "heading": g["heading"], "sats": g["sats"],
+        "protocol": protocol,
+        "session_id": SESSION["id"],
+    }
+    if g.get("fix_type") is not None:
+        point["fix_type"] = g["fix_type"]
+        point["fix_type_computed"] = False
+    if extra:
+        point["data"] = extra
+    RECORD["points"].append(point)
+
+
+def maybe_auto_record(fix3d, protocol):
+    if SETTINGS["auto_record_3d"] and fix3d and not RECORD["active"]:
+        start_recording(protocol)
+
+
+def parse_mavlink_frame(frame):
+    if frame.crc_ok is not True:
+        return
+    now_mono = time.monotonic()
+    MAV_STATS["messages"] += 1
+    MAV_STATS["message_times"].append(time.time())
+    MAV_STATE["frames"][frame.msgid] = MAV_STATE["frames"].get(frame.msgid, 0) + 1
+    if frame.msgid in MAV_TELEMETRY_TYPES:
+        MAV_STATE["telemetry_at"] = now_mono
+    decoded = mav.decode_message(frame)
+    msgid = frame.msgid
+    if msgid == 0:
+        MAV_STATE["link_at"] = now_mono
+        MAV_STATE["heartbeat"] = decoded
+        MAV_STATE["armed"] = decoded.get("armed")
+        mode = decoded.get("custom_mode", 0)
+        MAV_STATE["flight_mode"] = mav.BF_FLIGHT_MODES.get(mode, str(mode))
+        MAV_STATE["device"] = "MAVLink"
+    elif msgid == 24:
+        lat = decoded.get("lat", 0) / 1e7
+        lon = decoded.get("lon", 0) / 1e7
+        alt = decoded.get("alt", 0) / 1000.0
+        speed = decoded.get("vel", 0) * 0.036
+        heading = decoded.get("cog", 0) / 100.0
+        sats = decoded.get("satellites_visible", 0)
+        fix_type = decoded.get("fix_type", 0)
+        fix3d = fix_type >= 3
+        fix_pos = fix_type >= 2 and sats >= 3
+        prev = MAV_STATE["gps"]
+        was3d = bool(prev and prev.get("fix3d"))
+        gps = {
+            "lat": lat, "lon": lon, "speed": speed, "heading": heading,
+            "alt": alt, "sats": sats, "fix": fix_pos, "fix3d": fix3d,
+            "fix_type": fix_type, "fix_type_computed": False,
+        }
+        MAV_STATE["gps"] = gps
+        if fix_pos:
+            MAV_STATE["gps_last"] = dict(gps)
+        MAV_STATE["gps_ext"] = {
+            "fix_type": fix_type,
+            "vn": (MAV_STATE.get("gps_ext") or {}).get("vn", 0.0),
+            "ve": (MAV_STATE.get("gps_ext") or {}).get("ve", 0.0),
+            "vv": (MAV_STATE.get("gps_ext") or {}).get("vv", 0.0),
+            "speed_acc": decoded.get("vel_acc", 0) / 1000.0 if decoded.get("vel_acc") is not None else None,
+            "track_acc": None,
+            "alt_ellipsoid": decoded.get("alt_ellipsoid", 0) / 1000.0 if decoded.get("alt_ellipsoid") is not None else None,
+            "h_acc": decoded.get("h_acc", 0) / 1000.0 if decoded.get("h_acc") is not None else None,
+            "v_acc": decoded.get("v_acc", 0) / 1000.0 if decoded.get("v_acc") is not None else None,
+            "reserved": None,
+            "hdop": decoded.get("eph", 0) / 100.0,
+            "vdop": decoded.get("epv", 0) / 100.0,
+        }
+        if not was3d and fix3d:
+            maybe_auto_record(True, "mavlink")
+        if RECORD["active"] and fix3d:
+            extra = {"mavlink": {
+                "fix_type": fix_type,
+                "eph": decoded.get("eph"),
+                "epv": decoded.get("epv"),
+                "vel": decoded.get("vel"),
+                "cog": decoded.get("cog"),
+                "h_acc": decoded.get("h_acc"),
+                "v_acc": decoded.get("v_acc"),
+                "vel_acc": decoded.get("vel_acc"),
+            }}
+            append_record_point(gps, "mavlink", extra)
+    elif msgid == 33:
+        gps = MAV_STATE["gps"]
+        if gps:
+            gps["relative_alt"] = decoded.get("relative_alt", 0) / 1000.0
+        ext = MAV_STATE.get("gps_ext") or {}
+        ext.update({
+            "vn": decoded.get("vx", 0) / 100.0,
+            "ve": decoded.get("vy", 0) / 100.0,
+            "vv": -decoded.get("vz", 0) / 100.0,
+        })
+        MAV_STATE["gps_ext"] = ext
+        MAV_STATE["vario"] = -decoded.get("vz", 0) / 100.0
+    elif msgid == 30:
+        pitch = -math.degrees(decoded.get("pitch", 0.0))
+        roll = math.degrees(decoded.get("roll", 0.0))
+        yaw = math.degrees(decoded.get("yaw", 0.0))
+        MAV_STATE["attitude"] = {"pitch": pitch, "roll": roll, "yaw": yaw}
+    elif msgid == 1:
+        voltage = decoded.get("voltage_battery", 0) / 1000.0
+        current = decoded.get("current_battery", -1)
+        remaining = decoded.get("battery_remaining", -1)
+        MAV_STATE["battery"] = {
+            "voltage": voltage,
+            "current": current / 100.0 if current >= 0 else None,
+            "capacity": (MAV_STATE.get("battery") or {}).get("capacity"),
+            "remaining": remaining if remaining >= 0 else None,
+        }
+    elif msgid == 147:
+        battery = MAV_STATE.get("battery") or {}
+        current = decoded.get("current_battery", -1)
+        remaining = decoded.get("battery_remaining", -1)
+        consumed = decoded.get("current_consumed", -1)
+        battery.update({
+            "voltage": battery.get("voltage"),
+            "current": current / 100.0 if current >= 0 else battery.get("current"),
+            "capacity": consumed if consumed >= 0 else battery.get("capacity"),
+            "remaining": remaining if remaining >= 0 else battery.get("remaining"),
+        })
+        MAV_STATE["battery"] = battery
+    elif msgid == 74:
+        MAV_STATE["baro"] = {
+            "alt": decoded.get("alt", 0.0),
+            "vario": MAV_STATE.get("vario") or 0.0,
+        }
+    elif msgid == 2:
+        unix_usec = decoded.get("time_unix_usec", 0)
+        if unix_usec:
+            MAV_STATE["gps_time"] = time.strftime(
+                "%Y-%m-%d %H:%M:%S", time.gmtime(unix_usec / 1_000_000.0)
+            )
+    elif msgid == 35:
+        rssi = decoded.get("rssi", 0)
+        MAV_STATE["link"] = {
+            "rssi_pct": round(100.0 * min(rssi, 254) / 254.0, 1),
+            "lq": None, "lq_d": None, "snr": None, "snr_d": None,
+            "rssi1": None, "rssi2": None, "rssi_d": None,
+            "active_ant": None, "rf_mode": None, "tx_power": None,
+        }
+    elif msgid == 253:
+        text = decoded.get("text")
+        if text:
+            MAV_STATE["device"] = MAV_STATE.get("device") or "MAVLink"
+
+
 def parse_frame(t, p):
     now_mono = time.monotonic()
     if t == 0x14:
@@ -104,21 +406,23 @@ def parse_frame(t, p):
         else:
             fix_3d = sats >= 4
             fix_pos = sats >= 3
+        fix_type = (ge["fix_type"] if fresh_ext else
+                    (3 if fix_3d else 2 if fix_pos else 0))
+        prev = STATE["gps"]
+        was3d = bool(prev and prev.get("fix3d"))
         STATE["gps"] = {
             "lat": lat / 1e7, "lon": lon / 1e7,
             "speed": spd / 10.0, "heading": hdg / 100.0,
             "alt": float(alt - 1000), "sats": sats,
             "fix": fix_pos, "fix3d": fix_3d,
+            "fix_type": fix_type, "fix_type_computed": not fresh_ext,
         }
         if fix_pos:
             STATE["gps_last"] = dict(STATE["gps"])
-            if fix_3d and RECORD["active"]:
-                g = STATE["gps"]
-                RECORD["points"].append({
-                    "t": round(time.monotonic() - RECORD["start_mono"], 3),
-                    "lat": g["lat"], "lon": g["lon"], "alt": g["alt"],
-                    "speed": g["speed"], "heading": g["heading"], "sats": g["sats"],
-                })
+        if not was3d and fix_3d:
+            maybe_auto_record(True, "crsf")
+        if fix_3d and RECORD["active"]:
+            append_record_point(STATE["gps"], "crsf")
     elif t == 0x08 and len(p) >= 8:
         volt, curr = struct.unpack(">HH", p[:4])
         capacity = int.from_bytes(p[4:7], "big")
@@ -175,9 +479,19 @@ def listener(udp_port):
     except OSError as exc:
         raise SystemExit(f"Не удалось слушать UDP {udp_port}: {exc}") from exc
     while True:
-        data, _ = sock.recvfrom(4096)
+        data, addr = sock.recvfrom(65535)
+        ingest_datagram(data, f"{addr[0]}:{addr[1]}")
+
+
+def ingest_datagram(data, source="network"):
+    protocol = detect_protocol(data)
+    if protocol is None:
+        return False
+    with LOCK:
+        if not route_protocol(protocol, source):
+            return False
         now = time.time()
-        with LOCK:
+        if protocol == "crsf":
             STATS["total"] += 1
             STATS["times"].append(now)
             STATS["last"] = now
@@ -185,53 +499,91 @@ def listener(udp_port):
                 t = frame[2]
                 STATE["frames"][t] = STATE["frames"].get(t, 0) + 1
                 parse_frame(t, frame[3:-1])
+        else:
+            MAV_STATS["total"] += 1
+            MAV_STATS["times"].append(now)
+            MAV_STATS["last"] = now
+            for frame in mav.iter_frames(data):
+                if frame.crc_ok is True:
+                    parse_mavlink_frame(frame)
+    return True
 
 
 def snapshot():
     now = time.time()
     with LOCK:
         now_mono = time.monotonic()
-        pps = sum(1 for t in STATS["times"] if now - t <= 1.0)
-        age = (now - STATS["last"]) if STATS["last"] else None
-        telemetry_age = ((now_mono - STATE["telemetry_at"])
-                         if STATE["telemetry_at"] else None)
-        link_age = (now_mono - STATE["link_at"]) if STATE["link_at"] else None
-        link = STATE["link"]
-        link_up = bool(
-            link and link_age is not None and link_age <= ONLINE_TIMEOUT_SEC
-            and link["lq"] > 0 and link["lq_d"] > 0
-        )
+        protocol = active_protocol()
+        state = active_state()
+        stats = active_stats()
+        pps = sum(1 for t in stats["times"] if now - t <= 1.0)
+        age = (now - stats["last"]) if stats["last"] else None
+        telemetry_age = ((now_mono - state["telemetry_at"])
+                         if state["telemetry_at"] else None)
+        link_age = (now_mono - state["link_at"]) if state["link_at"] else None
+        link = state["link"]
+        if protocol == "mavlink":
+            link_up = bool(link_age is not None and link_age <= ONLINE_TIMEOUT_SEC)
+            messages_pps = sum(
+                1 for t in stats.get("message_times", ()) if now - t <= 1.0
+            )
+        else:
+            link_up = bool(
+                link and link_age is not None and link_age <= ONLINE_TIMEOUT_SEC
+                and link["lq"] > 0 and link["lq_d"] > 0
+            )
+            messages_pps = None
         online = link_up or (telemetry_age is not None
                              and telemetry_age <= ONLINE_TIMEOUT_SEC)
         record = {
             "active": RECORD["active"],
             "id": RECORD["id"],
             "started_at": RECORD["started_at"],
+            "protocol": RECORD["protocol"],
             "duration": (time.monotonic() - RECORD["start_mono"]) if RECORD["active"] else 0.0,
             "point_count": len(RECORD["points"]),
         }
-        return {
-            "link": copy.deepcopy(STATE["link"]),
-            "battery": copy.deepcopy(STATE["battery"]),
-            "gps": copy.deepcopy(STATE["gps"]),
-            "gps_last": copy.deepcopy(STATE["gps_last"]),
-            "gps_ext": copy.deepcopy(STATE["gps_ext"]),
-            "gps_time": STATE["gps_time"],
-            "attitude": copy.deepcopy(STATE["attitude"]),
-            "baro": copy.deepcopy(STATE["baro"]),
-            "vario": STATE["vario"],
-            "flight_mode": STATE["flight_mode"],
-            "device": STATE["device"],
-            "frames": dict(STATE["frames"]),
-            "unknown": dict(STATE["unknown"]),
-            "record": record,
-            "stats": {
-                "total": STATS["total"], "pps": pps, "age": age,
-                "online": online, "link_up": link_up,
-                "telemetry_age": telemetry_age, "link_age": link_age,
-            },
+        session = {
+            "id": SESSION["id"],
+            "protocol": SESSION["protocol"],
+            "started_at": SESSION["started_at"],
+            "source": SESSION["source"],
         }
-
+        stats_json = {
+            "total": stats["total"], "pps": pps, "age": age,
+            "online": online, "link_up": link_up,
+            "telemetry_age": telemetry_age, "link_age": link_age,
+        }
+        if protocol == "mavlink":
+            stats_json["messages"] = stats.get("messages", 0)
+            stats_json["messages_pps"] = messages_pps
+        return {
+            "protocol": protocol,
+            "session": session,
+            "capabilities": {
+                "link_stats": protocol == "crsf",
+                "rssi_pct": protocol == "mavlink",
+                "gps_ext": True,
+                "gps_time": True,
+                "device": protocol == "crsf",
+            },
+            "link": copy.deepcopy(state["link"]),
+            "battery": copy.deepcopy(state["battery"]),
+            "gps": copy.deepcopy(state["gps"]),
+            "gps_last": copy.deepcopy(state["gps_last"]),
+            "gps_ext": copy.deepcopy(state["gps_ext"]),
+            "gps_time": state["gps_time"],
+            "attitude": copy.deepcopy(state["attitude"]),
+            "baro": copy.deepcopy(state["baro"]),
+            "vario": state["vario"],
+            "flight_mode": state["flight_mode"],
+            "device": state["device"],
+            "armed": state.get("armed"),
+            "frames": dict(state["frames"]),
+            "unknown": dict(state["unknown"]),
+            "record": record,
+            "stats": stats_json,
+        }
 
 def track_id_valid(track_id):
     return bool(track_id and re.fullmatch(r"[A-Za-z0-9_-]{1,80}", track_id))
@@ -247,7 +599,7 @@ def next_track_id():
     return candidate
 
 
-def start_recording():
+def start_recording(protocol=None):
     with LOCK:
         if RECORD["active"]:
             return False, "already recording"
@@ -256,6 +608,7 @@ def start_recording():
         RECORD["id"] = next_track_id()
         RECORD["start_mono"] = time.monotonic()
         RECORD["started_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        RECORD["protocol"] = protocol or SESSION["protocol"] or "crsf"
         RECORD["points"] = []
         return True, ""
 
@@ -267,18 +620,23 @@ def stop_recording():
         points = list(RECORD["points"])
         track_id = RECORD["id"]
         started_at = RECORD["started_at"]
+        protocol = RECORD["protocol"]
         RECORD["active"] = False
         RECORD["id"] = None
         RECORD["started_at"] = None
         RECORD["start_mono"] = 0.0
+        RECORD["protocol"] = None
         RECORD["points"] = []
     if not points:
         return None, "no GPS points recorded"
+    protocols = sorted({p.get("protocol") for p in points if p.get("protocol")})
     meta = {
+        "version": 2,
         "id": track_id,
         "started_at": started_at,
         "duration": round(points[-1]["t"], 3),
         "point_count": len(points),
+        "protocols": protocols or ([protocol] if protocol else []),
     }
     os.makedirs(TRACKS_DIR, exist_ok=True)
     with open(os.path.join(TRACKS_DIR, track_id + ".json"), "w", encoding="utf-8") as f:
@@ -298,10 +656,58 @@ def record_snapshot(since=0):
             "active": RECORD["active"],
             "id": RECORD["id"],
             "started_at": RECORD["started_at"],
+            "protocol": RECORD["protocol"],
             "duration": (time.monotonic() - RECORD["start_mono"]) if RECORD["active"] else 0.0,
             "total": total,
             "points": copy.deepcopy(points[start:]),
         }
+
+
+def load_settings():
+    try:
+        with open(SETTINGS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            for key in ("auto_record_3d", "auto_stop_sec"):
+                if key in data:
+                    SETTINGS[key] = data[key]
+    except (OSError, ValueError):
+        pass
+
+
+def save_settings():
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(SETTINGS, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+def settings_snapshot():
+    return {
+        "auto_record_3d": bool(SETTINGS.get("auto_record_3d")),
+        "auto_stop_recording_sec": int(SETTINGS.get("auto_stop_sec", 10)),
+        "source": "network",
+        "udp_port": None,
+        "recording": RECORD["active"],
+    }
+
+
+def auto_stop_loop():
+    while True:
+        time.sleep(0.5)
+        with LOCK:
+            if not RECORD["active"]:
+                continue
+            seconds = int(SETTINGS.get("auto_stop_sec", 0) or 0)
+            if seconds <= 0:
+                continue
+            state = active_state()
+            if not state["telemetry_at"]:
+                continue
+            age = time.monotonic() - state["telemetry_at"]
+            if age > seconds:
+                stop_recording()
 
 
 def list_tracks():
@@ -562,6 +968,7 @@ PAGE = """<!doctype html>
     <button class="tab" data-tab="map" data-i18n="tab_map">Map</button>
   </nav>
   <div class="headRight">
+    <div id="protocol" class="pill proto" hidden>—</div>
     <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
     <select id="lang" class="lang" aria-label="Language">
       <option value="en">EN</option>
@@ -571,6 +978,7 @@ PAGE = """<!doctype html>
   </div>
 </header>
 <main id="telemetryPage">
+  <div id="crsfCards">
   <section class="card">
     <h2 data-i18n="card_link">Link</h2>
     <div class="row"><span data-i18n="lq_uplink">Uplink LQ</span><span class="lq" id="lqUp">—</span></div>
@@ -669,6 +1077,98 @@ PAGE = """<!doctype html>
       </table>
     </details>
   </section>
+  </div>
+  <div id="mavCards" hidden>
+  <section class="card">
+    <h2 data-i18n="card_link">Link</h2>
+    <div class="row"><span data-i18n="rssi">RSSI</span><span class="lq" id="mavRssi">—</span></div>
+    <div class="grid2">
+      <div><small data-i18n="mav_heartbeat">Heartbeat</small><div class="val" id="mavHeartbeat">—</div></div>
+      <div><small data-i18n="mav_armed">Armed</small><div class="val" id="mavArmed">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="mav_messages_per_sec">Messages/s</small><div class="val" id="mavMsgRate">—</div></div>
+      <div><small data-i18n="mav_messages_total">Messages</small><div class="val" id="mavMsgTotal">—</div></div>
+    </div>
+    <div class="row"><span data-i18n="mavlink_loss">MAVLink loss</span><span class="val" id="mavLoss">—</span></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_gps">GPS</h2>
+    <div class="gpsHead">
+      <div class="gpsSats"><span id="mavSats">—</span><small data-i18n="satellites">satellites</small></div>
+      <div id="mavGpsQrWrap" class="qrBox" hidden role="button" tabindex="0"><div id="mavGpsQr" class="qrCode"></div></div>
+    </div>
+    <div class="grid2 gpsGrid">
+      <div><small data-i18n="latitude">Latitude</small><div class="val" id="mavLat">—</div></div>
+      <div><small data-i18n="longitude">Longitude</small><div class="val" id="mavLon">—</div></div>
+      <div><small data-i18n="altitude">Altitude</small><div class="val" id="mavAlt">—</div></div>
+      <div><small data-i18n="speed">Speed</small><div class="val" id="mavSpd">—</div></div>
+    </div>
+    <div class="grid3 gpsGrid3">
+      <div><small data-i18n="heading">Heading</small><div class="val" id="mavHdg">—</div></div>
+      <div><small data-i18n="fix">Fix</small><div class="val" id="mavFix">—</div></div>
+      <div><small data-i18n="hdop">HDOP</small><div class="val" id="mavHdop">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="vdop">VDOP</small><div class="val" id="mavVdop">—</div></div>
+      <div><small data-i18n="mav_h_acc">H accuracy</small><div class="val" id="mavHAcc">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_flight">Flight</h2>
+    <div class="modeRow">
+      <div class="big" id="mavFlightMode">—</div>
+      <div class="modeNote" id="mavFlightNote"></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="altitude">Altitude</small><div class="val" id="mavBaroAlt">—</div></div>
+      <div><small data-i18n="vario">Vario</small><div class="val" id="mavVario">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="gps_time">GPS time</small><div class="val" id="mavGpsTime">—</div></div>
+      <div><small data-i18n="device">Device</small><div class="val" id="mavDevice">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_attitude">Attitude</h2>
+    <div class="horizon"><div class="inner" id="mavHorizon"></div><div class="cross"></div></div>
+    <div class="grid3">
+      <div><small data-i18n="pitch">Pitch</small><div class="val" id="mavPitch">—</div></div>
+      <div><small data-i18n="roll">Roll</small><div class="val" id="mavRoll">—</div></div>
+      <div><small data-i18n="yaw">Yaw</small><div class="val" id="mavYaw">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_battery">Battery</h2>
+    <div class="big"><span id="mavVolt">—</span> <small data-i18n="u_v">V</small></div>
+    <div class="grid2">
+      <div><small data-i18n="current">Current</small><div class="val" id="mavCurr">—</div></div>
+      <div><small data-i18n="capacity">Capacity</small><div class="val" id="mavCap">—</div></div>
+    </div>
+    <div class="row"><span data-i18n="remaining">Remaining</span><span class="lq" id="mavRemTxt">—</span></div>
+    <div class="track"><div class="fill" id="mavBarRem"></div></div>
+  </section>
+
+  <section class="card wide">
+    <h2 data-i18n="card_rx">Reception</h2>
+    <div class="grid4">
+      <div><small data-i18n="mav_messages_per_sec">Messages/s</small><div class="val" id="mavPps">—</div></div>
+      <div><small data-i18n="mav_messages_total">Messages</small><div class="val" id="mavTotal">—</div></div>
+      <div><small data-i18n="data_age">Data age</small><div class="val" id="mavAge">—</div></div>
+      <div><small data-i18n="frame_types">Message types</small><div class="val" id="mavTypesCount">—</div></div>
+    </div>
+    <details><summary data-i18n="mavlink_messages">MAVLink messages</summary>
+      <table class="frames">
+        <thead><tr><th data-i18n="th_type">Type</th><th data-i18n="th_frame">Message</th><th data-i18n="th_packets">Count</th><th data-i18n="th_contains">Contains</th></tr></thead>
+        <tbody id="mavFramesBody"><tr><td colspan="4" class="muted" data-i18n="no_frames">no messages yet</td></tr></tbody>
+      </table>
+    </details>
+  </section>
+  </div>
 
   <details class="card settingsCard" id="settingsCard" hidden>
     <summary data-i18n="settings">Settings</summary>
@@ -713,6 +1213,28 @@ PAGE = """<!doctype html>
     </div>
   </details>
 
+  <details class="card settingsCard" id="desktopSettingsCard" hidden>
+    <summary data-i18n="settings">Settings</summary>
+    <div class="settingsBody">
+      <div class="settingsGroup">
+        <label class="settingsRow" for="desktopAutoRecord3d">
+          <input id="desktopAutoRecord3d" type="checkbox">
+          <span data-i18n="auto_record_3d">Auto-record on 3D fix</span>
+        </label>
+        <div class="guideNote" data-i18n="auto_record_3d_note">Start a new track when a 3D fix appears. Off by default.</div>
+      </div>
+      <div class="settingsGroup">
+        <div class="settingsLabel" data-i18n="auto_stop_recording">Stop recording when telemetry is lost (s)</div>
+        <div class="settingsRow">
+          <input id="desktopAutoStop" type="number" min="0" max="3600" inputmode="numeric">
+          <button id="desktopAutoStopSave" class="mapBtn" data-i18n="apply">Apply</button>
+          <span id="desktopSettingsMsg" class="settingsMsg"></span>
+        </div>
+        <div class="guideNote" data-i18n="auto_stop_recording_note">0 — never stop automatically.</div>
+      </div>
+    </div>
+  </details>
+
   <details class="card guideCard">
     <summary data-i18n="guide_title">Quick setup guide</summary>
     <div class="guideBody">
@@ -732,7 +1254,7 @@ PAGE = """<!doctype html>
 
       <b data-i18n="guide_espnow">ESP-NOW via USB setup</b>
       <ol class="guideList">
-        <li data-i18n="guide_espnow_1">Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.</li>
+        <li data-i18n-html="guide_espnow_1">Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.</li>
         <li data-i18n="guide_espnow_2">In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.</li>
         <li data-i18n="guide_espnow_3">Connect the dongle to the computer and find its serial port (/dev/ttyACM0, COMx, …).</li>
         <li data-i18n="guide_espnow_4">Start the viewer and the bridge: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550</li>
@@ -879,13 +1401,29 @@ function setSettingsMsg(id, text, isError) {
   el.classList.toggle("err", !!isError);
 }
 
+function applyDesktopSettings(data) {
+  const rec = $("desktopAutoRecord3d");
+  const stop = $("desktopAutoStop");
+  if (rec) rec.checked = !!data.auto_record_3d;
+  if (stop) stop.value = data.auto_stop_recording_sec ?? 10;
+}
+
 async function loadSettings() {
   const card = $("settingsCard");
-  if (!card) return;
+  const desktop = $("desktopSettingsCard");
   if (!ANDROID_SETTINGS) {
-    card.hidden = true;
+    if (card) card.hidden = true;
+    if (desktop) {
+      desktop.hidden = false;
+      try {
+        const res = await fetch("/api/settings", { cache: "no-store" });
+        if (res.ok) applyDesktopSettings(await res.json());
+      } catch (e) {
+      }
+    }
     return;
   }
+  if (!card) return;
   card.hidden = false;
   try {
     const res = await fetch("/api/settings", { cache: "no-store" });
@@ -989,6 +1527,18 @@ const I18N = {
     settings: "Settings",
     udp_port: "UDP listen port",
     apply: "Apply",
+    settings_saved: "Saved",
+    auto_stop_recording_error: "Enter 0..3600 seconds",
+    mav_heartbeat: "Heartbeat",
+    mav_armed: "Armed",
+    mav_messages_per_sec: "Messages/s",
+    mav_messages_total: "Messages",
+    mavlink_loss: "MAVLink loss",
+    mavlink_messages: "MAVLink messages",
+    mav_h_acc: "H accuracy",
+    mav_armed_yes: "yes",
+    mav_armed_no: "no",
+    mav_alive: "alive",
     udp_port_note: "The backpack must send telemetry to this port.",
     idle_release: "Release locks when no data (min)",
     idle_release_note: "0 or empty — never release locks.",
@@ -1026,7 +1576,7 @@ const I18N = {
     guide_wifi_3: "Start the viewer: python3 tlm_viewer.py",
     guide_wifi_4: "Open http://localhost:8080 and wait for the green online status and growing packet counters.",
     guide_espnow: "ESP-NOW via USB setup",
-    guide_espnow_1: "Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.",
+    guide_espnow_1: 'Flash the <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> native-USB dongle with esp32-c3-usb via the <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> or PlatformIO.',
     guide_espnow_2: "In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Connect the dongle to the computer and find its serial port (/dev/ttyACM0, COMx, …).",
     guide_espnow_4: "Start the viewer and the bridge: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
@@ -1177,6 +1727,18 @@ const I18N = {
     settings: "Настройки",
     udp_port: "UDP-порт прослушивания",
     apply: "Применить",
+    settings_saved: "Сохранено",
+    auto_stop_recording_error: "Введите 0..3600 секунд",
+    mav_heartbeat: "Heartbeat",
+    mav_armed: "Armed",
+    mav_messages_per_sec: "Сообщений/с",
+    mav_messages_total: "Сообщений",
+    mavlink_loss: "Потери MAVLink",
+    mavlink_messages: "Сообщения MAVLink",
+    mav_h_acc: "Точность H",
+    mav_armed_yes: "да",
+    mav_armed_no: "нет",
+    mav_alive: "жив",
     udp_port_note: "Бэкпак должен отправлять телеметрию на этот порт.",
     idle_release: "Отпускать блокировки при отсутствии данных, мин",
     idle_release_note: "0 или пусто — никогда не отпускать блокировки.",
@@ -1214,7 +1776,7 @@ const I18N = {
     guide_wifi_3: "Запустите вьюер: python3 tlm_viewer.py",
     guide_wifi_4: "Откройте http://localhost:8080 и дождитесь зелёного статуса «онлайн» и роста пакетов.",
     guide_espnow: "Настройка ESP-NOW по USB",
-    guide_espnow_1: "Прошейте ESP32-C3 с native USB прошивкой esp32-c3-usb через Web Flasher или PlatformIO.",
+    guide_espnow_1: 'Прошейте <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#прошивка-usb-приемника-esp-now-и-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> с native USB прошивкой esp32-c3-usb через <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> или PlatformIO.',
     guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Подключите приемник ESP-NOW к компьютеру и найдите его serial-порт (/dev/ttyACM0, COMx, …).",
     guide_espnow_4: "Запустите вьюер и мост: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
@@ -1365,6 +1927,18 @@ const I18N = {
     settings: "设置",
     udp_port: "UDP 监听端口",
     apply: "应用",
+    settings_saved: "已保存",
+    auto_stop_recording_error: "请输入 0..3600 秒",
+    mav_heartbeat: "心跳",
+    mav_armed: "已解锁",
+    mav_messages_per_sec: "消息/秒",
+    mav_messages_total: "消息数",
+    mavlink_loss: "MAVLink 丢包",
+    mavlink_messages: "MAVLink 消息",
+    mav_h_acc: "水平精度",
+    mav_armed_yes: "是",
+    mav_armed_no: "否",
+    mav_alive: "正常",
     udp_port_note: "背包必须将遥测发送到此端口。",
     idle_release: "无数据时释放锁（分钟）",
     idle_release_note: "0 或留空 — 永不释放锁。",
@@ -1402,7 +1976,7 @@ const I18N = {
     guide_wifi_3: "启动查看器：python3 tlm_viewer.py",
     guide_wifi_4: "打开 http://localhost:8080，等待绿色“在线”状态和不断增长的包计数。",
     guide_espnow: "USB ESP-NOW 设置",
-    guide_espnow_1: "通过 Web Flasher 或 PlatformIO 为带 native USB 的 ESP32-C3 刷写 esp32-c3-usb。",
+    guide_espnow_1: '通过 <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> 或 PlatformIO 为带 native USB 的 <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> 刷写 esp32-c3-usb。',
     guide_espnow_2: "在 EdgeTX 中设置：ELRS Lua → Backpack → Telemetry → ESP-NOW。",
     guide_espnow_3: "将适配器连接到电脑，并找到其串口（/dev/ttyACM0、COMx 等）。",
     guide_espnow_4: "启动查看器和桥接：python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
@@ -1593,6 +2167,9 @@ function applyI18n() {
   document.title = t("page_title");
   document.querySelectorAll("[data-i18n]").forEach(el => {
     el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => {
+    el.innerHTML = t(el.getAttribute("data-i18n-html"));
   });
   $("lang").value = LANG;
   applyPlatformUi();
@@ -1798,9 +2375,10 @@ function updateMap(gps, force) {
 let lastQrData = null;
 let lastQrGps = null;
 
-function updateQr(g, last) {
-  const wrap = $("gpsQrWrap");
-  const box = $("gpsQr");
+function updateQr(g, last, wrapId = "gpsQrWrap", boxId = "gpsQr") {
+  const wrap = $(wrapId);
+  const box = $(boxId);
+  if (!wrap || !box) return;
   if (g && g.fix && Number.isFinite(g.lat) && Number.isFinite(g.lon)) {
     lastQrGps = { lat: g.lat, lon: g.lon };
   }
@@ -1811,16 +2389,16 @@ function updateQr(g, last) {
   }
   const data = "geo:0,0?q=" + src.lat.toFixed(6) + "," + src.lon.toFixed(6);
   if (typeof window.qrcode === "function") {
-    if (data !== lastQrData) {
+    if (data !== box.dataset.qrData) {
       const qr = qrcode(0, "M");
       qr.addData(data);
       qr.make();
       box.innerHTML = qr.createSvgTag({ cellSize: 3, margin: 1 });
-      lastQrData = data;
+      box.dataset.qrData = data;
     }
   } else {
     box.textContent = data;
-    lastQrData = null;
+    box.dataset.qrData = "";
   }
   wrap.title = t("open_in_maps");
   wrap.setAttribute("aria-label", t("open_in_maps"));
@@ -2161,8 +2739,124 @@ function switchTab(name) {
   }
 }
 
+function mavFrameInfo(id) {
+  const map = {
+    0: ["HEARTBEAT", "Autopilot state and armed flag"],
+    1: ["SYS_STATUS", "Battery voltage, current and remaining"],
+    2: ["SYSTEM_TIME", "UTC time when RTC is available"],
+    24: ["GPS_RAW_INT", "GPS fix, coordinates, altitude, accuracy"],
+    30: ["ATTITUDE", "Roll, pitch and yaw"],
+    33: ["GLOBAL_POSITION_INT", "Relative altitude, NED velocity and heading"],
+    35: ["RC_CHANNELS_RAW", "RC channels and RSSI"],
+    49: ["GPS_GLOBAL_ORIGIN", "Home coordinates"],
+    74: ["VFR_HUD", "Ground speed, altitude and heading"],
+    147: ["BATTERY_STATUS", "Consumed capacity and remaining"],
+    242: ["HOME_POSITION", "Home position"],
+    253: ["STATUSTEXT", "Autopilot status text"],
+  };
+  return map[id] || null;
+}
+
+function mavNum(v, digits, unit) {
+  return v === null || v === undefined ? "—" : Number(v).toFixed(digits) + (unit || "");
+}
+
+function renderMavlink(s, st) {
+  const l = s.link || {};
+  setText("mavRssi", l.rssi_pct != null ? Number(l.rssi_pct).toFixed(1) + " %" : "—");
+  setText("mavHeartbeat", st.link_age != null
+    ? (st.link_age <= 2 ? t("mav_alive") : st.link_age.toFixed(1) + " " + t("u_s"))
+    : "—");
+  setText("mavArmed", s.armed === true ? t("mav_armed_yes")
+    : s.armed === false ? t("mav_armed_no") : "—");
+  setText("mavMsgRate", st.messages_pps != null ? st.messages_pps : "—");
+  setText("mavMsgTotal", st.messages != null ? st.messages : "—");
+  setText("mavLoss", "—");
+
+  const g = s.gps;
+  const gp = (g && g.fix) ? g : s.gps_last;
+  setText("mavSats", gp ? gp.sats : "—");
+  if (gp) {
+    setText("mavLat", Number(gp.lat).toFixed(7));
+    setText("mavLon", Number(gp.lon).toFixed(7));
+    setText("mavAlt", Number(gp.alt).toFixed(1) + " " + t("u_m"));
+    setText("mavSpd", Number(gp.speed).toFixed(1) + " " + t("u_kmh"));
+    setText("mavHdg", Number(gp.heading).toFixed(0) + "°");
+  } else {
+    ["mavLat", "mavLon", "mavAlt", "mavSpd", "mavHdg"].forEach(id => setText(id, "—"));
+  }
+  updateQr(g, s.gps_last, "mavGpsQrWrap", "mavGpsQr");
+  const ge = s.gps_ext || {};
+  setText("mavFix", g ? (g.fix3d ? "3D" : (g.fix ? "2D" : t("fix_none"))) : "—");
+  setText("mavHdop", mavNum(ge.hdop, 1));
+  setText("mavVdop", mavNum(ge.vdop, 1));
+  setText("mavHAcc", ge.h_acc != null ? mavNum(ge.h_acc, 2, " " + t("u_m")) : "—");
+
+  setText("mavFlightMode", s.flight_mode || "—");
+  setText("mavFlightNote", s.armed === true ? t("mode_armed")
+    : s.armed === false ? t("mode_ready") : "");
+  setText("mavBaroAlt", s.baro ? Number(s.baro.alt).toFixed(1) + " " + t("u_m") : "—");
+  const vario = s.vario != null ? s.vario : (s.baro ? s.baro.vario : null);
+  setText("mavVario", vario != null
+    ? (vario >= 0 ? "+" : "") + Number(vario).toFixed(1) + " " + t("u_ms") : "—");
+  setText("mavGpsTime", s.gps_time || "—");
+  setText("mavDevice", s.device || "—");
+
+  const a = s.attitude;
+  if (a) {
+    setText("mavPitch", Number(a.pitch).toFixed(1) + "°");
+    setText("mavRoll", Number(a.roll).toFixed(1) + "°");
+    setText("mavYaw", Number(a.yaw).toFixed(1) + "°");
+    $("mavHorizon").style.transform = "rotate(" + (-a.roll).toFixed(1) + "deg) translateY(" + (a.pitch * 3).toFixed(1) + "px)";
+  } else {
+    ["mavPitch", "mavRoll", "mavYaw"].forEach(id => setText(id, "—"));
+  }
+
+  const b = s.battery;
+  const hasBattery = b && (b.voltage != null || b.current != null || b.capacity != null);
+  if (hasBattery) {
+    setText("mavVolt", b.voltage != null ? Number(b.voltage).toFixed(1) : "—");
+    setText("mavCurr", b.current != null ? Number(b.current).toFixed(1) + " " + t("u_a") : "—");
+    setText("mavCap", b.capacity != null ? b.capacity + " " + t("u_mah") : "—");
+    setText("mavRemTxt", b.remaining != null ? b.remaining + "%" : "—");
+    bar("mavBarRem", b.remaining, "mavRemTxt");
+  } else {
+    setText("mavVolt", "—"); setText("mavCurr", "—"); setText("mavCap", "—");
+    setText("mavRemTxt", t("no_data")); bar("mavBarRem", 0, "mavRemTxt");
+  }
+
+  setText("mavPps", st.messages_pps != null ? st.messages_pps : "—");
+  setText("mavTotal", st.messages != null ? st.messages : "—");
+  setText("mavAge", st.age != null ? st.age.toFixed(2) + " " + t("u_s") : "—");
+  const f = s.frames || {};
+  const keys = Object.keys(f).sort((x, y) => Number(x) - Number(y));
+  setText("mavTypesCount", keys.length);
+  const rows = keys.map(k => {
+    const id = Number(k);
+    const info = mavFrameInfo(id);
+    return "<tr" + (info ? "" : ' class="unknown"') + ">" +
+      "<td>" + id + "</td>" +
+      "<td>" + (info ? info[0] : t("unknown_frame")) + "</td>" +
+      "<td>" + f[k] + "</td>" +
+      "<td>" + (info ? info[1] : t("not_described")) + "</td></tr>";
+  });
+  $("mavFramesBody").innerHTML = rows.length
+    ? rows.join("")
+    : '<tr><td colspan="4" class="muted">' + t("no_frames") + "</td></tr>";
+}
+
 function render(s) {
   const st = s.stats || {};
+  const protocol = s.protocol || "crsf";
+  const crsfCards = $("crsfCards");
+  const mavCards = $("mavCards");
+  if (crsfCards) crsfCards.hidden = protocol === "mavlink";
+  if (mavCards) mavCards.hidden = protocol !== "mavlink";
+  const protoBadge = $("protocol");
+  if (protoBadge) {
+    protoBadge.hidden = false;
+    protoBadge.textContent = protocol === "mavlink" ? "MAVLink" : "CRSF";
+  }
   const online = st.online === true;
   const transportFresh = st.age !== null && st.age !== undefined && st.age < 2 && st.total > 0;
   const pill = $("status");
@@ -2180,6 +2874,9 @@ function render(s) {
       : t(mobile ? "status_no_data_short" : "status_no_data");
   }
 
+  if (protocol === "mavlink") {
+    renderMavlink(s, st);
+  } else {
   const l = s.link;
   if (l) {
     setText("lqUp", l.lq + "%");   bar("barUp", l.lq, "lqUp");
@@ -2297,6 +2994,7 @@ function render(s) {
   $("framesBody").innerHTML = rows.length
     ? rows.join("")
     : '<tr><td colspan="4" class="muted">' + t("no_frames") + "</td></tr>";
+  }
 
   const currentGps = (s.gps && s.gps.fix) ? s.gps : null;
   mapGpsLive = !!currentGps;
@@ -2363,6 +3061,15 @@ $("gpsQrWrap").addEventListener("keydown", e => {
     openGpsInMaps();
   }
 });
+if ($("mavGpsQrWrap")) {
+  $("mavGpsQrWrap").addEventListener("click", openGpsInMaps);
+  $("mavGpsQrWrap").addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openGpsInMaps();
+    }
+  });
+}
 $("followDrone").addEventListener("change", e => {
   mapFollow = e.target.checked;
   if (mapFollow) updateMap(mapLastGps, true);
@@ -2479,11 +3186,48 @@ $("closeApp").addEventListener("click", () => {
   AndroidSettings.closeApp();
 });
 
+$("desktopAutoRecord3d").addEventListener("change", async (e) => {
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auto_record_3d: e.target.checked }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "error");
+    applyDesktopSettings(data.settings || {});
+    setSettingsMsg("desktopSettingsMsg", t("settings_saved"));
+  } catch (err) {
+    setSettingsMsg("desktopSettingsMsg", String(err.message || err), true);
+  }
+});
+$("desktopAutoStopSave").addEventListener("click", async () => {
+  const raw = $("desktopAutoStop").value.trim();
+  const seconds = raw === "" ? 0 : parseInt(raw, 10);
+  if (!Number.isFinite(seconds) || seconds < 0 || seconds > 3600) {
+    setSettingsMsg("desktopSettingsMsg", t("auto_stop_recording_error"), true);
+    return;
+  }
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auto_stop_recording_sec: seconds }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "error");
+    applyDesktopSettings(data.settings || {});
+    setSettingsMsg("desktopSettingsMsg", t("settings_saved"));
+  } catch (err) {
+    setSettingsMsg("desktopSettingsMsg", String(err.message || err), true);
+  }
+});
+
 setTrackCollapsed(true);
 const initialTab = new URLSearchParams(location.search).get("tab") === "map" ? "map" : "telemetry";
 switchTab(initialTab);
 tick();
-if (ANDROID_SETTINGS) loadSettings();
+loadSettings();
 </script>
 </body>
 </html>
@@ -2608,6 +3352,8 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file(TILES_DIR, path[len("/tiles/"):], "public, max-age=3600")
         elif path == "/api/state":
             self._json(snapshot())
+        elif path == "/api/settings":
+            self._json(settings_snapshot())
         elif path == "/api/record":
             try:
                 since = int(parse_qs(parsed.query).get("since", ["0"])[0])
@@ -2627,7 +3373,24 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        if path == "/api/record/start":
+        if path == "/api/settings":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length) or b"{}")
+                if not isinstance(body, dict):
+                    raise ValueError("object expected")
+                if "auto_record_3d" in body:
+                    SETTINGS["auto_record_3d"] = bool(body["auto_record_3d"])
+                if "auto_stop_recording_sec" in body:
+                    value = int(body["auto_stop_recording_sec"])
+                    if value < 0 or value > 3600:
+                        raise ValueError("auto_stop_recording_sec must be 0..3600")
+                    SETTINGS["auto_stop_sec"] = value
+                save_settings()
+                self._json({"ok": True, "settings": settings_snapshot()})
+            except (ValueError, TypeError, json.JSONDecodeError) as exc:
+                self._json({"ok": False, "error": str(exc)}, 400)
+        elif path == "/api/record/start":
             ok, error = start_recording()
             if ok:
                 self._json({"ok": True, "record": record_snapshot(0)}, 200)
@@ -2663,7 +3426,9 @@ def main():
     parser.add_argument("--http-port", type=int, default=8080)
     args = parser.parse_args()
 
+    load_settings()
     threading.Thread(target=listener, args=(args.udp_port,), daemon=True).start()
+    threading.Thread(target=auto_stop_loop, daemon=True).start()
     server = ThreadingHTTPServer((args.http_host, args.http_port), Handler)
     print(f"UDP  : 0.0.0.0:{args.udp_port}")
     print(f"HTTP : http://localhost:{args.http_port}")

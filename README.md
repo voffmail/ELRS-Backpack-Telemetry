@@ -8,6 +8,7 @@ Android-приложение для телеметрии ExpressLRS: показ�
 
 - **Wi-Fi (по умолчанию)** — не требует дополнительного железа. Подходит, чтобы быстро начать.
 - **ESP-NOW по USB (рекомендуется)** — меньше засоряет радиоэфир: нет Wi-Fi AP/beacons и трафика телефона в 2.4 ГГц. Нужен USB-приемник ESP-NOW на ESP32-C3 с native USB, OTG и кабель.
+- **Протокол в режиме «Сеть»** — CRSF или MAVLink определяется автоматически по потоку. MAVLink работает только по Wi-Fi; ESP-NOW-путь остаётся CRSF.
 
 ```text
 Wi-Fi:    Дрон / FC ──► ELRS RX ──► TX-модуль ──► Backpack ──Wi-Fi/UDP──► приложение
@@ -87,7 +88,8 @@ Python-вьюер пока работает в онлайн-режиме.
 ```
 
 Прошивка: `firmware/.pio/build/esp32-c3-usb/firmware.bin`. Используется только
-native-USB ESP32-C3 (например, Super Mini).
+native-USB ESP32-C3 (например, Super Mini). На AliExpress плату можно найти
+примерно за $1.5 по ключевым словам «esp32-c3 super mini».
 
 [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) собирается из merged-образа (`build/firmware-merged.bin`) скриптом `scripts/make_webflasher.py`; workflow `.github/workflows/webflasher.yml` публикует сайт на GitHub Pages. Для публикации один раз включите **Settings → Pages → Source: GitHub Actions**.
 
@@ -127,6 +129,7 @@ There are two ways to receive telemetry:
 
 - **Wi-Fi (default)** — no extra hardware. The easiest way to start.
 - **ESP-NOW via USB (recommended)** — less RF pollution: no Wi-Fi AP/beacons and no phone traffic in 2.4 GHz. Requires an ESP32-C3 USB dongle with native USB, OTG and a data cable.
+- **Protocol in Network mode** — CRSF or MAVLink is detected automatically from the stream. MAVLink is Wi-Fi-only; the ESP-NOW USB path remains CRSF.
 
 ```text
 Wi-Fi:    Drone / FC ──► ELRS RX ──► TX module ──► Backpack ──Wi-Fi/UDP──► app
@@ -191,7 +194,8 @@ Build the firmware (PlatformIO is installed locally into `.toolchain/venv`):
 ```
 
 Firmware: `firmware/.pio/build/esp32-c3-usb/firmware.bin`. Only native-USB
-ESP32-C3 boards (e.g. Super Mini) are supported.
+ESP32-C3 boards (e.g. Super Mini) are supported. On AliExpress, search for
+“esp32-c3 super mini” — the board is usually around $1.5.
 
 The [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) is built from the merged image (`build/firmware-merged.bin`) with `scripts/make_webflasher.py`; `.github/workflows/webflasher.yml` publishes the site to GitHub Pages. Enable **Settings → Pages → Source: GitHub Actions** once.
 

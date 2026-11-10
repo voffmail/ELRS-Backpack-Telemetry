@@ -25,7 +25,7 @@ ESP32-C3 dongle ──USB CDC──► Android
 | Вопрос | Решение |
 |---|---|
 | Формат выхода | сырые ESP-NOW payload'ы с CRSF-кадрами, native USB CDC |
-| MAVLink | не формируется |
+| MAVLink | не формируется (донгл остаётся CRSF; MAVLink — Wi-Fi-путь приложения) |
 | Android | встроенный вьюер из каталога `android/` |
 | Конфигурация | NVS + протокол `AA 55` по USB CDC |
 | ПК-вьюер | `tlm_viewer.py` + `tools/serial_bridge.py` |
@@ -173,7 +173,9 @@ GPS extended, Vario, Battery, Baro, Link, Attitude, Flight mode, Device info
 2. **Native-USB reset**: открытие CDC-порта может один раз перезагрузить
    плату; приложение и мост переживают reconnect.
 3. **Питание**: телефон не заряжается при OTG; учитывать ток и нагрев.
-4. **MAVLink**: не поддерживается; для QGC нужен отдельный мост.
+4. **MAVLink**: приложение поддерживает MAVLink в Wi-Fi-режиме; USB-приемник
+   ESP-NOW остаётся CRSF-транспортом. Для QGC нужен Wi-Fi-путь или отдельный
+   MAVLink-мост.
 5. **Web Serial**: только desktop Chrome/Edge; fallback — PlatformIO/esptool.
 
 ## 12. Лицензия

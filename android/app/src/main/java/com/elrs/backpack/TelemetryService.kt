@@ -205,7 +205,7 @@ class TelemetryService : Service(), SettingsHost {
         stopSource()
         currentSource = source
         settings.source = source
-        state.resetCounters()
+        state.resetTelemetry()
         if (source == AppSettings.SOURCE_USB) {
             startUsb()
         } else {

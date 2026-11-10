@@ -15,8 +15,9 @@
   * { box-sizing: border-box; }
   body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
          background: #0b0f14; color: #e6edf3; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-           padding: 7px 16px; border-bottom: 1px solid #1f2630; position: sticky; top: 0;
+  header { --header-tab-height: 34px;
+           display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+           padding: 12px 16px; border-bottom: 1px solid #1f2630; position: sticky; top: 0;
            background: rgba(11,15,20,.92); backdrop-filter: blur(8px); z-index: 2; }
   .brand { display: flex; flex-direction: column; gap: 1px; font-size: 15px;
            letter-spacing: .2px; line-height: 1.1; }
@@ -30,8 +31,11 @@
   .pill.on { color: #3fb950; border-color: #238636; background: rgba(63,185,80,.1); }
   .pill.off { color: #f85149; border-color: #6e2c2c; background: rgba(248,81,73,.08); }
   .headRight { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; flex: 0 0 auto; }
-  .lang { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px;
-          padding: 3px 6px; font-size: 11px; outline: none; }
+  .statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; }
+  .proto { font-size: 9px; padding: 1px 6px; line-height: 1.2; }
+  .lang { background: #11161d; color: #e6edf3; border: 1px solid #30363d; border-radius: 12px;
+          height: var(--header-tab-height); padding: 0 8px; font-size: 11px; outline: none;
+          box-sizing: border-box; }
   .lang:focus { border-color: #3fb950; }
   .iconBtn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
              padding: 0; border-radius: 8px; border: 1px solid #30363d; background: #11161d;
@@ -92,7 +96,9 @@
   [hidden] { display: none !important; }
   .tabs { display: flex; flex: 1; justify-content: center; gap: 6px; padding: 0; margin: 0; }
   .tab { background: transparent; color: #7d8590; border: 1px solid transparent; border-radius: 12px;
-         padding: 6px 15px; font-size: 18px; line-height: 1.2; font-family: inherit; cursor: pointer; }
+         height: var(--header-tab-height); padding: 0 15px; font-size: 18px; line-height: 1.2;
+         font-family: inherit; cursor: pointer; display: inline-flex; align-items: center;
+         justify-content: center; box-sizing: border-box; }
   .tab:hover { color: #e6edf3; }
   .tab.active { color: #e6edf3; background: #11161d; border-color: #30363d; }
   #mapPage { padding: 16px 20px 40px; max-width: 1200px; margin: 0 auto; }
@@ -292,7 +298,7 @@
                                 overflow-wrap: anywhere; }
   @media (max-width: 620px) { .pointBody { grid-template-columns: 1fr; } }
   @media (max-width: 720px) { .gpsGrid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 520px) { header { padding: 5px 8px; gap: 2px; } .brand { font-size: 12px; } .pill { font-size: 9px; padding: 2px 5px; } .lang { font-size: 9px; padding: 2px 3px; border-radius: 5px; } .headRight { gap: 3px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 2px; padding: 0; min-width: 0; } .tab { padding: 4px 7px; font-size: 14px; border-radius: 9px; } #mapPage { padding: 12px; } #settingsPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
+  @media (max-width: 520px) { header { --header-tab-height: 25px; padding: 7.5px 8px; gap: 2px; } .brand { font-size: 12px; } .pill { font-size: 9px; padding: 2px 5px; } .proto { font-size: 8px; padding: 1px 4px; } .lang { font-size: 9px; padding: 0 5px; border-radius: 9px; } .headRight { gap: 3px; } main { padding: 12px; } .big { font-size: 28px; } .tabs { justify-content: center; gap: 2px; padding: 0; min-width: 0; } .tab { padding: 0 7px; font-size: 14px; border-radius: 9px; } #mapPage { padding: 12px; } #settingsPage { padding: 12px; } .qrCode { width: 84px; height: 84px; } .gpsSats #sats { font-size: 24px; } .trackPanel { left: 8px; right: 8px; bottom: 8px; } .trackSelect { max-width: 150px; } #mapInfo { display: none; } }
   @media (max-width: 330px) { .tabs { order: 3; flex-basis: 100%; justify-content: flex-start; padding-top: 2px; } }
 
   /* Readability: settings and guides */
@@ -360,7 +366,10 @@
     <button class="tab" data-tab="map" data-i18n="tab_map">Map</button>
   </nav>
   <div class="headRight">
-    <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
+    <div class="statusStack">
+      <div id="status" class="pill" data-i18n="status_wait">waiting for data</div>
+      <div id="protocol" class="pill proto" hidden>—</div>
+    </div>
     <button id="settingsBtn" class="iconBtn" type="button" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.55-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.39 1.03.7 1.62.94l.36 2.54c.03.24.24.41.48.41h3.84c.24 0 .45-.17.48-.41l.36-2.54c.59-.24 1.13-.55 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
     </button>
@@ -373,6 +382,7 @@
 </header>
 <main id="telemetryPage">
   <div id="firmwareBadge" class="firmwareBadge" hidden></div>
+  <div id="crsfCards">
   <section class="card">
     <h2 data-i18n="card_link">Link</h2>
     <div class="row helpParam" data-help="lq_uplink"><span data-i18n="lq_uplink">Uplink LQ</span><span class="lq" id="lqUp">—</span></div>
@@ -484,6 +494,98 @@
       </table>
     </details>
   </section>
+  </div>
+  <div id="mavCards" hidden>
+  <section class="card">
+    <h2 data-i18n="card_link">Link</h2>
+    <div class="row"><span data-i18n="rssi">RSSI</span><span class="lq" id="mavRssi">—</span></div>
+    <div class="grid2">
+      <div><small data-i18n="mav_heartbeat">Heartbeat</small><div class="val" id="mavHeartbeat">—</div></div>
+      <div><small data-i18n="mav_armed">Armed</small><div class="val" id="mavArmed">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="mav_messages_per_sec">Messages/s</small><div class="val" id="mavMsgRate">—</div></div>
+      <div><small data-i18n="mav_messages_total">Messages</small><div class="val" id="mavMsgTotal">—</div></div>
+    </div>
+    <div class="row"><span data-i18n="mavlink_loss">MAVLink loss</span><span class="val" id="mavLoss">—</span></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_gps">GPS</h2>
+    <div class="gpsHead">
+      <div class="gpsSats"><span id="mavSats">—</span><small data-i18n="satellites">satellites</small></div>
+      <div id="mavGpsQrWrap" class="qrBox" hidden role="button" tabindex="0"><div id="mavGpsQr" class="qrCode"></div></div>
+    </div>
+    <div class="grid2 gpsGrid">
+      <div><small data-i18n="latitude">Latitude</small><div class="val" id="mavLat">—</div></div>
+      <div><small data-i18n="longitude">Longitude</small><div class="val" id="mavLon">—</div></div>
+      <div><small data-i18n="altitude">Altitude</small><div class="val" id="mavAlt">—</div></div>
+      <div><small data-i18n="speed">Speed</small><div class="val" id="mavSpd">—</div></div>
+    </div>
+    <div class="grid3 gpsGrid3">
+      <div><small data-i18n="heading">Heading</small><div class="val" id="mavHdg">—</div></div>
+      <div><small data-i18n="fix_type">fix_type</small><div class="val" id="mavFix">—</div></div>
+      <div><small data-i18n="hdop">HDOP</small><div class="val" id="mavHdop">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="vdop">VDOP</small><div class="val" id="mavVdop">—</div></div>
+      <div><small data-i18n="mav_h_acc">H accuracy</small><div class="val" id="mavHAcc">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_flight">Flight</h2>
+    <div class="modeRow">
+      <div class="big" id="mavFlightMode">—</div>
+      <div class="modeNote" id="mavFlightNote"></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="altitude">Altitude</small><div class="val" id="mavBaroAlt">—</div></div>
+      <div><small data-i18n="vario">Vario</small><div class="val" id="mavVario">—</div></div>
+    </div>
+    <div class="grid2">
+      <div><small data-i18n="gps_time">GPS time</small><div class="val" id="mavGpsTime">—</div></div>
+      <div><small data-i18n="device">Device</small><div class="val" id="mavDevice">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_attitude">Attitude</h2>
+    <div class="horizon"><div class="inner" id="mavHorizon"></div><div class="cross"></div></div>
+    <div class="grid3">
+      <div><small data-i18n="pitch">Pitch</small><div class="val" id="mavPitch">—</div></div>
+      <div><small data-i18n="roll">Roll</small><div class="val" id="mavRoll">—</div></div>
+      <div><small data-i18n="yaw">Yaw</small><div class="val" id="mavYaw">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="card_battery">Battery</h2>
+    <div class="big"><span id="mavVolt">—</span> <small data-i18n="u_v">V</small></div>
+    <div class="grid2">
+      <div><small data-i18n="current">Current</small><div class="val" id="mavCurr">—</div></div>
+      <div><small data-i18n="capacity">Capacity</small><div class="val" id="mavCap">—</div></div>
+    </div>
+    <div class="row"><span data-i18n="remaining">Remaining</span><span class="lq" id="mavRemTxt">—</span></div>
+    <div class="track"><div class="fill" id="mavBarRem"></div></div>
+  </section>
+
+  <section class="card wide">
+    <h2 data-i18n="card_rx">Reception</h2>
+    <div class="grid4">
+      <div><small data-i18n="mav_messages_per_sec">Messages/s</small><div class="val" id="mavPps">—</div></div>
+      <div><small data-i18n="mav_messages_total">Messages</small><div class="val" id="mavTotal">—</div></div>
+      <div><small data-i18n="data_age">Data age</small><div class="val" id="mavAge">—</div></div>
+      <div><small data-i18n="frame_types">Message types</small><div class="val" id="mavTypesCount">—</div></div>
+    </div>
+    <details><summary data-i18n="mavlink_messages">MAVLink messages</summary>
+      <table class="frames">
+        <thead><tr><th data-i18n="th_type">Type</th><th data-i18n="th_frame">Message</th><th data-i18n="th_packets">Count</th><th data-i18n="th_contains">Contains</th></tr></thead>
+        <tbody id="mavFramesBody"><tr><td colspan="4" class="muted" data-i18n="no_frames">no messages yet</td></tr></tbody>
+      </table>
+    </details>
+  </section>
+  </div>
 
   <details class="card guideCard">
     <summary data-i18n="guide_title">Quick setup guide</summary>
@@ -505,7 +607,7 @@
 
       <b data-i18n="guide_espnow">ESP-NOW via USB setup</b>
       <ol class="guideList">
-        <li data-i18n="guide_espnow_1">Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.</li>
+        <li data-i18n-html="guide_espnow_1">Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.</li>
         <li data-i18n="guide_espnow_2">In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.</li>
         <li data-i18n="guide_espnow_3">Connect the dongle to the phone over OTG (data cable) and allow USB access.</li>
         <li data-i18n="guide_espnow_4">Open Settings (gear icon in the header) and select the “ESP-NOW via USB” source.</li>
@@ -1192,6 +1294,18 @@ const I18N = {
     hide_phrase: "Hide binding phrase",
     udp_port: "UDP listen port",
     apply: "Apply",
+    settings_saved: "Saved",
+    auto_stop_recording_error: "Enter 0..3600 seconds",
+    mav_heartbeat: "Heartbeat",
+    mav_armed: "Armed",
+    mav_messages_per_sec: "Messages/s",
+    mav_messages_total: "Messages",
+    mavlink_loss: "MAVLink loss",
+    mavlink_messages: "MAVLink messages",
+    mav_h_acc: "H accuracy",
+    mav_armed_yes: "yes",
+    mav_armed_no: "no",
+    mav_alive: "alive",
     udp_port_note: "The backpack must send telemetry to this port.",
     idle_release: "Power saving when idle (min)",
     idle_release_note: "When idle, the app switches to power saving. 0 or empty — keep it off.",
@@ -1238,7 +1352,7 @@ const I18N = {
     guide_wifi_3: "Start the app and open the “Telemetry” tab. UDP port 14550 is used by default.",
     guide_wifi_4: "Wait for the green “online” status and growing packet counters in “Reception”. If the port was changed, set it in Settings (gear).",
     guide_espnow: "ESP-NOW via USB setup",
-    guide_espnow_1: "Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.",
+    guide_espnow_1: 'Flash the <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> native-USB dongle with esp32-c3-usb via the <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> or PlatformIO.',
     guide_espnow_2: "In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Connect the dongle to the phone over OTG (data cable) and allow USB access.",
     guide_espnow_4: "Open Settings (gear icon in the header) and select the “ESP-NOW via USB” source.",
@@ -1453,6 +1567,18 @@ const I18N = {
     hide_phrase: "Скрыть биндфразу",
     udp_port: "UDP-порт прослушивания",
     apply: "Применить",
+    settings_saved: "Сохранено",
+    auto_stop_recording_error: "Введите 0..3600 секунд",
+    mav_heartbeat: "Heartbeat",
+    mav_armed: "Armed",
+    mav_messages_per_sec: "Сообщений/с",
+    mav_messages_total: "Сообщений",
+    mavlink_loss: "Потери MAVLink",
+    mavlink_messages: "Сообщения MAVLink",
+    mav_h_acc: "Точность H",
+    mav_armed_yes: "да",
+    mav_armed_no: "нет",
+    mav_alive: "жив",
     udp_port_note: "Бэкпак должен отправлять телеметрию на этот порт.",
     idle_release: "Энергосбережение при простое, мин",
     idle_release_note: "При простое приложение переходит в энергосбережение. 0 или пусто — не включать.",
@@ -1499,7 +1625,7 @@ const I18N = {
     guide_wifi_3: "Запустите приложение и откройте вкладку «Телеметрия». По умолчанию слушается UDP-порт 14550.",
     guide_wifi_4: "Дождитесь зелёного статуса «онлайн» и роста пакетов в «Приёме». Если порт изменён, смените его в настройках (шестерёнка).",
     guide_espnow: "Настройка ESP-NOW по USB",
-    guide_espnow_1: "Прошейте ESP32-C3 с native USB прошивкой esp32-c3-usb через Web Flasher или PlatformIO.",
+    guide_espnow_1: 'Прошейте <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#прошивка-usb-приемника-esp-now-и-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> с native USB прошивкой esp32-c3-usb через <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> или PlatformIO.',
     guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Подключите приемник ESP-NOW к телефону через OTG (data-кабель) и разрешите доступ к USB.",
     guide_espnow_4: "Откройте настройки (шестерёнка в шапке) и выберите источник «ESP-NOW по USB».",
@@ -1714,6 +1840,18 @@ const I18N = {
     hide_phrase: "隐藏绑定短语",
     udp_port: "UDP 监听端口",
     apply: "应用",
+    settings_saved: "已保存",
+    auto_stop_recording_error: "请输入 0..3600 秒",
+    mav_heartbeat: "心跳",
+    mav_armed: "已解锁",
+    mav_messages_per_sec: "消息/秒",
+    mav_messages_total: "消息数",
+    mavlink_loss: "MAVLink 丢包",
+    mavlink_messages: "MAVLink 消息",
+    mav_h_acc: "水平精度",
+    mav_armed_yes: "是",
+    mav_armed_no: "否",
+    mav_alive: "正常",
     udp_port_note: "背包必须将遥测发送到此端口。",
     idle_release: "空闲时启用节能（分钟）",
     idle_release_note: "空闲时应用会进入节能模式。0 或留空 — 不启用。",
@@ -1760,7 +1898,7 @@ const I18N = {
     guide_wifi_3: "启动应用并打开“遥测”标签页。默认使用 UDP 端口 14550。",
     guide_wifi_4: "等待绿色“在线”状态和“接收”中不断增长的包计数。如果端口已更改，请在设置（齿轮）中修改。",
     guide_espnow: "USB ESP-NOW 设置",
-    guide_espnow_1: "通过 Web Flasher 或 PlatformIO 为带 native USB 的 ESP32-C3 刷写 esp32-c3-usb。",
+    guide_espnow_1: '通过 <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> 或 PlatformIO 为带 native USB 的 <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> 刷写 esp32-c3-usb。',
     guide_espnow_2: "在 EdgeTX 中设置：ELRS Lua → Backpack → Telemetry → ESP-NOW。",
     guide_espnow_3: "通过 OTG（数据线）将适配器连接到手机，并允许 USB 访问。",
     guide_espnow_4: "打开设置（标题栏齿轮图标），选择来源“USB ESP-NOW”。",
@@ -2073,6 +2211,9 @@ function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     el.textContent = t(el.getAttribute("data-i18n"));
   });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => {
+    el.innerHTML = t(el.getAttribute("data-i18n-html"));
+  });
   $("lang").value = LANG;
   applyPlatformUi();
 }
@@ -2372,9 +2513,10 @@ function updateMap(gps, force) {
 let lastQrData = null;
 let lastQrGps = null;
 
-function updateQr(g, last) {
-  const wrap = $("gpsQrWrap");
-  const box = $("gpsQr");
+function updateQr(g, last, wrapId = "gpsQrWrap", boxId = "gpsQr") {
+  const wrap = $(wrapId);
+  const box = $(boxId);
+  if (!wrap || !box) return;
   const src = (last && Number.isFinite(Number(last.lat)) && Number.isFinite(Number(last.lon))) ? last : null;
   if (!src) {
     wrap.hidden = true;
@@ -2383,16 +2525,16 @@ function updateQr(g, last) {
   lastQrGps = { lat: Number(src.lat), lon: Number(src.lon) };
   const data = "geo:0,0?q=" + src.lat.toFixed(6) + "," + src.lon.toFixed(6);
   if (typeof window.qrcode === "function") {
-    if (data !== lastQrData) {
+    if (data !== box.dataset.qrData) {
       const qr = qrcode(0, "M");
       qr.addData(data);
       qr.make();
       box.innerHTML = qr.createSvgTag({ cellSize: 3, margin: 1 });
-      lastQrData = data;
+      box.dataset.qrData = data;
     }
   } else {
     box.textContent = data;
-    lastQrData = null;
+    box.dataset.qrData = "";
   }
   wrap.title = t("open_in_maps");
   wrap.setAttribute("aria-label", t("open_in_maps"));
@@ -2978,8 +3120,128 @@ window.appBack = function () {
   return false;
 };
 
+function mavFrameInfo(id) {
+  const map = {
+    0: ["HEARTBEAT", "Autopilot state and armed flag"],
+    1: ["SYS_STATUS", "Battery voltage, current and remaining"],
+    2: ["SYSTEM_TIME", "UTC time when RTC is available"],
+    24: ["GPS_RAW_INT", "GPS fix, coordinates, altitude, accuracy"],
+    30: ["ATTITUDE", "Roll, pitch and yaw"],
+    33: ["GLOBAL_POSITION_INT", "Relative altitude, NED velocity and heading"],
+    35: ["RC_CHANNELS_RAW", "RC channels and RSSI"],
+    49: ["GPS_GLOBAL_ORIGIN", "Home coordinates"],
+    74: ["VFR_HUD", "Ground speed, altitude and heading"],
+    147: ["BATTERY_STATUS", "Consumed capacity and remaining"],
+    242: ["HOME_POSITION", "Home position"],
+    253: ["STATUSTEXT", "Autopilot status text"],
+  };
+  return map[id] || null;
+}
+
+function mavNum(v, digits, unit) {
+  return v === null || v === undefined ? "—" : Number(v).toFixed(digits) + (unit || "");
+}
+
+function renderMavlink(s, st) {
+  const l = s.link || {};
+  setText("mavRssi", l.rssi_pct != null ? Number(l.rssi_pct).toFixed(1) + " %" : "—");
+  setText("mavHeartbeat", st.link_age != null
+    ? (st.link_age <= 2 ? t("mav_alive") : st.link_age.toFixed(1) + " " + t("u_s"))
+    : "—");
+  setText("mavArmed", s.armed === true ? t("mav_armed_yes")
+    : s.armed === false ? t("mav_armed_no") : "—");
+  setText("mavMsgRate", st.messages_pps != null ? st.messages_pps : "—");
+  setText("mavMsgTotal", st.messages != null ? st.messages : "—");
+  setText("mavLoss", "—");
+
+  const g = s.gps;
+  const gp = (g && gpsHasFix(g)) ? g : s.gps_last;
+  setText("mavSats", gp ? gp.sats : "—");
+  if (gp) {
+    setText("mavLat", Number(gp.lat).toFixed(7));
+    setText("mavLon", Number(gp.lon).toFixed(7));
+    setText("mavAlt", Number(gp.alt).toFixed(1) + " " + t("u_m"));
+    setText("mavSpd", Number(gp.speed).toFixed(1) + " " + t("u_kmh"));
+    setText("mavHdg", Number(gp.heading).toFixed(0) + "°");
+  } else {
+    ["mavLat", "mavLon", "mavAlt", "mavSpd", "mavHdg"].forEach(id => setText(id, "—"));
+  }
+  updateQr(gp, s.gps_last, "mavGpsQrWrap", "mavGpsQr");
+  const ge = s.gps_ext || {};
+  setText("mavFix", gp ? fixTypeText(gp.fix_type, false) : "—");
+  setText("mavHdop", mavNum(ge.hdop, 1));
+  setText("mavVdop", mavNum(ge.vdop, 1));
+  setText("mavHAcc", ge.h_acc != null ? mavNum(ge.h_acc, 2, " " + t("u_m")) : "—");
+
+  setText("mavFlightMode", s.flight_mode || "—");
+  setText("mavFlightNote", s.armed === true ? t("mode_armed")
+    : s.armed === false ? t("mode_ready") : "");
+  setText("mavBaroAlt", s.baro ? Number(s.baro.alt).toFixed(1) + " " + t("u_m") : "—");
+  const vario = s.vario != null ? s.vario : (s.baro ? s.baro.vario : null);
+  setText("mavVario", vario != null
+    ? (vario >= 0 ? "+" : "") + Number(vario).toFixed(1) + " " + t("u_ms") : "—");
+  setText("mavGpsTime", s.gps_time || "—");
+  setText("mavDevice", s.device || "—");
+
+  const a = s.attitude;
+  if (a) {
+    setText("mavPitch", Number(a.pitch).toFixed(1) + "°");
+    setText("mavRoll", Number(a.roll).toFixed(1) + "°");
+    setText("mavYaw", Number(a.yaw).toFixed(1) + "°");
+    $("mavHorizon").style.transform = "rotate(" + (-a.roll).toFixed(1) + "deg) translateY(" + (a.pitch * 3).toFixed(1) + "px)";
+  } else {
+    ["mavPitch", "mavRoll", "mavYaw"].forEach(id => setText(id, "—"));
+  }
+
+  const b = s.battery;
+  const hasBattery = b && (b.voltage != null || b.current != null || b.capacity != null);
+  if (hasBattery) {
+    setText("mavVolt", b.voltage != null ? Number(b.voltage).toFixed(1) : "—");
+    setText("mavCurr", b.current != null ? Number(b.current).toFixed(1) + " " + t("u_a") : "—");
+    setText("mavCap", b.capacity != null ? b.capacity + " " + t("u_mah") : "—");
+    setText("mavRemTxt", b.remaining != null ? b.remaining + "%" : "—");
+    bar("mavBarRem", b.remaining, "mavRemTxt");
+  } else {
+    setText("mavVolt", "—"); setText("mavCurr", "—"); setText("mavCap", "—");
+    setText("mavRemTxt", t("no_data")); bar("mavBarRem", 0, "mavRemTxt");
+  }
+
+  setText("mavPps", st.messages_pps != null ? st.messages_pps : "—");
+  setText("mavTotal", st.messages != null ? st.messages : "—");
+  setText("mavAge", st.age != null ? st.age.toFixed(2) + " " + t("u_s") : "—");
+  const f = s.frames || {};
+  const keys = Object.keys(f).sort((x, y) => Number(x) - Number(y));
+  setText("mavTypesCount", keys.length);
+  const rows = keys.map(k => {
+    const id = Number(k);
+    const info = mavFrameInfo(id);
+    return "<tr" + (info ? "" : ' class="unknown"') + ">" +
+      "<td>" + id + "</td>" +
+      "<td>" + (info ? info[0] : t("unknown_frame")) + "</td>" +
+      "<td>" + f[k] + "</td>" +
+      "<td>" + (info ? info[1] : t("not_described")) + "</td></tr>";
+  });
+  $("mavFramesBody").innerHTML = rows.length
+    ? rows.join("")
+    : '<tr><td colspan="4" class="muted">' + t("no_frames") + "</td></tr>";
+}
+
 function render(s) {
   const st = s.stats || {};
+  const protocol = s.protocol || "crsf";
+  const crsfCards = $("crsfCards");
+  const mavCards = $("mavCards");
+  if (crsfCards) crsfCards.hidden = protocol === "mavlink";
+  if (mavCards) mavCards.hidden = protocol !== "mavlink";
+  const protoBadge = $("protocol");
+  if (protoBadge) {
+    protoBadge.hidden = false;
+    protoBadge.textContent = protocol === "mavlink" ? "MAVLink" : "CRSF";
+  }
+  if (protocol === "mavlink") {
+    const badge = $("firmwareBadge");
+    if (badge) badge.hidden = true;
+  }
   const online = st.online === true;
   const transportFresh = st.age !== null && st.age !== undefined && st.age < 2 && st.total > 0;
   const pill = $("status");
@@ -2997,6 +3259,9 @@ function render(s) {
       : t(mobile ? "status_no_data_short" : "status_no_data");
   }
 
+  if (protocol === "mavlink") {
+    renderMavlink(s, st);
+  } else {
   const l = s.link;
   if (l) {
     setText("lqUp", l.lq + "%");   bar("barUp", l.lq, "lqUp");
@@ -3150,6 +3415,7 @@ function render(s) {
   $("framesBody").innerHTML = rows.length
     ? rows.join("")
     : '<tr><td colspan="4" class="muted">' + t("no_frames") + "</td></tr>";
+  }
 
   const currentGps = (s.gps && gpsHasFix(s.gps)) ? s.gps : null;
   mapGpsLive = !!currentGps;
@@ -3321,6 +3587,15 @@ $("gpsQrWrap").addEventListener("keydown", e => {
     openGpsInMaps();
   }
 });
+if ($("mavGpsQrWrap")) {
+  $("mavGpsQrWrap").addEventListener("click", openGpsInMaps);
+  $("mavGpsQrWrap").addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openGpsInMaps();
+    }
+  });
+}
 $("followDrone").addEventListener("change", e => {
   mapFollow = e.target.checked;
   if (mapFollow) updateMap(mapLastGps, true);
