@@ -49,10 +49,9 @@ jobs:
 
       - name: Merge flash images
         run: |
-          PYTHON="$GITHUB_WORKSPACE/.toolchain/venv/bin/python"
-          ESPTOOL="$GITHUB_WORKSPACE/.toolchain/platformio/packages/tool-esptoolpy/esptool.py"
+          ESPTOOL="$GITHUB_WORKSPACE/.toolchain/venv/bin/esptool"
           BOOT_APP0="$GITHUB_WORKSPACE/.toolchain/platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin"
-          test -f "$ESPTOOL"
+          test -x "$ESPTOOL"
           test -f "$BOOT_APP0"
           merge() {
             local env="$1" chip="$2" out="$3"
@@ -60,9 +59,9 @@ jobs:
             test -f "$build/bootloader.bin"
             test -f "$build/partitions.bin"
             test -f "$build/firmware.bin"
-            "$PYTHON" "$ESPTOOL" --chip "$chip" merge_bin \
+            "$ESPTOOL" --chip "$chip" merge-bin \
               -o "$out" \
-              --flash_mode dio --flash_freq 80m --flash_size 4MB \
+              --flash-mode dio --flash-freq 80m --flash-size 4MB \
               0x0 "$build/bootloader.bin" \
               0x8000 "$build/partitions.bin" \
               0xe000 "$BOOT_APP0" \

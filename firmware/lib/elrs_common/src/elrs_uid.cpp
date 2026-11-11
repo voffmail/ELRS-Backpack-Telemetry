@@ -12,14 +12,14 @@ void elrsUidFromPhrase(const char *phrase, uint8_t uid[6]) {
     uint8_t digest[16];
 
     mbedtls_md5_init(&ctx);
-    mbedtls_md5_update_ret(&ctx, (const unsigned char *)BIND_PREFIX,
-                           sizeof(BIND_PREFIX) - 1);
+    mbedtls_md5_update(&ctx, (const unsigned char *)BIND_PREFIX,
+                       sizeof(BIND_PREFIX) - 1);
     if (phrase && phrase[0]) {
-        mbedtls_md5_update_ret(&ctx, (const unsigned char *)phrase,
-                               strlen(phrase));
+        mbedtls_md5_update(&ctx, (const unsigned char *)phrase,
+                           strlen(phrase));
     }
-    mbedtls_md5_update_ret(&ctx, (const unsigned char *)"\"", 1);
-    mbedtls_md5_finish_ret(&ctx, digest);
+    mbedtls_md5_update(&ctx, (const unsigned char *)"\"", 1);
+    mbedtls_md5_finish(&ctx, digest);
     mbedtls_md5_free(&ctx);
 
     memcpy(uid, digest, 6);

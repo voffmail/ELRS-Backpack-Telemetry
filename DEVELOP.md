@@ -110,17 +110,16 @@ The web flasher is a static page plus merged ESP32-C3/ESP32-S3 images:
 ./tools/pio run -d firmware -e esp32-c3-usb-otg
 ./tools/pio run -d firmware -e esp32-s3-usb-otg
 
-PYTHON=.toolchain/venv/bin/python
-ESPTOOL=.toolchain/platformio/packages/tool-esptoolpy/esptool.py
+ESPTOOL=.toolchain/venv/bin/esptool
 BOOT_APP0=.toolchain/platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
 
 mkdir -p build
 for target in "esp32-c3-usb-otg esp32c3 c3" "esp32-s3-usb-otg esp32s3 s3"; do
   set -- $target
   BUILD="firmware/.pio/build/$1"
-  "$PYTHON" "$ESPTOOL" --chip "$2" merge_bin \
+  "$ESPTOOL" --chip "$2" merge-bin \
     -o "build/firmware-merged-$3.bin" \
-    --flash_mode dio --flash_freq 80m --flash_size 4MB \
+    --flash-mode dio --flash-freq 80m --flash-size 4MB \
     0x0 "$BUILD/bootloader.bin" \
     0x8000 "$BUILD/partitions.bin" \
     0xe000 "$BOOT_APP0" \
