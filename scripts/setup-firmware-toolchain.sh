@@ -37,4 +37,4 @@ EOF
 echo "firmware toolchain: $TC"
 echo "platformio: $PIO ($("$PIO" --version 2>/dev/null | tail -1))"
 echo "run: source .toolchain/pio-env.sh"
-echo "firmware: ./tools/pio run -d firmware -e esp32-c3-usb"
+echo "firmware: ./tools/pio run -d firmware -e esp32-c3-usb-otg"

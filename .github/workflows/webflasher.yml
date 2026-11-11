@@ -42,28 +42,35 @@ jobs:
       - name: Set up toolchain
         run: ./init.sh
 
-      - name: Build ESP32-C3 native-USB firmware
-        run: ./tools/pio run -d firmware -e esp32-c3-usb
+      - name: Build native-USB firmware
+        run: |
+          ./tools/pio run -d firmware -e esp32-c3-usb-otg
+          ./tools/pio run -d firmware -e esp32-s3-usb-otg
 
-      - name: Merge flash image
+      - name: Merge flash images
         run: |
           PYTHON="$GITHUB_WORKSPACE/.toolchain/venv/bin/python"
           ESPTOOL="$GITHUB_WORKSPACE/.toolchain/platformio/packages/tool-esptoolpy/esptool.py"
-          BUILD="$GITHUB_WORKSPACE/firmware/.pio/build/esp32-c3-usb"
           BOOT_APP0="$GITHUB_WORKSPACE/.toolchain/platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin"
           test -f "$ESPTOOL"
-          test -f "$BUILD/bootloader.bin"
-          test -f "$BUILD/partitions.bin"
           test -f "$BOOT_APP0"
-          test -f "$BUILD/firmware.bin"
+          merge() {
+            local env="$1" chip="$2" out="$3"
+            local build="$GITHUB_WORKSPACE/firmware/.pio/build/$env"
+            test -f "$build/bootloader.bin"
+            test -f "$build/partitions.bin"
+            test -f "$build/firmware.bin"
+            "$PYTHON" "$ESPTOOL" --chip "$chip" merge_bin \
+              -o "$out" \
+              --flash_mode dio --flash_freq 80m --flash_size 4MB \
+              0x0 "$build/bootloader.bin" \
+              0x8000 "$build/partitions.bin" \
+              0xe000 "$BOOT_APP0" \
+              0x10000 "$build/firmware.bin"
+          }
           mkdir -p build
-          "$PYTHON" "$ESPTOOL" --chip esp32c3 merge_bin \
-            -o build/firmware-merged.bin \
-            --flash_mode dio --flash_freq 80m --flash_size 4MB \
-            0x0 "$BUILD/bootloader.bin" \
-            0x8000 "$BUILD/partitions.bin" \
-            0xe000 "$BOOT_APP0" \
-            0x10000 "$BUILD/firmware.bin"
+          merge esp32-c3-usb-otg esp32c3 build/firmware-merged-c3.bin
+          merge esp32-s3-usb-otg esp32s3 build/firmware-merged-s3.bin
 
       - name: Assemble Pages site
         run: |
@@ -76,10 +83,12 @@ jobs:
           fi
           python3 scripts/make_webflasher.py \
             --version "$VERSION" \
-            --binary build/firmware-merged.bin \
+            --binary c3=build/firmware-merged-c3.bin \
+            --binary s3=build/firmware-merged-s3.bin \
             --out site
           python3 -m json.tool site/manifest.json >/dev/null
-          test -f site/firmware-merged.bin
+          test -f site/firmware-merged-c3.bin
+          test -f site/firmware-merged-s3.bin
           test -f site/index.html
 
       - name: Upload site artifact
@@ -94,11 +103,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BUILD="$GITHUB_WORKSPACE/firmware/.pio/build/esp32-c3-usb"
+          BUILD_C3="$GITHUB_WORKSPACE/firmware/.pio/build/esp32-c3-usb-otg"
+          BUILD_S3="$GITHUB_WORKSPACE/firmware/.pio/build/esp32-s3-usb-otg"
           gh release upload "${{ github.event.release.tag_name }}" \
-            build/firmware-merged.bin \
+            build/firmware-merged-c3.bin \
+            build/firmware-merged-s3.bin \
             site/SHA256SUMS \
-            "$BUILD/firmware.elf" \
+            "$BUILD_C3/firmware.elf" \
+            "$BUILD_S3/firmware.elf" \
             --clobber
 
   deploy:

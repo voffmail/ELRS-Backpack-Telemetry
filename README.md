@@ -78,20 +78,25 @@ Python-вьюер пока работает в онлайн-режиме.
 
 ![ESP32-C3 Super Mini](docs/esp32c3.png)
 
-В репозитории есть прошивка ESP32-C3 для USB-приемника ESP-NOW (ESP-NOW → CRSF по USB), симулятор бэкпака и генератор web-flasher.
+В репозитории есть прошивки ESP32-C3 и ESP32-S3 для USB-приемника ESP-NOW (ESP-NOW → CRSF по USB), симулятор бэкпака и генератор web-flasher.
 
 Сборка прошивки (PlatformIO ставится локально в `.toolchain/venv`):
 
 ```bash
 ./init.sh
-./tools/pio run -d firmware -e esp32-c3-usb
+./tools/pio run -d firmware -e esp32-c3-usb-otg   # ESP32-C3
+./tools/pio run -d firmware -e esp32-s3-usb-otg   # ESP32-S3
 ```
 
-Прошивка: `firmware/.pio/build/esp32-c3-usb/firmware.bin`. Используется только
-native-USB ESP32-C3 (например, Super Mini). На AliExpress плату можно найти
-примерно за $1.5 по ключевым словам «esp32-c3 super mini».
+Прошивки: `firmware/.pio/build/esp32-c3-usb-otg/firmware.bin` и
+`firmware/.pio/build/esp32-s3-usb-otg/firmware.bin`. Нужна плата с native USB:
+ESP32-C3 Super Mini (примерно $1.5 по запросу «esp32-c3 super mini») или
+ESP32-S3 DevKitC-1 / Super Mini. На DevKitC-1 подключайте порт **USB** (native),
+а не UART: приложение ищет Espressif VID `0x303A` и не видит мост CP2102.
+S3-сборка использует WS2812 на GPIO48; для других плат пин LED переопределяется
+через `-DELRS_LED_PIN=<n>`.
 
-[Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) собирается из merged-образа (`build/firmware-merged.bin`) скриптом `scripts/make_webflasher.py`; workflow `.github/workflows/webflasher.yml` публикует сайт на GitHub Pages. Для публикации один раз включите **Settings → Pages → Source: GitHub Actions**.
+[Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) собирается из merged-образов (`build/firmware-merged-c3.bin` и `-s3.bin`) скриптом `scripts/make_webflasher.py`; плата (ESP32-C3 или ESP32-S3) определяется автоматически по чипу, выбирать вручную не нужно. Workflow `.github/workflows/webflasher.yml` публикует сайт на GitHub Pages. Для публикации один раз включите **Settings → Pages → Source: GitHub Actions**.
 
 Android-приложение и прошивка используют общий `.toolchain/`: Android ставится через `bash scripts/setup-toolchain.sh`, прошивка — через `./init.sh`.
 
@@ -184,20 +189,25 @@ Python viewer currently stays online-only.
 
 ![ESP32-C3 Super Mini](docs/esp32c3.png)
 
-The repository includes ESP32-C3 firmware for the ESP-NOW USB dongle (ESP-NOW → CRSF over USB), a backpack simulator and the web-flasher generator.
+The repository includes ESP32-C3 and ESP32-S3 firmware for the ESP-NOW USB dongle (ESP-NOW → CRSF over USB), a backpack simulator and the web-flasher generator.
 
 Build the firmware (PlatformIO is installed locally into `.toolchain/venv`):
 
 ```bash
 ./init.sh
-./tools/pio run -d firmware -e esp32-c3-usb
+./tools/pio run -d firmware -e esp32-c3-usb-otg   # ESP32-C3
+./tools/pio run -d firmware -e esp32-s3-usb-otg   # ESP32-S3
 ```
 
-Firmware: `firmware/.pio/build/esp32-c3-usb/firmware.bin`. Only native-USB
-ESP32-C3 boards (e.g. Super Mini) are supported. On AliExpress, search for
-“esp32-c3 super mini” — the board is usually around $1.5.
+Firmware: `firmware/.pio/build/esp32-c3-usb-otg/firmware.bin` and
+`firmware/.pio/build/esp32-s3-usb-otg/firmware.bin`. Native-USB boards only:
+ESP32-C3 Super Mini (around $1.5 on AliExpress) or ESP32-S3 DevKitC-1 /
+Super Mini. On the DevKitC-1 use the **USB** (native) port, not UART: the app
+looks for Espressif VID `0x303A` and will not see a CP2102 bridge. The S3 build
+drives the DevKitC-1 WS2812 on GPIO48; override the pin with
+`-DELRS_LED_PIN=<n>` for other boards.
 
-The [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) is built from the merged image (`build/firmware-merged.bin`) with `scripts/make_webflasher.py`; `.github/workflows/webflasher.yml` publishes the site to GitHub Pages. Enable **Settings → Pages → Source: GitHub Actions** once.
+The [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/) is built from the merged images (`build/firmware-merged-c3.bin` and `-s3.bin`) with `scripts/make_webflasher.py`; the connected board (ESP32-C3 or ESP32-S3) is detected automatically by chip, no manual selection. `.github/workflows/webflasher.yml` publishes the site to GitHub Pages. Enable **Settings → Pages → Source: GitHub Actions** once.
 
 The Android app and the firmware share `.toolchain/`: set up Android with `bash scripts/setup-toolchain.sh`, and the firmware with `./init.sh`.
 

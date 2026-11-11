@@ -13,7 +13,7 @@ ELRS TX module
 TX backpack (ESP-NOW, group MAC)
       │ ESP-NOW
       ▼
-ESP32-C3 dongle ──USB CDC──► Android
+ESP32-C3/S3 dongle ──USB CDC──► Android
                               │
                         CRSF-кадры
                               │
@@ -35,12 +35,14 @@ ESP32-C3 dongle ──USB CDC──► Android
 
 | Параметр | Значение |
 |---|---|
-| Env | `esp32-c3-usb` |
-| Плата | ESP32-C3 с native USB (например, Super Mini) |
+| Env | `esp32-c3-usb-otg`, `esp32-s3-usb-otg` |
+| Плата | ESP32-C3 / ESP32-S3 с native USB (например, Super Mini, DevKitC-1) |
 | Данные | `Serial` (USB CDC) |
 | PHY | BGN (`11B│11G│11N`) |
 
 Фраза/UID хранятся в NVS. Прошивка собирается только под native USB.
+S3-сборка рассчитана на `esp32-s3-devkitc-1`; LED — WS2812 на GPIO48
+(переопределяется `-DELRS_LED_PIN`).
 
 ## 4. ESP-NOW и binding
 
@@ -121,6 +123,9 @@ boot-fallback, когда UID не настроен.
 ## 8. Индикация
 
 - ESP32-C3 с native USB: синий LED GPIO8, active-low, управление `digitalWrite`.
+- ESP32-S3-DevKitC-1: WS2812 на GPIO48, синий при активности (`neopixelWrite`).
+  `-DELRS_LED_PIN=<n>` меняет пин, `-DELRS_LED_PIN=-1` отключает LED,
+  `-DELRS_LED_RGB=0` включает режим обычного LED.
 
 `LinkStatus` не зависит от протокола:
 
@@ -156,11 +161,12 @@ GPS extended, Vario, Battery, Baro, Link, Attitude, Flight mode, Device info
 
 ## 10. Web Flasher и CI
 
-- `webflasher/` — страница ESP Web Tools (Web Serial).
-- Прошивается только `esp32-c3-usb`; образ — merged binary с offset 0.
-- `scripts/make_webflasher.py` собирает Pages-сайт: index, manifest,
-  merged-образ, SHA256SUMS.
-- `.github/workflows/webflasher.yml` на GitHub Release собирает образ,
+- `webflasher/` — страница ESP Web Tools (Web Serial) с автоопределением платы.
+- Прошиваются `esp32-c3-usb-otg` и `esp32-s3-usb-otg`; каждый образ — merged
+  binary с offset 0, общий `manifest.json` содержит builds по chipFamily.
+- `scripts/make_webflasher.py` собирает Pages-сайт: index, общий `manifest.json`,
+  merged-образы и SHA256SUMS.
+- `.github/workflows/webflasher.yml` на GitHub Release собирает образы,
   деплоит GitHub Pages и прикладывает assets к релизу.
 - Pages включается один раз: Settings → Pages → Source: GitHub Actions.
 

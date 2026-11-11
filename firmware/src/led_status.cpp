@@ -1,6 +1,14 @@
 #include "led_status.h"
 
-#define LED_PIN 8
+#ifndef ELRS_LED_PIN
+#define ELRS_LED_PIN 8
+#endif
+#ifndef ELRS_LED_ACTIVE_LOW
+#define ELRS_LED_ACTIVE_LOW 1
+#endif
+#ifndef ELRS_LED_RGB
+#define ELRS_LED_RGB 0
+#endif
 
 enum class LedMode { Off, Solid, Telemetry, Error };
 
@@ -16,10 +24,18 @@ static uint32_t s_lastDrops = 0;
 static void writeLed(bool on) {
     if (on == s_on) return;
     s_on = on;
+#if ELRS_LED_PIN < 0
+    (void)on;  // status LED disabled for this target
+#elif ELRS_LED_RGB
+    // Onboard WS2812 (ESP32-S3-DevKitC-1): blue when on.
+    neopixelWrite(ELRS_LED_PIN, 0, 0, on ? 32 : 0);
+#else
     // Native-USB C3 boards used here have a plain blue LED on GPIO8,
-    // active low. Do not use neopixelWrite(): it holds the pin and the LED
-    // stays solid.
-    digitalWrite(LED_PIN, on ? LOW : HIGH);
+    // active low. Do not use neopixelWrite() on those boards: it holds the
+    // pin and the LED stays solid.
+    const bool level = ELRS_LED_ACTIVE_LOW ? !on : on;
+    digitalWrite(ELRS_LED_PIN, level ? HIGH : LOW);
+#endif
 }
 
 static void setMode(LedMode mode, uint32_t now) {
@@ -29,8 +45,14 @@ static void setMode(LedMode mode, uint32_t now) {
 }
 
 void ledBegin() {
-    pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH);  // off for active-low LED
+#if ELRS_LED_PIN >= 0
+#if ELRS_LED_RGB
+    neopixelWrite(ELRS_LED_PIN, 0, 0, 0);
+#else
+    pinMode(ELRS_LED_PIN, OUTPUT);
+    digitalWrite(ELRS_LED_PIN, ELRS_LED_ACTIVE_LOW ? HIGH : LOW);
+#endif
+#endif
     s_on = false;
     s_mode = LedMode::Off;
     s_modeStart = millis();

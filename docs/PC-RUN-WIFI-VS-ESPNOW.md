@@ -11,7 +11,7 @@
 
 ```text
 Wi-Fi:    TX backpack ──Wi-Fi/UDP──► tlm_viewer.py
-ESP-NOW:  TX backpack ──ESP-NOW──► ESP32-C3 приемник ESP-NOW ──USB──► serial_bridge.py ──UDP──► tlm_viewer.py
+ESP-NOW:  TX backpack ──ESP-NOW──► ESP32-C3/S3 приемник ESP-NOW ──USB──► serial_bridge.py ──UDP──► tlm_viewer.py
 ```
 
 `tlm_viewer.py` **не открывает serial-порт сам**. ESP-NOW на ПК работает только
@@ -58,11 +58,12 @@ python3 tlm_viewer.py --udp-port 14550 --http-host 0.0.0.0 --http-port 8080
 
 ### 1. Прошейте приемник ESP-NOW
 
-Нужен ESP32-C3 с native USB (например, Super Mini) и прошивка `esp32-c3-usb`.
+Нужна плата с native USB — ESP32-C3 (например, Super Mini) или ESP32-S3
+(DevKitC-1 / Super Mini) — и прошивка `esp32-c3-usb-otg` либо `esp32-s3-usb-otg`.
 Прошить можно:
 
-- через web-flasher (Chrome/Edge на компьютере), или
-- через PlatformIO: `./tools/pio run -d firmware -e esp32-c3-usb -t upload --upload-port <port>`.
+- через web-flasher (Chrome/Edge на компьютере; плата определяется автоматически), или
+- через PlatformIO: `./tools/pio run -d firmware -e <env> -t upload --upload-port <port>`.
 
 Подробности — в [DEVELOP.md](../DEVELOP.md) и [DESIGN.md](DESIGN.md).
 
@@ -172,7 +173,7 @@ binding phrase / UID.
 | `serial open failed` | правильный порт, data-кабель, права `dialout` (Linux), порт не занят |
 | Мост работает, вьюер пуст | `--udp` моста совпадает с `--udp-port` вьюера; вьюер запущен |
 | Порт занят | остановите мост перед `dongle_config.py` (или наоборот) |
-| Приемник ESP-NOW не найден | native-USB ESP32-C3, прошивка `esp32-c3-usb`, USB-разрешение/OTG |
+| Приемник ESP-NOW не найден | native-USB ESP32-C3/S3, прошивка `esp32-*-usb-otg`, USB-разрешение/OTG |
 | Счётчики растут, связи с дроном нет | `0x14` с `LQ=0`: дрон/RX выключен или не совпадает phrase/UID |
 | Карта не загружается | интернет и доступность OpenFreeMap/Esri/Sentinel; смотрите консоль браузера |
 

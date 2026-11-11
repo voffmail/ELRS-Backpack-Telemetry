@@ -268,15 +268,16 @@ TX power в CRSF — это enum; вьюер переводит его в мВт
 
 ## USB-приемник ESP-NOW
 
-ESP-NOW-режим использует ESP32-C3 с native USB (например, Super Mini) и
-USB-OTG на телефоне. Приемник ESP-NOW принимает ESP-NOW от бэкпака и отдаёт CRSF-кадры в
-приложение по USB CDC. Разбор протокола — [DESIGN.md](DESIGN.md).
+ESP-NOW-режим использует ESP32-C3 или ESP32-S3 с native USB (например, Super Mini,
+DevKitC-1) и USB-OTG на телефоне. Приемник ESP-NOW принимает ESP-NOW от бэкпака и
+отдаёт CRSF-кадры в приложение по USB CDC. Разбор протокола — [DESIGN.md](DESIGN.md).
 
-- Прошивка: только `esp32-c3-usb` (native USB), PHY BGN.
-- Сборка: `./init.sh && ./tools/pio run -d firmware -e esp32-c3-usb`;
-  прошивка — `firmware/.pio/build/esp32-c3-usb/firmware.bin`.
-- Web Flasher: `webflasher/` + `scripts/make_webflasher.py`; публикуется
-  workflow `.github/workflows/webflasher.yml` на GitHub Pages.
+- Прошивки: `esp32-c3-usb-otg` и `esp32-s3-usb-otg` (native USB), PHY BGN.
+- Сборка: `./init.sh && ./tools/pio run -d firmware -e <env>`;
+  прошивка — `firmware/.pio/build/<env>/firmware.bin`.
+- Web Flasher: `webflasher/` + `scripts/make_webflasher.py`; страница
+  автоматически определяет ESP32-C3 или ESP32-S3 по чипу. Публикуется workflow
+  `.github/workflows/webflasher.yml` на GitHub Pages.
 - Подробности сборки и CI — в [DEVELOP.md](../DEVELOP.md).
 
 В настройках приложения (шестерёнка в шапке):
@@ -366,7 +367,7 @@ python3 replay.py testdata/tlm_20261105_111628.jsonl --host 192.168.1.10 --port 
 ```text
 tlm_viewer.py   ПК-вьюер: UDP-приём, парсинг CRSF, HTTP-сервер и веб-интерфейс
 android/        Android-приложение на Kotlin (WebView, Wi-Fi/UDP и USB)
-firmware/       прошивка ESP32-C3 USB-приемника ESP-NOW (esp32-c3-usb)
+firmware/       прошивка ESP32-C3/S3 USB-приемника ESP-NOW (esp32-*-usb-otg)
 sim/            симулятор ELRS TX-бэкпака для стенда
 tools/          PlatformIO wrapper, конфиг приемника ESP-NOW, serial bridge и протоколы
 tests/          host-тесты CRSF/MSP/конфиг-протокола
