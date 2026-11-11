@@ -11,14 +11,14 @@ Detailed setup is in `DEVELOP.md`.
 - CI: `.github/workflows/android-apk.yml` uploads the artifact `elrs-backpack-debug-apk`.
 - Release: tag `v*` → `.github/workflows/release-apk.yml` (signed APK attached to a GitHub Release).
 - Python checks: `python3 -m py_compile tlm_viewer.py replay.py tools/*.py`
-- Firmware toolchain (PlatformIO): `./init.sh` (installs into `.toolchain/venv`; do not overwrite the Android `.toolchain/env.sh`), then `./tools/pio run -d firmware -e esp32-c3-usb-otg` or `-e esp32-s3-usb-otg`.
-  - Environments: `esp32-c3-usb-otg` and `esp32-s3-usb-otg` (native USB), plus `sim` (backpack simulator).
+- Firmware toolchain (PlatformIO): `./init.sh` (installs into `.toolchain/venv`; do not overwrite the Android `.toolchain/env.sh`), then `./tools/pio run -d firmware -e <env>` (`esp32-c3-usb-otg`, `esp32-s3-usb-otg`, `esp32-c6-usb-otg`).
+  - Environments: `esp32-c3-usb-otg`, `esp32-s3-usb-otg`, `esp32-c6-usb-otg` (native USB), plus `sim` (backpack simulator). Platform: `espressif32@8.0.0` (Arduino core 3.3).
   - Firmware outputs: `firmware/.pio/build/<env>/firmware.bin`; `firmware/include/secrets.h` is git-ignored.
   - Host tests: `python3 -m unittest discover -s tests` (includes CRSF/MSP, MAVLink framing and session tests).
-  - Web flasher: merge each env with `esptool` into `build/firmware-merged-c3.bin` / `-s3.bin`, then `python3 scripts/make_webflasher.py --version <ver> --binary c3=build/firmware-merged-c3.bin --binary s3=build/firmware-merged-s3.bin --out site`. The page uses one combined `manifest.json`; ESP Web Tools picks the build by `chipFamily` (no manual target selector). CI: `.github/workflows/firmware.yml` and `.github/workflows/webflasher.yml`.
-  - S3 LED defaults to the DevKitC-1 WS2812 on GPIO48; override with `-DELRS_LED_PIN=<n>` (`-1` disables it) or `-DELRS_LED_RGB=0` for a plain LED.
+  - Web flasher: merge each env with `esptool` into `build/firmware-merged-c3.bin` / `-s3.bin`, then `python3 scripts/make_webflasher.py --version <ver> --binary c3=build/firmware-merged-c3.bin --binary s3=build/firmware-merged-s3.bin --binary c6=build/firmware-merged-c6.bin --out site`. The page uses one combined `manifest.json`; ESP Web Tools picks the build by `chipFamily` (no manual target selector). CI: `.github/workflows/firmware.yml` and `.github/workflows/webflasher.yml`.
+  - S3 LED defaults to the DevKitC-1 WS2812 on GPIO48; C6 uses the Super Mini status LED on GPIO15. Override with `-DELRS_LED_PIN=<n>` (`-1` disables it); use `-DELRS_LED_RGB=0` for a plain LED.
 - Map stack: MapLibre GL JS + OpenFreeMap vector labels/roads + Esri World Imagery with Sentinel-2 fallback; no API key. Shared assets live in `web/static/`; Android offline maps download OpenFreeMap vector areas plus optional EOxCloudless 2025 Sentinel-2 (CC BY-NC-SA 4.0, non-commercial) or import PMTiles, with local style/fonts and `/offline/*` + `/tiles/*` routes. See `DEVELOP.md`.
-- Telemetry sources: Wi-Fi/UDP (default) and ESP-NOW via native-USB ESP32-C3/ESP32-S3 dongle (recommended). In Network mode the app auto-detects CRSF or MAVLink; MAVLink is Wi-Fi-only (the ESP-NOW path is CRSF). See `docs/BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md`, `docs/DESIGN.md`, `docs/REFERENCE.md`.
+- Telemetry sources: Wi-Fi/UDP (default) and ESP-NOW via native-USB ESP32-C3/ESP32-S3/ESP32-C6 dongle (recommended). In Network mode the app auto-detects CRSF or MAVLink; MAVLink is Wi-Fi-only (the ESP-NOW path is CRSF). See `docs/BACKPACK-TELEMETRY-WIFI-VS-ESPNOW.md`, `docs/DESIGN.md`, `docs/REFERENCE.md`.
 
 ## Skill: replay ELRS telemetry offline
 

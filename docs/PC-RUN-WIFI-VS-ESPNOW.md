@@ -11,7 +11,7 @@
 
 ```text
 Wi-Fi:    TX backpack ──Wi-Fi/UDP──► tlm_viewer.py
-ESP-NOW:  TX backpack ──ESP-NOW──► ESP32-C3/S3 приемник ESP-NOW ──USB──► serial_bridge.py ──UDP──► tlm_viewer.py
+ESP-NOW:  TX backpack ──ESP-NOW──► ESP32-C3/S3/C6 приемник ESP-NOW ──USB──► serial_bridge.py ──UDP──► tlm_viewer.py
 ```
 
 `tlm_viewer.py` **не открывает serial-порт сам**. ESP-NOW на ПК работает только
@@ -58,8 +58,9 @@ python3 tlm_viewer.py --udp-port 14550 --http-host 0.0.0.0 --http-port 8080
 
 ### 1. Прошейте приемник ESP-NOW
 
-Нужна плата с native USB — ESP32-C3 (например, Super Mini) или ESP32-S3
-(DevKitC-1 / Super Mini) — и прошивка `esp32-c3-usb-otg` либо `esp32-s3-usb-otg`.
+Нужна плата с native USB — ESP32-C3 (Super Mini), ESP32-S3
+или ESP32-C6 Super Mini — и прошивка `esp32-c3-usb-otg`, `esp32-s3-usb-otg`
+либо `esp32-c6-usb-otg`.
 Прошить можно:
 
 - через web-flasher (Chrome/Edge на компьютере; плата определяется автоматически), или
@@ -173,7 +174,7 @@ binding phrase / UID.
 | `serial open failed` | правильный порт, data-кабель, права `dialout` (Linux), порт не занят |
 | Мост работает, вьюер пуст | `--udp` моста совпадает с `--udp-port` вьюера; вьюер запущен |
 | Порт занят | остановите мост перед `dongle_config.py` (или наоборот) |
-| Приемник ESP-NOW не найден | native-USB ESP32-C3/S3, прошивка `esp32-*-usb-otg`, USB-разрешение/OTG |
+| Приемник ESP-NOW не найден | native-USB ESP32-C3/S3/C6, прошивка `esp32-*-usb-otg`, USB-разрешение/OTG |
 | Счётчики растут, связи с дроном нет | `0x14` с `LQ=0`: дрон/RX выключен или не совпадает phrase/UID |
 | Карта не загружается | интернет и доступность OpenFreeMap/Esri/Sentinel; смотрите консоль браузера |
 

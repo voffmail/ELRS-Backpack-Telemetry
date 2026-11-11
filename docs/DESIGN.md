@@ -13,7 +13,7 @@ ELRS TX module
 TX backpack (ESP-NOW, group MAC)
       │ ESP-NOW
       ▼
-ESP32-C3/S3 dongle ──USB CDC──► Android
+ESP32-C3/S3/C6 dongle ──USB CDC──► Android
                               │
                         CRSF-кадры
                               │
@@ -35,14 +35,15 @@ ESP32-C3/S3 dongle ──USB CDC──► Android
 
 | Параметр | Значение |
 |---|---|
-| Env | `esp32-c3-usb-otg`, `esp32-s3-usb-otg` |
-| Плата | ESP32-C3 / ESP32-S3 с native USB (например, Super Mini, DevKitC-1) |
+| Env | `esp32-c3-usb-otg`, `esp32-s3-usb-otg`, `esp32-c6-usb-otg` |
+| Плата | ESP32-C3 / ESP32-S3 / ESP32-C6 с native USB (Super Mini, DevKitC-1) |
 | Данные | `Serial` (USB CDC) |
 | PHY | BGN (`11B│11G│11N`) |
 
 Фраза/UID хранятся в NVS. Прошивка собирается только под native USB.
 S3-сборка рассчитана на `esp32-s3-devkitc-1`; LED — WS2812 на GPIO48
-(переопределяется `-DELRS_LED_PIN`).
+(переопределяется `-DELRS_LED_PIN`). C6-сборка — ESP32-C6 Super Mini,
+статусный LED GPIO15 (active-high).
 
 ## 4. ESP-NOW и binding
 
@@ -126,6 +127,8 @@ boot-fallback, когда UID не настроен.
 - ESP32-S3-DevKitC-1: WS2812 на GPIO48, синий при активности (`neopixelWrite`).
   `-DELRS_LED_PIN=<n>` меняет пин, `-DELRS_LED_PIN=-1` отключает LED,
   `-DELRS_LED_RGB=0` включает режим обычного LED.
+- ESP32-C6 Super Mini: обычный статусный LED GPIO15, active-high; WS2812 на
+  GPIO8 не используется.
 
 `LinkStatus` не зависит от протокола:
 
@@ -162,8 +165,9 @@ GPS extended, Vario, Battery, Baro, Link, Attitude, Flight mode, Device info
 ## 10. Web Flasher и CI
 
 - `webflasher/` — страница ESP Web Tools (Web Serial) с автоопределением платы.
-- Прошиваются `esp32-c3-usb-otg` и `esp32-s3-usb-otg`; каждый образ — merged
-  binary с offset 0, общий `manifest.json` содержит builds по chipFamily.
+- Прошиваются `esp32-c3-usb-otg`, `esp32-s3-usb-otg` и `esp32-c6-usb-otg`;
+  каждый образ — merged binary с offset 0, общий `manifest.json` содержит builds
+  по chipFamily.
 - `scripts/make_webflasher.py` собирает Pages-сайт: index, общий `manifest.json`,
   merged-образы и SHA256SUMS.
 - `.github/workflows/webflasher.yml` на GitHub Release собирает образы,

@@ -30,23 +30,31 @@ class TestMakeWebflasher(unittest.TestCase):
                 if path.is_file()
             }
 
-    def test_selects_two_targets(self):
-        files = self.build_site({"c3": b"c3-image", "s3": b"s3-image"})
+    def test_selects_all_targets(self):
+        files = self.build_site(
+            {"c3": b"c3-image", "s3": b"s3-image", "c6": b"c6-image"}
+        )
 
         self.assertEqual(files["firmware-merged-c3.bin"], b"c3-image")
         self.assertEqual(files["firmware-merged-s3.bin"], b"s3-image")
+        self.assertEqual(files["firmware-merged-c6.bin"], b"c6-image")
         self.assertNotIn("targets.json", files)
         self.assertNotIn("manifest-c3.json", files)
         self.assertNotIn("manifest-s3.json", files)
+        self.assertNotIn("manifest-c6.json", files)
 
         manifest = json.loads(files["manifest.json"])
         self.assertEqual(
             [build["chipFamily"] for build in manifest["builds"]],
-            ["ESP32-C3", "ESP32-S3"],
+            ["ESP32-C3", "ESP32-S3", "ESP32-C6"],
         )
         self.assertEqual(
             [build["parts"][0]["path"] for build in manifest["builds"]],
-            ["firmware-merged-c3.bin", "firmware-merged-s3.bin"],
+            [
+                "firmware-merged-c3.bin",
+                "firmware-merged-s3.bin",
+                "firmware-merged-c6.bin",
+            ],
         )
 
     def test_bare_binary_defaults_to_c3(self):

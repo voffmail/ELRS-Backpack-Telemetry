@@ -46,6 +46,7 @@ jobs:
         run: |
           ./tools/pio run -d firmware -e esp32-c3-usb-otg
           ./tools/pio run -d firmware -e esp32-s3-usb-otg
+          ./tools/pio run -d firmware -e esp32-c6-usb-otg
 
       - name: Merge flash images
         run: |
@@ -70,6 +71,7 @@ jobs:
           mkdir -p build
           merge esp32-c3-usb-otg esp32c3 build/firmware-merged-c3.bin
           merge esp32-s3-usb-otg esp32s3 build/firmware-merged-s3.bin
+          merge esp32-c6-usb-otg esp32c6 build/firmware-merged-c6.bin
 
       - name: Assemble Pages site
         run: |
@@ -84,10 +86,12 @@ jobs:
             --version "$VERSION" \
             --binary c3=build/firmware-merged-c3.bin \
             --binary s3=build/firmware-merged-s3.bin \
+            --binary c6=build/firmware-merged-c6.bin \
             --out site
           python3 -m json.tool site/manifest.json >/dev/null
           test -f site/firmware-merged-c3.bin
           test -f site/firmware-merged-s3.bin
+          test -f site/firmware-merged-c6.bin
           test -f site/index.html
 
       - name: Upload site artifact
@@ -104,12 +108,15 @@ jobs:
         run: |
           BUILD_C3="$GITHUB_WORKSPACE/firmware/.pio/build/esp32-c3-usb-otg"
           BUILD_S3="$GITHUB_WORKSPACE/firmware/.pio/build/esp32-s3-usb-otg"
+          BUILD_C6="$GITHUB_WORKSPACE/firmware/.pio/build/esp32-c6-usb-otg"
           gh release upload "${{ github.event.release.tag_name }}" \
             build/firmware-merged-c3.bin \
             build/firmware-merged-s3.bin \
+            build/firmware-merged-c6.bin \
             site/SHA256SUMS \
             "$BUILD_C3/firmware.elf" \
             "$BUILD_S3/firmware.elf" \
+            "$BUILD_C6/firmware.elf" \
             --clobber
 
   deploy:

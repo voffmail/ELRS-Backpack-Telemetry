@@ -12,6 +12,7 @@ from pathlib import Path
 TARGETS = {
     "c3": "ESP32-C3",
     "s3": "ESP32-S3",
+    "c6": "ESP32-C6",
 }
 
 

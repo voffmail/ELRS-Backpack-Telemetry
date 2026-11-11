@@ -594,7 +594,7 @@
       <b data-i18n="guide_methods">Two ways to receive telemetry</b>
       <ul class="guideList">
         <li data-i18n="guide_method_wifi">Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.</li>
-        <li data-i18n="guide_method_usb">ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3/ESP32-S3 native-USB dongle and a data cable (no OTG adapter for USB-C↔USB-C).</li>
+        <li data-i18n="guide_method_usb">ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3/ESP32-S3/ESP32-C6 native-USB dongle and a data cable (no OTG adapter for USB-C↔USB-C).</li>
       </ul>
 
       <b data-i18n="guide_wifi">Wi-Fi setup</b>
@@ -607,7 +607,7 @@
 
       <b data-i18n="guide_espnow">ESP-NOW via USB setup</b>
       <ol class="guideList">
-        <li data-i18n-html="guide_espnow_1">Flash the ESP32-C3/ESP32-S3 native-USB dongle with esp32-c3-usb-otg or esp32-s3-usb-otg via the Web Flasher or PlatformIO.</li>
+        <li data-i18n-html="guide_espnow_1">Flash the ESP32-C3/ESP32-S3/ESP32-C6 native-USB dongle with esp32-c3-usb-otg, esp32-s3-usb-otg or esp32-c6-usb-otg via the Web Flasher or PlatformIO.</li>
         <li data-i18n="guide_espnow_2">In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.</li>
         <li data-i18n="guide_espnow_3">Connect the dongle to the phone with a data cable (USB-C↔USB-C; use an OTG adapter only if needed) and allow USB access.</li>
         <li data-i18n="guide_espnow_4">Open Settings (gear icon in the header) and select the “ESP-NOW via USB” source.</li>
@@ -618,7 +618,7 @@
       <b data-i18n="guide_problems">Possible problems</b>
       <ul class="guideList">
         <li data-i18n="guide_problem_nodata_android">No Wi-Fi data? Check Telemetry → WiFi, the shared network, VPN, and that UDP port 14550 is not used by another app.</li>
-        <li data-i18n="guide_problem_no_dongle">No dongle in USB mode? Use an ESP32-C3/ESP32-S3 native-USB board and a data cable; check USB permission.</li>
+        <li data-i18n="guide_problem_no_dongle">No dongle in USB mode? Use an ESP32-C3/ESP32-S3/ESP32-C6 native-USB board and a data cable; check USB permission.</li>
         <li data-i18n="guide_problem_no_link">Counters grow but the status says “no drone link”? Check RX/drone power and that the binding phrase or UID matches.</li>
         <li data-i18n="guide_problem_port_android">Port 14550 busy? Change it in Settings (gear → UDP port).</li>
         <li data-i18n="guide_problem_vendor">Some vendors' “ExpressLRS TX Backpack XXXXXX” AP does not start; a backpack firmware from master may help.</li>
@@ -1265,7 +1265,7 @@ const I18N = {
     source_network: "Network",
     source_espnow_usb: "ESP-NOW via USB",
     source_network_note: "Default. Wi-Fi/UDP telemetry from the TX backpack; no extra hardware.",
-    source_espnow_usb_note: "Recommended. Less RF pollution; requires an ESP32-C3/ESP32-S3 native-USB dongle and a data cable (no OTG adapter for USB-C↔USB-C).",
+    source_espnow_usb_note: "Recommended. Less RF pollution; requires an ESP32-C3/ESP32-S3/ESP32-C6 native-USB dongle and a data cable (no OTG adapter for USB-C↔USB-C).",
     source_error: "Could not switch the source",
     usb_section: "USB dongle",
     usb_allow: "Allow USB access",
@@ -1345,14 +1345,14 @@ const I18N = {
     guide_github: "Project on GitHub",
     guide_methods: "Two ways to receive telemetry",
     guide_method_wifi: "Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.",
-    guide_method_usb: "ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3/ESP32-S3 native-USB dongle and a data cable (no OTG adapter for USB-C↔USB-C).",
+    guide_method_usb: "ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3/ESP32-S3/ESP32-C6 native-USB dongle and a data cable (no OTG adapter for USB-C↔USB-C).",
     guide_wifi: "Wi-Fi setup",
     guide_wifi_1: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter.",
     guide_wifi_2: "Connect the phone to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs) or to the same network as the backpack.",
     guide_wifi_3: "Start the app and open the “Telemetry” tab. UDP port 14550 is used by default.",
     guide_wifi_4: "Wait for the green “online” status and growing packet counters in “Reception”. If the port was changed, set it in Settings (gear).",
     guide_espnow: "ESP-NOW via USB setup",
-    guide_espnow_1: 'Flash the <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3</a> native-USB dongle with esp32-c3-usb-otg or esp32-s3-usb-otg via the <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> or PlatformIO.',
+    guide_espnow_1: 'Flash the <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3/ESP32-C6</a> native-USB dongle with esp32-c3-usb-otg, esp32-s3-usb-otg or esp32-c6-usb-otg via the <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> or PlatformIO.',
     guide_espnow_2: "In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Connect the dongle to the phone with a data cable (USB-C↔USB-C; use an OTG adapter only if needed) and allow USB access.",
     guide_espnow_4: "Open Settings (gear icon in the header) and select the “ESP-NOW via USB” source.",
@@ -1360,7 +1360,7 @@ const I18N = {
     guide_espnow_6: "Check the dongle LED: with the correct bind phrase/UID it stays solid blue — the dongle is receiving frames from the backpack. With an active drone link it blinks. If the dongle is not connected to the app or the phrase/UID is wrong, the LED is off.",
     guide_problems: "Possible problems",
     guide_problem_nodata_android: "No Wi-Fi data? Check Telemetry → WiFi, the shared network, VPN, and that UDP port 14550 is not used by another app.",
-    guide_problem_no_dongle: "No dongle in USB mode? Use an ESP32-C3/ESP32-S3 native-USB board and a data cable; check USB permission.",
+    guide_problem_no_dongle: "No dongle in USB mode? Use an ESP32-C3/ESP32-S3/ESP32-C6 native-USB board and a data cable; check USB permission.",
     guide_problem_no_link: "Counters grow but the status says “no drone link”? Check RX/drone power and that the binding phrase or UID matches.",
     guide_problem_port_android: "Port 14550 busy? Change it in Settings (gear → UDP port).",
     guide_problem_vendor: "Some vendors' “ExpressLRS TX Backpack XXXXXX” AP does not start; a backpack firmware from master may help.",
@@ -1538,7 +1538,7 @@ const I18N = {
     source_network: "Сеть",
     source_espnow_usb: "ESP-NOW по USB",
     source_network_note: "По умолчанию. Телеметрия по Wi-Fi/UDP от TX-бэкпака; дополнительное железо не нужно.",
-    source_espnow_usb_note: "Рекомендуется. Меньше засорения эфира; нужен приемник ESP-NOW на ESP32-C3/ESP32-S3 с native USB и data-кабель (OTG-адаптер не нужен для USB-C↔USB-C).",
+    source_espnow_usb_note: "Рекомендуется. Меньше засорения эфира; нужен приемник ESP-NOW на ESP32-C3/ESP32-S3/ESP32-C6 с native USB и data-кабель (OTG-адаптер не нужен для USB-C↔USB-C).",
     source_error: "Не удалось переключить источник",
     usb_section: "Приемник ESP-NOW",
     usb_allow: "Разрешить USB",
@@ -1618,14 +1618,14 @@ const I18N = {
     guide_github: "Проект на GitHub",
     guide_methods: "Два способа получения телеметрии",
     guide_method_wifi: "Wi-Fi — по умолчанию. Дополнительное железо не нужно: бэкпак поднимает точку доступа или подключается к вашей сети.",
-    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен приемник ESP-NOW на ESP32-C3/ESP32-S3 с native USB и data-кабель (OTG-адаптер не нужен для USB-C↔USB-C).",
+    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен приемник ESP-NOW на ESP32-C3/ESP32-S3/ESP32-C6 с native USB и data-кабель (OTG-адаптер не нужен для USB-C↔USB-C).",
     guide_wifi: "Настройка Wi-Fi",
     guide_wifi_1: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите «WiFi». Не используйте «WiFi Connectivity» — это режим настройки передатчика.",
     guide_wifi_2: "Подключите телефон к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или к той же сети, что и бэкпак.",
     guide_wifi_3: "Запустите приложение и откройте вкладку «Телеметрия». По умолчанию слушается UDP-порт 14550.",
     guide_wifi_4: "Дождитесь зелёного статуса «онлайн» и роста пакетов в «Приёме». Если порт изменён, смените его в настройках (шестерёнка).",
     guide_espnow: "Настройка ESP-NOW по USB",
-    guide_espnow_1: 'Прошейте <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#прошивка-usb-приемника-esp-now-и-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3</a> с native USB прошивкой esp32-c3-usb-otg или esp32-s3-usb-otg через <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> или PlatformIO.',
+    guide_espnow_1: 'Прошейте <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#прошивка-usb-приемника-esp-now-и-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3/ESP32-C6</a> с native USB прошивкой esp32-c3-usb-otg, esp32-s3-usb-otg или esp32-c6-usb-otg через <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> или PlatformIO.',
     guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Подключите приемник ESP-NOW к телефону data-кабелем (USB-C↔USB-C; OTG-адаптер — только при необходимости) и разрешите доступ к USB.",
     guide_espnow_4: "Откройте настройки (шестерёнка в шапке) и выберите источник «ESP-NOW по USB».",
@@ -1633,7 +1633,7 @@ const I18N = {
     guide_espnow_6: "Проверьте синий LED приемника ESP-NOW: после верной бинд-фразы/UID он горит ровно — значит, приемник получает кадры от бэкпака. Если есть линк с дроном, LED мигает. Если приемник не видит приложение или фраза/UID неверны, LED не горит.",
     guide_problems: "Возможные проблемы",
     guide_problem_nodata_android: "Нет данных по Wi-Fi? Проверьте Telemetry → WiFi, общую сеть, VPN и что UDP-порт 14550 не занят другой программой.",
-    guide_problem_no_dongle: "В USB-режиме приемник ESP-NOW не найден? Нужен ESP32-C3/ESP32-S3 с native USB и data-кабель; проверьте разрешение USB.",
+    guide_problem_no_dongle: "В USB-режиме приемник ESP-NOW не найден? Нужен ESP32-C3/ESP32-S3/ESP32-C6 с native USB и data-кабель; проверьте разрешение USB.",
     guide_problem_no_link: "Счётчики растут, но статус «нет связи с дроном»? Проверьте питание RX/дрона и совпадение binding phrase или UID.",
     guide_problem_port_android: "Порт 14550 занят? Смените его в настройках (шестерёнка → UDP-порт).",
     guide_problem_vendor: "У некоторых вендоров не стартует точка «ExpressLRS TX Backpack XXXXXX»; иногда помогает прошивка бэкпака из master.",
@@ -1811,7 +1811,7 @@ const I18N = {
     source_network: "网络",
     source_espnow_usb: "USB ESP-NOW",
     source_network_note: "默认。通过 Wi-Fi/UDP 接收 TX 背包遥测，无需额外硬件。",
-    source_espnow_usb_note: "推荐。减少无线电污染；需要带 native USB 的 ESP32-C3/ESP32-S3 适配器和数据线。",
+    source_espnow_usb_note: "推荐。减少无线电污染；需要带 native USB 的 ESP32-C3/ESP32-S3/ESP32-C6 适配器和数据线。",
     source_error: "无法切换来源",
     usb_section: "USB 适配器",
     usb_allow: "允许 USB 访问",
@@ -1891,14 +1891,14 @@ const I18N = {
     guide_github: "GitHub 项目",
     guide_methods: "两种获取遥测的方式",
     guide_method_wifi: "Wi-Fi — 默认。无需额外硬件：背包会创建热点或加入你的网络。",
-    guide_method_usb: "USB ESP-NOW — 推荐。减少无线电污染。需要带 native USB 的 ESP32-C3/ESP32-S3 和数据线。",
+    guide_method_usb: "USB ESP-NOW — 推荐。减少无线电污染。需要带 native USB 的 ESP32-C3/ESP32-S3/ESP32-C6 和数据线。",
     guide_wifi: "Wi-Fi 设置",
     guide_wifi_1: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器。",
     guide_wifi_2: "将手机连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或连接到与背包相同的网络。",
     guide_wifi_3: "启动应用并打开“遥测”标签页。默认使用 UDP 端口 14550。",
     guide_wifi_4: "等待绿色“在线”状态和“接收”中不断增长的包计数。如果端口已更改，请在设置（齿轮）中修改。",
     guide_espnow: "USB ESP-NOW 设置",
-    guide_espnow_1: '通过 <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> 或 PlatformIO 为带 native USB 的 <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3</a> 刷写 esp32-c3-usb-otg 或 esp32-s3-usb-otg。',
+    guide_espnow_1: '通过 <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> 或 PlatformIO 为带 native USB 的 <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3/ESP32-C6</a> 刷写 esp32-c3-usb-otg、esp32-s3-usb-otg 或 esp32-c6-usb-otg。',
     guide_espnow_2: "在 EdgeTX 中设置：ELRS Lua → Backpack → Telemetry → ESP-NOW。",
     guide_espnow_3: "使用数据线将适配器连接到手机（USB-C↔USB-C；仅在需要时使用 OTG 适配器），并允许 USB 访问。",
     guide_espnow_4: "打开设置（标题栏齿轮图标），选择来源“USB ESP-NOW”。",
@@ -1906,7 +1906,7 @@ const I18N = {
     guide_espnow_6: "检查适配器的蓝色 LED：绑定短语/UID 正确时它会常亮，表示适配器收到了背包的数据。与无人机建立链路时会闪烁。如果适配器没有连接到应用，或短语/UID 错误，LED 会熄灭。",
     guide_problems: "可能的问题",
     guide_problem_nodata_android: "Wi-Fi 没有数据？检查 Telemetry → WiFi、同一网络、VPN，以及 UDP 端口 14550 是否被其他应用占用。",
-    guide_problem_no_dongle: "USB 模式找不到适配器？使用带 native USB 的 ESP32-C3/ESP32-S3 和数据线；检查 USB 权限。",
+    guide_problem_no_dongle: "USB 模式找不到适配器？使用带 native USB 的 ESP32-C3/ESP32-S3/ESP32-C6 和数据线；检查 USB 权限。",
     guide_problem_no_link: "计数增长但显示“无无人机链路”？检查 RX/无人机电源，以及绑定短语或 UID 是否匹配。",
     guide_problem_port_android: "端口 14550 被占用？在设置中更改（齿轮 → UDP 端口）。",
     guide_problem_vendor: "部分厂商的“ExpressLRS TX Backpack XXXXXX”热点无法启动；可尝试 master 分支的背包固件。",
