@@ -35,7 +35,13 @@ jobs:
         run: ./init.sh
 
       - name: Build ESP32-C3 firmware (native USB)
-        run: ./tools/pio run -d firmware -e esp32-c3-usb
+        run: ./tools/pio run -d firmware -e esp32-c3-usb-otg
+
+      - name: Build ESP32-S3 firmware (native USB)
+        run: ./tools/pio run -d firmware -e esp32-s3-usb-otg
+
+      - name: Build ESP32-C6 firmware (native USB)
+        run: ./tools/pio run -d firmware -e esp32-c6-usb-otg
 
       - name: Build backpack simulator
         run: ./tools/pio run -d sim -e sim
@@ -50,5 +56,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: elrs-usb-dongle-firmware
-          path: firmware/.pio/build/esp32-c3-usb/firmware.bin
+          path: |
+            firmware/.pio/build/esp32-c3-usb-otg/firmware.bin
+            firmware/.pio/build/esp32-s3-usb-otg/firmware.bin
+            firmware/.pio/build/esp32-c6-usb-otg/firmware.bin
           if-no-files-found: error

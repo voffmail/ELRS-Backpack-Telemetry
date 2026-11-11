@@ -27,6 +27,11 @@ if ! "$PIO" --version >/dev/null 2>&1; then
     exit 1
 fi
 
+# Standalone esptool for merging web-flasher images (platform-independent).
+if ! "$PY" -c 'import esptool, sys; sys.exit(0 if esptool.__version__ == "5.4.0" else 1)' 2>/dev/null; then
+    "$PY" -m pip install "esptool==5.4.0"
+fi
+
 cat > "$TC/pio-env.sh" <<EOF
 export PLATFORMIO_CORE_DIR="$TC/platformio"
 export PLATFORMIO_CACHE_DIR="$TC/cache"
@@ -37,4 +42,4 @@ EOF
 echo "firmware toolchain: $TC"
 echo "platformio: $PIO ($("$PIO" --version 2>/dev/null | tail -1))"
 echo "run: source .toolchain/pio-env.sh"
-echo "firmware: ./tools/pio run -d firmware -e esp32-c3-usb"
+echo "firmware: ./tools/pio run -d firmware -e esp32-c3-usb-otg"

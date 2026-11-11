@@ -228,7 +228,8 @@ void setup() {
     ledBegin();
 
 #ifdef ELRS_DEBUG_SERIAL
-    Serial0.begin(115200, SERIAL_8N1, 20, 21);
+    // Default UART0 pins; do not hardcode C3's 20/21 (USB D-/D+ on S3).
+    Serial0.begin(115200);
     delay(200);
 #endif
 

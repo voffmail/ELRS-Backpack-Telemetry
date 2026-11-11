@@ -1241,7 +1241,7 @@ PAGE = """<!doctype html>
       <b data-i18n="guide_methods">Two ways to receive telemetry</b>
       <ul class="guideList">
         <li data-i18n="guide_method_wifi">Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.</li>
-        <li data-i18n="guide_method_usb">ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3 native-USB dongle and the serial bridge.</li>
+        <li data-i18n="guide_method_usb">ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3/ESP32-S3/ESP32-C6 native-USB dongle and the serial bridge.</li>
       </ul>
 
       <b data-i18n="guide_wifi">Wi-Fi setup</b>
@@ -1254,7 +1254,7 @@ PAGE = """<!doctype html>
 
       <b data-i18n="guide_espnow">ESP-NOW via USB setup</b>
       <ol class="guideList">
-        <li data-i18n-html="guide_espnow_1">Flash the ESP32-C3 native-USB dongle with esp32-c3-usb via the Web Flasher or PlatformIO.</li>
+        <li data-i18n-html="guide_espnow_1">Flash the ESP32-C3/ESP32-S3/ESP32-C6 native-USB dongle with esp32-c3-usb-otg, esp32-s3-usb-otg or esp32-c6-usb-otg via the Web Flasher or PlatformIO.</li>
         <li data-i18n="guide_espnow_2">In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.</li>
         <li data-i18n="guide_espnow_3">Connect the dongle to the computer and find its serial port (/dev/ttyACM0, COMx, …).</li>
         <li data-i18n="guide_espnow_4">Start the viewer and the bridge: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550</li>
@@ -1569,14 +1569,14 @@ const I18N = {
     guide_title: "Quick setup guide",
     guide_methods: "Two ways to receive telemetry",
     guide_method_wifi: "Wi-Fi — default. No extra hardware: the backpack starts an access point or joins your network.",
-    guide_method_usb: "ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3 native-USB dongle and the serial bridge.",
+    guide_method_usb: "ESP-NOW via USB — recommended. Less RF pollution. Needs an ESP32-C3/ESP32-S3/ESP32-C6 native-USB dongle and the serial bridge.",
     guide_wifi: "Wi-Fi setup",
     guide_wifi_1: "In EdgeTX open ELRS Lua → Backpack → Telemetry and select “WiFi”. Do not use “WiFi Connectivity” — it configures the transmitter.",
     guide_wifi_2: "Connect the computer to the “ExpressLRS TX Backpack XXXXXX” access point (password expresslrs) or to the same network as the backpack.",
     guide_wifi_3: "Start the viewer: python3 tlm_viewer.py",
     guide_wifi_4: "Open http://localhost:8080 and wait for the green online status and growing packet counters.",
     guide_espnow: "ESP-NOW via USB setup",
-    guide_espnow_1: 'Flash the <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> native-USB dongle with esp32-c3-usb via the <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> or PlatformIO.',
+    guide_espnow_1: 'Flash the <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3/ESP32-C6</a> native-USB dongle with esp32-c3-usb-otg, esp32-s3-usb-otg or esp32-c6-usb-otg via the <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> or PlatformIO.',
     guide_espnow_2: "In EdgeTX set: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Connect the dongle to the computer and find its serial port (/dev/ttyACM0, COMx, …).",
     guide_espnow_4: "Start the viewer and the bridge: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
@@ -1769,14 +1769,14 @@ const I18N = {
     guide_title: "Краткое руководство",
     guide_methods: "Два способа получения телеметрии",
     guide_method_wifi: "Wi-Fi — по умолчанию. Дополнительное железо не нужно: бэкпак поднимает точку доступа или подключается к вашей сети.",
-    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен приемник ESP-NOW на ESP32-C3 с native USB и serial-мост.",
+    guide_method_usb: "ESP-NOW по USB — рекомендуется. Меньше засорения эфира. Нужен приемник ESP-NOW на ESP32-C3/ESP32-S3/ESP32-C6 с native USB и serial-мост.",
     guide_wifi: "Настройка Wi-Fi",
     guide_wifi_1: "В EdgeTX откройте ELRS Lua → Backpack → Telemetry и выберите «WiFi». Не используйте «WiFi Connectivity» — это режим настройки передатчика.",
     guide_wifi_2: "Подключите компьютер к точке «ExpressLRS TX Backpack XXXXXX» (пароль expresslrs) или к той же сети, что и бэкпак.",
     guide_wifi_3: "Запустите вьюер: python3 tlm_viewer.py",
     guide_wifi_4: "Откройте http://localhost:8080 и дождитесь зелёного статуса «онлайн» и роста пакетов.",
     guide_espnow: "Настройка ESP-NOW по USB",
-    guide_espnow_1: 'Прошейте <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#прошивка-usb-приемника-esp-now-и-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> с native USB прошивкой esp32-c3-usb через <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> или PlatformIO.',
+    guide_espnow_1: 'Прошейте <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#прошивка-usb-приемника-esp-now-и-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3/ESP32-C6</a> с native USB прошивкой esp32-c3-usb-otg, esp32-s3-usb-otg или esp32-c6-usb-otg через <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> или PlatformIO.',
     guide_espnow_2: "В EdgeTX задайте: ELRS Lua → Backpack → Telemetry → ESP-NOW.",
     guide_espnow_3: "Подключите приемник ESP-NOW к компьютеру и найдите его serial-порт (/dev/ttyACM0, COMx, …).",
     guide_espnow_4: "Запустите вьюер и мост: python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",
@@ -1969,14 +1969,14 @@ const I18N = {
     guide_title: "快速设置指南",
     guide_methods: "两种获取遥测的方式",
     guide_method_wifi: "Wi-Fi — 默认。无需额外硬件：背包会创建热点或加入你的网络。",
-    guide_method_usb: "USB ESP-NOW — 推荐。减少无线电污染。需要带 native USB 的 ESP32-C3 适配器和串口桥。",
+    guide_method_usb: "USB ESP-NOW — 推荐。减少无线电污染。需要带 native USB 的 ESP32-C3/ESP32-S3/ESP32-C6 适配器和串口桥。",
     guide_wifi: "Wi-Fi 设置",
     guide_wifi_1: "在 EdgeTX 中打开 ELRS Lua → Backpack → Telemetry，选择“WiFi”。不要使用“WiFi Connectivity”——那是配置遥控器。",
     guide_wifi_2: "将电脑连接到“ExpressLRS TX Backpack XXXXXX”热点（密码 expresslrs），或连接到与背包相同的网络。",
     guide_wifi_3: "启动查看器：python3 tlm_viewer.py",
     guide_wifi_4: "打开 http://localhost:8080，等待绿色“在线”状态和不断增长的包计数。",
     guide_espnow: "USB ESP-NOW 设置",
-    guide_espnow_1: '通过 <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> 或 PlatformIO 为带 native USB 的 <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3</a> 刷写 esp32-c3-usb。',
+    guide_espnow_1: '通过 <a href="https://voffmail.github.io/ELRS-Backpack-Telemetry/" target="_blank" rel="noopener noreferrer">Web Flasher</a> 或 PlatformIO 为带 native USB 的 <a href="https://github.com/voffmail/ELRS-Backpack-Telemetry#dongle-firmware-and-web-flasher" target="_blank" rel="noopener noreferrer">ESP32-C3/ESP32-S3/ESP32-C6</a> 刷写 esp32-c3-usb-otg、esp32-s3-usb-otg 或 esp32-c6-usb-otg。',
     guide_espnow_2: "在 EdgeTX 中设置：ELRS Lua → Backpack → Telemetry → ESP-NOW。",
     guide_espnow_3: "将适配器连接到电脑，并找到其串口（/dev/ttyACM0、COMx 等）。",
     guide_espnow_4: "启动查看器和桥接：python3 tools/serial_bridge.py --serial /dev/ttyACM0 --udp 127.0.0.1:14550",

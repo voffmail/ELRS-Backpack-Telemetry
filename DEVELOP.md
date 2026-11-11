@@ -60,11 +60,20 @@ The ESP32-C3 dongle firmware and the backpack simulator use PlatformIO. They sha
 source .toolchain/pio-env.sh  # optional when using ./tools/pio
 ```
 
-Build the main native-USB firmware:
+Firmware uses PlatformIO platform `espressif32@8.0.0` (Arduino core 3.3.12). Build the native-USB firmware for ESP32-C3, ESP32-S3 or ESP32-C6:
 
 ```bash
-./tools/pio run -d firmware -e esp32-c3-usb
+./tools/pio run -d firmware -e esp32-c3-usb-otg
+./tools/pio run -d firmware -e esp32-s3-usb-otg
+./tools/pio run -d firmware -e esp32-c6-usb-otg
 ```
+
+The S3 build targets `esp32-s3-devkitc-1` and uses its onboard WS2812 on GPIO48.
+On the DevKitC-1 use the native **USB** port (GPIO19/20), not the UART/CP2102 port:
+the Android app filters Espressif VID `0x303A`. For other boards override the LED,
+e.g. `-DELRS_LED_PIN=21` or `-DELRS_LED_PIN=-1` to disable it, and
+`-DELRS_LED_RGB=0` for a plain LED. The C6 build targets the ESP32-C6 Super Mini
+(status LED on GPIO15, active high; WS2812 GPIO8 unused).
 
 Other builds:
 
@@ -97,34 +106,42 @@ PlatformIO uses `.toolchain/pio-env.sh`.
 
 ## Build the web flasher
 
-The web flasher is a static page plus a merged ESP32-C3 image:
+The web flasher is a static page plus merged ESP32-C3/ESP32-S3/ESP32-C6 images:
 
 ```bash
-./tools/pio run -d firmware -e esp32-c3-usb
+./tools/pio run -d firmware -e esp32-c3-usb-otg
+./tools/pio run -d firmware -e esp32-s3-usb-otg
+./tools/pio run -d firmware -e esp32-c6-usb-otg
 
-PYTHON=.toolchain/venv/bin/python
-ESPTOOL=.toolchain/platformio/packages/tool-esptoolpy/esptool.py
-BUILD=firmware/.pio/build/esp32-c3-usb
+ESPTOOL=.toolchain/venv/bin/esptool
 BOOT_APP0=.toolchain/platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
 
 mkdir -p build
-"$PYTHON" "$ESPTOOL" --chip esp32c3 merge_bin \
-  -o build/firmware-merged.bin \
-  --flash_mode dio --flash_freq 80m --flash_size 4MB \
-  0x0 "$BUILD/bootloader.bin" \
-  0x8000 "$BUILD/partitions.bin" \
-  0xe000 "$BOOT_APP0" \
-  0x10000 "$BUILD/firmware.bin"
+for target in "esp32-c3-usb-otg esp32c3 c3" "esp32-s3-usb-otg esp32s3 s3" "esp32-c6-usb-otg esp32c6 c6"; do
+  set -- $target
+  BUILD="firmware/.pio/build/$1"
+  "$ESPTOOL" --chip "$2" merge-bin \
+    -o "build/firmware-merged-$3.bin" \
+    --flash-mode dio --flash-freq 80m --flash-size 4MB \
+    0x0 "$BUILD/bootloader.bin" \
+    0x8000 "$BUILD/partitions.bin" \
+    0xe000 "$BOOT_APP0" \
+    0x10000 "$BUILD/firmware.bin"
+done
 
 python3 scripts/make_webflasher.py \
   --version dev \
-  --binary build/firmware-merged.bin \
+  --binary c3=build/firmware-merged-c3.bin \
+  --binary s3=build/firmware-merged-s3.bin \
+  --binary c6=build/firmware-merged-c6.bin \
   --out site
 ```
 
-The generated `site/` is git-ignored. It contains `index.html`, `manifest.json`,
-`firmware-merged.bin` and `SHA256SUMS`. Open it over HTTPS or `localhost` (Web Serial
-requires a secure context and Chrome/Edge on a desktop).
+The generated `site/` is git-ignored. It contains `index.html`, a combined
+`manifest.json` listing all chip families, `firmware-merged-<target>.bin` and
+`SHA256SUMS`. The page has one install button: ESP Web Tools detects the connected
+chip and picks the matching build automatically (no manual selection). Open it over
+HTTPS or `localhost` (Web Serial requires a secure context and Chrome/Edge on a desktop).
 
 ## Android SDK setup
 
@@ -203,12 +220,15 @@ Download the APK from the workflow run page under **Artifacts**.
 
 ### Firmware and web flasher workflows
 
-- `.github/workflows/firmware.yml` builds `esp32-c3-usb`, the simulator (`sim`),
-  runs the Python checks/tests and uploads the native-USB `firmware.bin` artifact.
-- `.github/workflows/webflasher.yml` builds the native-USB image, merges it with
-  `esptool`, generates `site/`, uploads the site artifact, deploys GitHub Pages
-  and, for releases, attaches `firmware-merged.bin`, `SHA256SUMS` and
-  `firmware.elf` to the GitHub Release.
+- `.github/workflows/firmware.yml` builds `esp32-c3-usb-otg`,
+  `esp32-s3-usb-otg` and `esp32-c6-usb-otg`, the simulator (`sim`), runs the
+  Python checks/tests and uploads all native-USB `firmware.bin` files as an
+  artifact.
+- `.github/workflows/webflasher.yml` builds all native-USB images, merges them
+  with `esptool`, generates `site/`, uploads the site artifact, deploys GitHub
+  Pages and, for releases, attaches `firmware-merged-c3.bin`,
+  `firmware-merged-s3.bin`, `firmware-merged-c6.bin`, `SHA256SUMS` and all
+  `firmware.elf` files to the GitHub Release.
 
 For Pages, enable **Settings → Pages → Source: GitHub Actions** once.
 

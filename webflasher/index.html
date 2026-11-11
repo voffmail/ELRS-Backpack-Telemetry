@@ -50,7 +50,9 @@
 <main>
   <h1>ELRS ESP-NOW USB Dongle</h1>
   <p class="lead">
-    Прошивка <strong>esp32-c3-usb</strong> — для ESP32-C3 с native USB.
+    Прошивки <strong>esp32-c3-usb-otg</strong>, <strong>esp32-s3-usb-otg</strong>
+    и <strong>esp32-c6-usb-otg</strong> — для ESP32-C3, ESP32-S3 и ESP32-C6
+    с native USB.
   </p>
 
   <section class="card">
@@ -64,9 +66,18 @@
         Открой страницу по HTTPS (GitHub Pages) или на localhost.
       </span>
     </esp-web-install-button>
+    <p class="hint" id="chips-note">
+      Поддерживаются ESP32-C3, ESP32-S3 и ESP32-C6 (native USB). Плата
+      определяется автоматически — выбирать вручную ничего не нужно.
+    </p>
     <p class="hint">
       Прошивка стирает NVS: phrase/UID нужно будет задать заново.
-      Скачать образ вручную: <a href="firmware-merged.bin">firmware-merged.bin</a>.
+      Скачать образ вручную:
+      <span id="downloads">
+        <a href="firmware-merged-c3.bin">ESP32-C3</a> ·
+        <a href="firmware-merged-s3.bin">ESP32-S3</a> ·
+        <a href="firmware-merged-c6.bin">ESP32-C6</a>
+      </span>.
     </p>
     <p class="warn">
       Перед прошивкой закрой ELRS Dongle Stub, монитор порта, PlatformIO и
@@ -79,7 +90,8 @@
     <ol>
       <li>Подключи приемник ESP-NOW к компьютеру по USB.</li>
       <li>Открой эту страницу в Chrome или Edge на компьютере.</li>
-      <li>Нажми <strong>«Прошить приемник ESP-NOW»</strong> и выбери последовательный порт.</li>
+      <li>Нажми <strong>«Прошить приемник ESP-NOW»</strong> и выбери последовательный порт.
+        Плата (ESP32-C3, ESP32-S3 или ESP32-C6) определяется автоматически.</li>
       <li>Подтверди стирание и дождись завершения. Приемник ESP-NOW перезагрузится.</li>
       <li>Настрой phrase/UID и target в Android-приложении или через
         <code>tools/dongle_config.py</code>.</li>
@@ -96,10 +108,38 @@
   </p>
 </main>
 <script>
-  fetch('manifest.json', { cache: 'no-store' })
-    .then(function (r) { return r.json(); })
-    .then(function (m) { document.getElementById('version').textContent = m.version || '?'; })
-    .catch(function () { document.getElementById('version').textContent = 'неизвестно'; });
+  (function () {
+    var versionEl = document.getElementById('version');
+    var chipsEl = document.getElementById('chips-note');
+    var downloadsEl = document.getElementById('downloads');
+
+    fetch('manifest.json', { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
+      .then(function (manifest) {
+        versionEl.textContent = manifest.version || '?';
+        var builds = manifest.builds || [];
+        if (!builds.length) return;
+        var chips = builds.map(function (build) { return build.chipFamily; });
+        chipsEl.textContent =
+          'Поддерживаемые чипы: ' + chips.join(', ') +
+          '. Плата определяется автоматически.';
+        downloadsEl.textContent = '';
+        builds.forEach(function (build, index) {
+          if (index) downloadsEl.appendChild(document.createTextNode(' · '));
+          var part = (build.parts && build.parts[0]) || {};
+          var link = document.createElement('a');
+          link.href = part.path || 'manifest.json';
+          link.textContent = build.chipFamily;
+          downloadsEl.appendChild(link);
+        });
+      })
+      .catch(function () {
+        versionEl.textContent = 'неизвестно';
+      });
+  })();
 </script>
 </body>
 </html>
