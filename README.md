@@ -76,7 +76,7 @@ Python-вьюер пока работает в онлайн-режиме.
 
 ## Прошивка USB-приемника ESP-NOW и [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/)
 
-![ESP32-C3 Super Mini](docs/esp32c3.png)
+![ESP32 Super Mini variants: C3, S3, C6](docs/esp32_supermini_variants.avif)
 
 В репозитории есть прошивки ESP32-C3, ESP32-S3 и ESP32-C6 для USB-приемника ESP-NOW (ESP-NOW → CRSF по USB), симулятор бэкпака и генератор web-flasher.
 
@@ -188,7 +188,7 @@ Python viewer currently stays online-only.
 
 ### Dongle firmware and [Web Flasher](https://voffmail.github.io/ELRS-Backpack-Telemetry/)
 
-![ESP32-C3 Super Mini](docs/esp32c3.png)
+![ESP32 Super Mini variants: C3, S3, C6](docs/esp32_supermini_variants.avif)
 
 The repository includes ESP32-C3, ESP32-S3 and ESP32-C6 firmware for the ESP-NOW USB dongle (ESP-NOW → CRSF over USB), a backpack simulator and the web-flasher generator.
 
